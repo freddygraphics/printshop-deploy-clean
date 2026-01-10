@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Fuente profesional */
+body {
+  @apply bg-background text-text;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Cards */
+.card {
+  @apply bg-white rounded-xl shadow-card border border-border p-5;
+}
+
+/* Botones */
+.btn-primary {
+  @apply bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-light transition shadow-soft;
+}
+
+.btn-secondary {
+  @apply bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 border border-gray-300;
+}
+
+.btn-outline {
+  @apply border border-primary text-primary px-4 py-2 rounded-lg hover:bg-primary hover:text-white transition;
+}
+
+/* Inputs */
+.input {
+  @apply border border-border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none;
+}
+
+/* Titles */
+.title {
+  @apply text-2xl font-semibold text-text;
+}
+.subtitle {
+  @apply text-gray-500 text-sm;
+}
+
+/* Badges */
+.badge {
+  @apply px-3 py-1 text-xs rounded-full font-medium;
+}
+.badge-blue {
+  @apply bg-primary/10 text-primary;
+}
+.badge-gray {
+  @apply bg-gray-100 text-gray-700;
+}
+.badge-green {
+  @apply bg-green-100 text-green-700;
+}
+.badge-orange {
+  @apply bg-orange-100 text-orange-700;
+}
+
+/* Modal */
+.modal-bg {
+  @apply fixed inset-0 bg-black/30 backdrop-blur-sm flex justify-center items-center z-50;
+}
+
+.modal-content {
+  @apply bg-white rounded-xl shadow-2xl p-6 w-full max-w-xl border border-border;
+}
+

@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "Settings" ADD COLUMN     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN     "discountRules" JSONB NOT NULL DEFAULT '[]',
+ADD COLUMN     "paymentFees" JSONB NOT NULL DEFAULT '[]',
+ALTER COLUMN "maxDiscountPercent" SET DEFAULT 100;

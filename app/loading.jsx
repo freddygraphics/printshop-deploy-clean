@@ -1,0 +1,7 @@
+export default function Loading() {
+  return (
+    <div className="flex items-center justify-center h-screen text-cyan-600 text-lg">
+      Loading...
+    </div>
+  );
+}

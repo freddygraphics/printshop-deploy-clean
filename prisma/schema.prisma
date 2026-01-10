@@ -1,0 +1,299 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model Client {
+  id        Int       @id @default(autoincrement())
+  name      String
+  company   String?
+  email     String?
+  phone     String?
+  address   String?
+  city      String?
+  state     String?
+  country   String?
+  zip       String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  invoices  Invoice[]
+  jobs      Job[]
+  notes     Note[]
+  orders    Order[]
+  quotes    Quote[]
+}
+
+model Product {
+  id             Int           @id @default(autoincrement())
+  name           String
+  sku            String?       @unique
+  description    String?
+  category       String?
+  basePrice      Float         @default(0)
+  defaultOptions Json?
+  customFields   Json?
+  templateType   String?
+  templateId     Int?
+  price          Float?        @default(0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  invoiceItems   InvoiceItem[]
+  orders         Order[]
+  template       Template?     @relation(fields: [templateId], references: [id])
+  quoteItems     QuoteItem[]
+}
+
+model Quote {
+  id            Int         @id @default(autoincrement())
+  quoteNumber   Int?        @unique
+  clientId      Int
+  quoteDate     DateTime    @default(now())
+  validUntil    DateTime?
+  subtotal      Float       @default(0)
+  tax           Float       @default(0)
+  total         Float       @default(0)
+  paymentOption String      @default("full")
+  status        String      @default("Pending")
+  notes         String?
+  reference     String?     @unique
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  customerNotes String?
+  internalNotes String?
+  userId        Int?
+  invoices      Invoice[]
+  client        Client      @relation(fields: [clientId], references: [id])
+  user          User?       @relation(fields: [userId], references: [id])
+  items         QuoteItem[]
+}
+
+model Counter {
+  name  String @id
+  value Int
+}
+
+model QuoteItem {
+  id        Int      @id @default(autoincrement())
+  quoteId   Int
+  productId Int?
+  name      String
+  qty       Int
+  unitPrice Float
+  total     Float
+  options   Json?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  product   Product? @relation(fields: [productId], references: [id])
+  quote     Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+}
+
+model Invoice {
+  id               Int               @id @default(autoincrement())
+  clientId         Int
+  quoteId          Int?
+  subtotal         Float             @default(0)
+  tax              Float             @default(0)
+  total            Float             @default(0)
+  paymentStatus    String            @default("Unpaid")
+  issuedAt         DateTime
+  dueDate          DateTime?
+  notes            String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  qrToken          String?
+  userId           Int?
+  invoiceNumber    Int               @unique
+  discountAmount   Float             @default(0)
+  paidAt           DateTime?
+  qrGeneratedAt    DateTime?
+  balance          Float             @default(0)
+  status           InvoiceStatus     @default(DRAFT)
+  voidReason       String?
+  voidedAt         DateTime?
+  client           Client            @relation(fields: [clientId], references: [id])
+  quote            Quote?            @relation(fields: [quoteId], references: [id])
+  user             User?             @relation(fields: [userId], references: [id])
+  appliedDiscounts InvoiceDiscount[]
+  invoiceItems     InvoiceItem[]
+  payments         InvoicePayment[]
+  job              Job?
+  orders           Order[]
+}
+
+model InvoiceItem {
+  id        Int      @id @default(autoincrement())
+  invoiceId Int
+  productId Int?
+  name      String
+  qty       Int
+  unitPrice Float
+  total     Float
+  options   Json?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product   Product? @relation(fields: [productId], references: [id])
+}
+
+model Order {
+  id           Int       @id @default(autoincrement())
+  tenantId     Int?
+  productId    Int?
+  clientId     Int?
+  invoiceId    Int?
+  status       String    @default("Design")
+  workflow     Json?
+  customFields Json?
+  priority     String?   @default("Normal")
+  assignedTo   String?
+  notes        String?
+  startDate    DateTime?
+  dueDate      DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  client       Client?   @relation(fields: [clientId], references: [id])
+  invoice      Invoice?  @relation(fields: [invoiceId], references: [id])
+  product      Product?  @relation(fields: [productId], references: [id])
+}
+
+model Note {
+  id        Int      @id @default(autoincrement())
+  clientId  Int
+  type      String   @default("note")
+  content   String
+  createdAt DateTime @default(now())
+  createdBy String?
+  client    Client   @relation(fields: [clientId], references: [id])
+}
+
+model Template {
+  id        Int       @id @default(autoincrement())
+  name      String
+  type      String?
+  fields    Json?
+  options   Json?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+}
+
+model Job {
+  id                  Int       @id @default(autoincrement())
+  jobNumber           Int       @unique
+  clientId            Int
+  status              JobStatus @default(Pending)
+
+  dueDate             DateTime?
+  notes               String?
+  salesRepId          Int?
+  productionManagerId Int?
+  projectManagerId    Int?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  invoiceId           Int       @unique
+  position            Int       @default(0)
+
+  client              Client    @relation(fields: [clientId], references: [id])
+  invoice             Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  items               JobItem[]
+}
+
+
+
+model JobItem {
+  id        Int    @id @default(autoincrement())
+  jobId     Int
+  name      String
+  qty       Int
+  unitPrice Float
+  total     Float
+  job       Job    @relation(fields: [jobId], references: [id])
+}
+
+model InvoicePayment {
+  id        Int      @id @default(autoincrement())
+  invoiceId Int
+  amount    Float
+  method    String
+  note      String?
+  paidAt    DateTime @default(now())
+  createdAt DateTime @default(now())
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model Settings {
+  id                    Int      @id @default(autoincrement())
+  taxEnabled            Boolean  @default(true)
+  defaultTaxRate        Float    @default(0)
+  allowDiscounts        Boolean  @default(true)
+  maxDiscountPercent    Float    @default(100)
+  paymentFeePercent     Float    @default(0)
+  paymentFeeFlat        Float    @default(0)
+  applyFeeToCustomer    Boolean  @default(false)
+  defaultTerms          String   @default("Due on receipt")
+  defaultDepositPercent Float    @default(0)
+  defaultCustomerNotes  String?
+  updatedAt             DateTime @updatedAt
+  createdAt             DateTime @default(now())
+  discountRules         Json     @default("[]")
+  paymentFees           Json     @default("[]")
+}
+
+model Discount {
+  id          Int      @id @default(autoincrement())
+  name        String
+  type        String   @default("percent")
+  value       Float
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  name      String
+  email     String    @unique
+  password  String
+  role      String    @default("staff")
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  invoices  Invoice[]
+  quotes    Quote[]
+}
+
+model InvoiceDiscount {
+  id         Int      @id @default(autoincrement())
+  invoiceId  Int
+  discountId Int
+  type       String
+  value      Float
+  amount     Float
+  createdAt  DateTime @default(now())
+  invoice    Invoice  @relation(fields: [invoiceId], references: [id])
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PARTIAL
+  PAID
+  VOID
+}
+enum JobStatus {
+  Pending
+  Design
+  Production
+  Ready
+  Delivered
+}
