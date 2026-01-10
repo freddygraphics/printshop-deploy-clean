@@ -51,8 +51,10 @@ export const authOptions = {
     },
 
     async session({ session, token }) {
-      session.user.id = token.id;
-      session.user.role = token.role;
+      if (session.user) {
+        session.user.id = token.id;
+        session.user.role = token.role;
+      }
       return session;
     },
   },
@@ -60,8 +62,7 @@ export const authOptions = {
   pages: {
     signIn: "/login",
   },
-
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET || "dev-secret",
 };
 
 const handler = NextAuth(authOptions);
