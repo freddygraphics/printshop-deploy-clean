@@ -1,12 +1,5 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 
 export default function HomePage() {
-  return (
-    <main style={{ padding: 40 }}>
-      <h1>PrintShop System</h1>
-      <p>Deployment OK</p>
-
-      <Link href="/login">Go to Login</Link>
-    </main>
-  );
+  redirect("/dashboard");
 }
