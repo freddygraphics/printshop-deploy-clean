@@ -53,7 +53,11 @@ export default async function PublicInvoicePage({ params }) {
           </div>
 
           {balance > 0 && (
-            <PayWithCardButton invoiceId={invoice.id} amount={balance} />
+            <PayWithCardButton
+              invoiceId={invoice.id} // 45 (interno)
+              invoiceNumber={invoice.invoiceNumber} // 126 (cliente)
+              amount={balance}
+            />
           )}
         </div>
       </div>
