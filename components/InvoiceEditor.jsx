@@ -15,6 +15,10 @@ import DiscountModal from "@/components/modals/DiscountModal";
 import { QRCodeCanvas } from "qrcode.react";
 
 export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+
+  const clientInvoiceUrl = `${baseUrl}/invoice/${invoiceId}`;
+
   const router = useRouter();
   const [showVoidModal, setShowVoidModal] = useState(false);
   const [isVoiding, setIsVoiding] = useState(false);
@@ -644,7 +648,23 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                 Void
               </button>
             )}
+            <button
+              onClick={async () => {
+                await navigator.clipboard.writeText(clientInvoiceUrl);
+                alert("Client invoice link copied ✅");
+              }}
+              className="px-4 py-2 rounded-lg border text-sm hover:bg-gray-100"
+            >
+              Copy Client Link
+            </button>
 
+            <a
+              href={clientInvoiceUrl}
+              target="_blank"
+              className="text-sm text-blue-600 underline"
+            >
+              Open client view
+            </a>
             <div className="border-t my-1" />
           </div>
         )}
