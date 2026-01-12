@@ -115,6 +115,9 @@ model Invoice {
   paidAt           DateTime?
   qrGeneratedAt    DateTime?
   balance          Float             @default(0)
+    // 🆕 PICKUP
+  pickedUpAt    DateTime?
+  pickedUpById  Int?
   status           InvoiceStatus     @default(DRAFT)
   voidReason       String?
   voidedAt         DateTime?

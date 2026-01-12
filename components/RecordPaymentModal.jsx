@@ -57,16 +57,13 @@ export default function RecordPaymentModal({
     return isNaN(num) ? 0 : num;
   };
   useEffect(() => {
-    if (defaultDepositPercent > 0 && invoice?.balance > 0) {
-      const value =
-        Math.round(((invoice.balance * defaultDepositPercent) / 100) * 100) /
-        100;
+    if (!invoice?.balance) return;
 
-      setPreset("deposit"); // ✅
-      setAmountPaid(value);
-      setAmountPaidInput(value.toFixed(2));
-    }
-  }, [defaultDepositPercent, invoice?.balance]);
+    // ✅ SIEMPRE Full al abrir
+    setPreset("full");
+    setAmountPaid(invoice.balance);
+    setAmountPaidInput(invoice.balance.toFixed(2));
+  }, [invoice?.balance]);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
@@ -225,24 +222,46 @@ export default function RecordPaymentModal({
                 {/* LEFT COLUMN */}
                 <div className="space-y-4">
                   {/* AMOUNT PAID */}
+                  {/* AMOUNT PAID */}
                   <div>
                     <label className="text-sm font-medium">Amount Paid *</label>
 
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      className={`w-full border rounded-lg px-4 py-2 ${
-                        errors.amountPaid ? "border-red-500" : ""
-                      }`}
-                      value={amountPaidInput}
-                      onChange={(e) => {
-                        setPreset("custom");
-                        const val = parseMoney(e.target.value);
-                        setAmountPaid(val);
-                        setAmountPaidInput(formatMoney(val));
-                        setErrors({ ...errors, amountPaid: null });
-                      }}
-                    />
+                    <div className="relative">
+                      <span className="absolute left-3 top-[11px] text-gray-500 pointer-events-none">
+                        $
+                      </span>
+
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        className={`w-full h-11 border rounded-lg pl-7 pr-4 py-2 ${
+                          errors.amountPaid ? "border-red-500" : ""
+                        }`}
+                        value={amountPaidInput}
+                        onChange={(e) => {
+                          setPreset("custom");
+
+                          const raw = e.target.value;
+
+                          // ✅ solo números + 1 punto + 2 decimales
+                          if (!/^\d*\.?\d{0,2}$/.test(raw)) return;
+
+                          setAmountPaidInput(raw);
+                          setAmountPaid(parseFloat(raw || 0));
+                          setErrors({ ...errors, amountPaid: null });
+                        }}
+                        onBlur={() => {
+                          if (amountPaidInput !== "") {
+                            setAmountPaidInput(Number(amountPaid).toFixed(2));
+                          }
+                        }}
+                      />
+                      {errors.amountPaid && (
+                        <p className="text-xs text-red-600 mt-1">
+                          {errors.amountPaid}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
                   {/* AMOUNT RECEIVED */}
@@ -310,6 +329,17 @@ export default function RecordPaymentModal({
             className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg"
             onClick={() => {
               if (!validate()) return;
+
+              // 🚫 BLOQUEAR OVERPAYMENT
+              if (amountPaid > invoice.balance) {
+                setErrors({
+                  ...errors,
+                  amountPaid: `Amount cannot exceed balance ($${invoice.balance.toFixed(
+                    2
+                  )})`,
+                });
+                return;
+              }
 
               onSave({
                 paymentMethod,

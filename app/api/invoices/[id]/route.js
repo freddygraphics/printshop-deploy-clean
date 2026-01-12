@@ -14,22 +14,10 @@ export async function GET(req, { params }) {
     }
     const invoice = await prisma.invoice.findUnique({
       where: { id },
-      select: {
-        id: true,
-        invoiceNumber: true,
-        issuedAt: true,
-        dueDate: true,
-        subtotal: true,
-        tax: true,
-        total: true,
-        paymentStatus: true,
-        notes: true,
-        qrToken: true,
+      include: {
         client: true,
         payments: true,
-        invoiceItems: {
-          include: { product: true },
-        },
+        invoiceItems: true,
       },
     });
 
@@ -39,8 +27,8 @@ export async function GET(req, { params }) {
 
     return NextResponse.json(invoice);
   } catch (err) {
-    console.error("❌ GET /api/invoices/[id] error:", err);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    console.error("❌ GET /api/invoices ERROR:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 

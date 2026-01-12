@@ -747,7 +747,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
               <h4 className="text-lg font-bold text-black-700">Status</h4>
 
               <span
-                className={`inline-block px-3 py-1  text-xs font-semibold ${
+                className={`inline-block px-3 py-1  text-l font-semibold ${
                   status === "Paid"
                     ? "bg-green-100 text-green-700"
                     : status === "Partially Paid"
