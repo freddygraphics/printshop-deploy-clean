@@ -20,7 +20,6 @@
     "@sparticuz/chromium": "^143.0.4",
     "axios": "^1.7.4",
     "bcryptjs": "^3.0.3",
-    "chrome-aws-lambda": "^10.1.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "html-pdf-node": "^1.0.8",
