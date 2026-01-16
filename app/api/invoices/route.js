@@ -3,7 +3,6 @@ import prisma from "@/lib/db";
 
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { generateInvoiceToken } from "@/lib/qrToken";
 
 // ----------------------------------------
 // GET — LIST ALL INVOICES
@@ -128,21 +127,8 @@ export async function POST(req) {
     });
 
     // 2️⃣ Generar QR Token cifrado
-    const qrToken = generateInvoiceToken(invoice.id);
 
-    // 3️⃣ Guardar QR Token
-    const updatedInvoice = await prisma.invoice.update({
-      where: { id: invoice.id },
-      data: {
-        qrToken, // ✅ solo esto
-      },
-      include: {
-        client: true,
-        invoiceItems: true,
-      },
-    });
-
-    return NextResponse.json(updatedInvoice);
+    return NextResponse.json(invoice);
   } catch (error) {
     console.error("❌ Error creating invoice:", error);
     return NextResponse.json(

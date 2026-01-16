@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { X } from "lucide-react";
+import JobQRCode from "@/components/JobQRCode";
 
 export default function JobDrawer({ job, onClose }) {
   if (!job) return null;
@@ -52,6 +53,10 @@ export default function JobDrawer({ job, onClose }) {
               {job.status}
             </div>
           </div>
+          {/* PICKUP QR — SOLO CUANDO ESTÁ READY */}
+          {job.status === "Ready" && job.pickupToken && (
+            <JobQRCode pickupToken={job.pickupToken} />
+          )}
 
           {/* ITEMS */}
           <div className="rounded-xl border p-3">

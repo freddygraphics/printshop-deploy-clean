@@ -112,17 +112,17 @@ model Invoice {
   notes            String?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
-  qrToken          String?
+
   userId           Int?
   invoiceNumber    Int               @unique
   discountAmount   Float             @default(0) 
  
   paidAt           DateTime?
-  qrGeneratedAt    DateTime?
+
   balance          Float             @default(0)
     // 🆕 PICKUP
-  pickedUpAt    DateTime?
-  pickedUpById  Int?
+
+
   status           InvoiceStatus     @default(DRAFT)
   voidReason       String?
   voidedAt         DateTime?
@@ -212,6 +212,10 @@ model Job {
 
   invoiceId           Int       @unique
   position            Int       @default(0)
+   // ✅ QR / PICKUP (AQUI)
+  pickupToken         String?   @unique
+  pickedUpAt          DateTime?
+  pickedUpBy          String?   // simple, luego lo mejoras a UserId si quieres
 
   client              Client    @relation(fields: [clientId], references: [id])
   invoice             Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Restrict)

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import crypto from "crypto";
 
 // ============================
 // GET — LIST JOBS (Production Board)
@@ -8,7 +9,16 @@ export async function GET() {
   try {
     const jobs = await prisma.job.findMany({
       orderBy: [{ status: "asc" }, { position: "asc" }],
-      include: {
+      select: {
+        id: true,
+        jobNumber: true,
+        status: true,
+        position: true,
+
+        // ✅ PICKUP
+        pickupToken: true,
+        pickedUpAt: true,
+
         client: {
           select: { id: true, name: true },
         },
@@ -75,6 +85,8 @@ export async function POST(req) {
 
     const jobNumber = lastJob ? lastJob.jobNumber + 1 : 1001;
 
+    const pickupToken = crypto.randomUUID();
+
     const job = await prisma.job.create({
       data: {
         jobNumber,
@@ -82,6 +94,9 @@ export async function POST(req) {
         clientId: invoice.clientId,
         status: "Pending",
         position: 0,
+
+        // ✅ QR / PICKUP
+        pickupToken,
       },
     });
 
