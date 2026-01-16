@@ -4,6 +4,7 @@ import { Trash2, Search } from "lucide-react";
 import InlineProductEditor from "@/components/InlineProductEditor";
 import CustomerSearchModal from "@/components/CustomerSearchModal";
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { XCircle } from "lucide-react";
 
 import AssignTeamMemberModal from "@/components/AssignTeamMemberModal";
 import CreateJobModal from "@/components/CreateJobModal";
@@ -12,19 +13,29 @@ import { useRouter } from "next/navigation";
 import ConfirmModal from "@/components/ConfirmModal";
 import { getInvoiceStatus } from "@/lib/invoiceStatus";
 import DiscountModal from "@/components/modals/DiscountModal";
-import { QRCodeCanvas } from "qrcode.react";
 
 export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
   const clientInvoiceUrl = `${baseUrl}/invoice/${invoiceId}`;
+  const [taxEnabled, setTaxEnabled] = useState(true);
+  const normalizeOptions = (opts) => {
+    if (!opts || Array.isArray(opts)) return {};
+    return opts;
+  };
+  const buildOptionsFromItem = (item) => ({
+    finish: item.finish || item.options?.finish || null,
+    design: item.design || item.options?.design || null,
+    sides: item.sides || item.options?.sides || null,
+    corners: item.corners || item.options?.corners || null,
+  });
+  const savingRef = useRef(false);
+  const autosaveTimerRef = useRef(null);
 
   const router = useRouter();
   const [showVoidModal, setShowVoidModal] = useState(false);
   const [isVoiding, setIsVoiding] = useState(false);
-  const lastSavedFingerprint = useRef(null);
-  const autosaveTimer = useRef(null);
-  const isInitialLoad = useRef(true);
+
   // ✅ SOLO UN DESCUENTO ACTIVO
   const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [invoice, setInvoice] = useState(null);
@@ -41,6 +52,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
 
   // ✅ AHORA SÍ: SOLO UN DESCUENTO ACTIVO
   const appliedDiscount = appliedDiscounts[0] || null;
+  const isMutatingItemsRef = useRef(false);
 
   // ----------------------------------------
   // CUSTOMER (antes client)
@@ -58,7 +70,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   // ----------------------------------------
   const [productSearch, setProductSearch] = useState("");
   const [productResults, setProductResults] = useState([]);
-  const [isSaving, setIsSaving] = useState(false);
+
   const [isRecordingPayment, setIsRecordingPayment] = useState(false);
 
   // ----------------------------------------
@@ -117,23 +129,74 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   // -----------------------------
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [activeRole, setActiveRole] = useState(null);
+  // 📍 InvoiceEditor.jsx (arriba de los handlers)
+  const saveItems = async (itemsToSave) => {
+    if (!invoiceIdState) return;
+
+    // 🛡️ BLINDAJE CRÍTICO
+    if (!Array.isArray(itemsToSave)) {
+      console.warn("⚠️ saveItems recibió algo que NO es array:", itemsToSave);
+      return;
+    }
+
+    await fetch(`/api/invoices/${invoiceIdState}/items`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: itemsToSave.map((i) => ({
+          productId: i.productId ?? null,
+          name: i.name,
+          qty: i.qty,
+          unitPrice: i.unitPrice,
+          total: i.total,
+          options: {
+            finish: i.finish ?? i.options?.finish ?? null,
+            design: i.design ?? i.options?.design ?? null,
+            sides: i.sides ?? i.options?.sides ?? null,
+            corners: i.corners ?? i.options?.corners ?? null,
+          },
+        })),
+      }),
+    });
+  };
+
+  const scheduleAutosave = (itemsSnapshot) => {
+    if (!invoiceIdState) return;
+
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+    }
+
+    autosaveTimerRef.current = setTimeout(() => {
+      saveItems(itemsSnapshot);
+    }, 900); // ⏱️ debounce suave
+  };
 
   const [team, setTeam] = useState({
     salesRep: null,
     productionManager: null,
     projectManager: null,
   });
+  const toggleTax = async () => {
+    const next = !taxEnabled;
+    setTaxEnabled(next);
+  };
 
   // SUMMARY BUILDER
   const buildOptionSummary = (item) => {
+    if (!item.options) return "";
+
     const fields = [];
+
     if (item.qty) fields.push(`Qty: ${item.qty}`);
-    if (item.finish) fields.push(`Finish: ${item.finish}`);
-    if (item.design) fields.push(`Design: ${item.design}`);
-    if (item.sides) fields.push(`Sides: ${item.sides}`);
-    if (item.corners) fields.push(`Corners: ${item.corners}`);
+
+    Object.entries(item.options).forEach(([key, value]) => {
+      if (value) fields.push(`${key}: ${value}`);
+    });
+
     return fields.join(" • ");
   };
+
   useEffect(() => {
     async function checkJob() {
       try {
@@ -172,11 +235,24 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
 
         const invoiceData = await invoiceRes.json();
         setInvoice(invoiceData); // 👈 AÑADE ESTA LÍNEA
+        // ✅ TAX (aquí SÍ existe invoiceData)
+        const settingsData = await settingsRes.json();
+        setSettings(settingsData);
+        setTaxEnabled(
+          typeof invoiceData.taxEnabled === "boolean"
+            ? invoiceData.taxEnabled
+            : true
+        );
+
+        setTaxRate(
+          typeof invoiceData.taxRate === "number"
+            ? invoiceData.taxRate
+            : settingsData.defaultTaxRate
+        );
 
         console.log("🧾 INVOICE FROM API:", invoiceData);
         console.log("🎯 appliedDiscounts:", invoiceData.appliedDiscounts);
 
-        const settingsData = await settingsRes.json();
         // ---------------------------
         // DISCOUNTS (IMPORTANTE)
         // ---------------------------
@@ -189,12 +265,8 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         // ---------------------------
         // SETTINGS
         // ---------------------------
-        setSettings(settingsData);
-        console.log("✅ SETTINGS FROM /api/settings/billing:", settingsData);
 
-        if (settingsData?.taxEnabled) {
-          setTaxRate(settingsData.defaultTaxRate ?? 0);
-        }
+        console.log("✅ SETTINGS FROM /api/settings/billing:", settingsData);
 
         // ---------------------------
         // INVOICE
@@ -225,34 +297,24 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         // ---------------------------
         const enrichedItems = (invoiceData.invoiceItems || []).map((i) => {
           const productData = i.product;
-          const defaults = productData?.defaultOptions || {};
 
           return {
             id: crypto.randomUUID(),
             productId: i.productId,
             product: productData,
-
             name: i.name,
             qty: i.qty || 1,
             unitPrice: i.unitPrice || 0,
             total: i.total || 0,
-
             customFields:
               productData?.customFields ||
               productData?.template?.fields ||
               null,
-
-            options:
-              i.options ||
-              productData?.defaultOptions ||
-              productData?.template?.options ||
-              [],
-
-            finish: defaults.finish || "",
-            design: defaults.design || "",
-            sides: defaults.sides || "",
-            corners: defaults.corners || "",
-
+            options: normalizeOptions(
+              i.options ??
+                productData?.defaultOptions ??
+                productData?.template?.options
+            ),
             _expanded: false,
           };
         });
@@ -270,16 +332,17 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
 
     loadAll();
   }, [mode, invoiceId]);
+
   useEffect(() => {
     const loadSettings = async () => {
       try {
         const res = await fetch("/api/settings/billing");
         const data = await res.json();
-
         setSettings(data);
 
-        if (data?.taxEnabled) {
-          setTaxRate(data.defaultTaxRate ?? 0);
+        // Solo si es invoice NUEVO (no edit)
+        if (mode !== "edit") {
+          setTaxRate(data?.defaultTaxRate ?? 0);
         }
       } catch (err) {
         console.error("❌ Error loading billing settings", err);
@@ -287,7 +350,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
     };
 
     loadSettings();
-  }, []);
+  }, [mode]);
 
   // ----------------------------------------
   // PRODUCT AUTOCOMPLETE
@@ -349,7 +412,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   const discountedSubtotal = subtotal - discountAmount;
 
   const tax =
-    settings?.taxEnabled !== false ? discountedSubtotal * (taxRate / 100) : 0;
+    taxEnabled && taxRate > 0 ? discountedSubtotal * (taxRate / 100) : 0;
 
   const total = discountedSubtotal + tax;
 
@@ -370,130 +433,25 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
 
   const status = getInvoiceStatus(invoiceForStatus);
 
-  // ----------------------------------------
-  // SAVE QUOTE (AUTOSAVE)
-  // ----------------------------------------
-  const itemsForSave = useMemo(() => {
-    return items.map((i) => ({
-      productId: i.productId,
-      name: i.name,
-      qty: i.qty,
-      unitPrice: i.unitPrice,
-      total: i.total,
-
-      finish: i.finish,
-      design: i.design,
-      sides: i.sides,
-      corners: i.corners,
-    }));
-  }, [items]);
-
-  const invoiceFingerprint = useMemo(() => {
-    return JSON.stringify({
-      items: itemsForSave,
-      discount: appliedDiscount
-        ? {
-            id: appliedDiscount.id,
-            type: appliedDiscount.type,
-            value: appliedDiscount.value,
-          }
-        : null,
-      issuedAt,
-      expiryDate,
-      taxRate,
-    });
-  }, [itemsForSave, appliedDiscount, issuedAt, expiryDate, taxRate]);
-
-  const autoSaveInvoice = async () => {
-    if (!invoiceIdState || !selectedClient || isSaving) return;
-
-    setIsSaving(true);
-
-    try {
-      await fetch(`/api/invoices/${invoiceIdState}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clientId: selectedClient.id,
-          items: itemsForSave,
-          subtotal,
-
-          appliedDiscounts: appliedDiscount ? [appliedDiscount] : [],
-
-          discountAmount,
-          tax,
-          total,
-          paymentStatus,
-          issuedAt,
-          dueDate: expiryDate,
-          notes: customerNotes,
-        }),
-      });
-    } catch (err) {
-      console.error("❌ Auto-save invoice error:", err);
-    } finally {
-      setIsSaving(false);
-    }
-  };
   useEffect(() => {
     if (!settings) return;
     console.log("✅ FINAL SETTINGS USED:", settings);
   }, [settings]);
 
-  useEffect(() => {
-    if (
-      !invoiceIdState ||
-      !selectedClient ||
-      isSaving ||
-      isRecordingPayment ||
-      isVoiding ||
-      isVoid
-    )
-      return;
-
-    // 🛑 PASO CLAVE: primera carga
-    if (isInitialLoad.current) {
-      isInitialLoad.current = false;
-
-      // 👉 Marcamos como "ya guardado"
-      lastSavedFingerprint.current = invoiceFingerprint;
-      return;
-    }
-
-    // ❌ No guardar si no cambió nada
-    if (invoiceFingerprint === lastSavedFingerprint.current) return;
-
-    // 🧹 limpiar debounce previo
-    if (autosaveTimer.current) {
-      clearTimeout(autosaveTimer.current);
-    }
-
-    autosaveTimer.current = setTimeout(async () => {
-      lastSavedFingerprint.current = invoiceFingerprint;
-      await autoSaveInvoice();
-    }, 1200);
-
-    return () => {
-      if (autosaveTimer.current) {
-        clearTimeout(autosaveTimer.current);
-      }
-    };
-  }, [invoiceFingerprint]);
   // ----------------------------------------
 
   // ----------------------------------------
   // SELECT PRODUCT
   // ----------------------------------------
   const handleSelectProduct = async (p) => {
+    isMutatingItemsRef.current = true;
+
     const res = await fetch(`/api/products/${p.id}`);
     const full = await res.json();
-    const defaults = full.defaultOptions || {};
 
     const newLine = {
       id: crypto.randomUUID(),
       productId: full.id,
-
-      // ✅ PASAR PRODUCT COMPLETO PARA CONFIGURAR
       product: full,
 
       name: full.name,
@@ -502,12 +460,11 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
       total: 0,
 
       customFields: full.customFields || full.template?.fields || null,
-      options: full.defaultOptions || full.template?.options || [],
 
-      finish: defaults.finish || "",
-      design: defaults.design || "",
-      sides: defaults.sides || "",
-      corners: defaults.corners || "",
+      // ✅ TODO VA EN options (objeto)
+      options: normalizeOptions(
+        full.defaultOptions ?? full.template?.options ?? {}
+      ),
 
       _expanded: true,
     };
@@ -520,6 +477,9 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
           _expanded: true, // 👈 AQUÍ se abre el configurable
         })
     );
+    setTimeout(() => {
+      isMutatingItemsRef.current = false;
+    }, 0);
 
     setProductSearch("");
     setProductResults([]);
@@ -528,58 +488,102 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
 
   // ----------------------------------------
   // ADD MANUAL ITEM
-  // ----------------------------------------
-  const addManualItem = () => {
-    if (!manualDesc.trim()) {
-      alert("Enter description");
-      return;
-    }
-
-    const newLine = {
+  const addManualItem = async () => {
+    const newItem = {
       id: crypto.randomUUID(),
-      productId: settings.defaultManualItemProductId,
+      productId: null,
       product: null,
+      customFields: null,
       name: manualDesc,
       qty: manualQty,
       unitPrice: manualUnit,
-      total: manualTotal,
-      customFields: null,
-      options: [],
-      _expanded: false, // 👈 manual SIEMPRE entra cerrado
+      total: manualQty * manualUnit,
+      options: {},
+      _expanded: false,
     };
 
-    setItems((prev) => [...prev, newLine]); // 👈 SIN map()
+    const next = [...items, newItem];
 
-    setShowAddCard(false); // 👈 CIERRA el formulario superior
+    setItems(next); // ✅ SIEMPRE permite agregar
+    setShowAddCard(false);
+    // 🔐 SOLO guardar en DB si el invoice YA existe
+    if (invoiceIdState) {
+      await saveItems(next);
+    }
 
-    // reset
+    // limpiar inputs
     setManualDesc("");
-    setManualQtyInput("1");
     setManualQty(1);
-    setManualUnitInput("0");
+    setManualQtyInput("1");
     setManualUnit(0);
+    setManualUnitInput("0");
   };
 
   // ----------------------------------------
-  // UPDATE ITEM
+  // UPDATE DATES (NO AUTOSAVE)
   // ----------------------------------------
-  // ----------------------------------------
-  // UPDATE ITEM
-  // ----------------------------------------
-  const handleItemChange = useCallback((index, fields) => {
-    setItems((prevItems) => {
-      const updated = [...prevItems];
-      const merged = { ...updated[index], ...fields };
+  const updateDates = async () => {
+    if (!invoiceIdState) return;
 
-      merged.total =
-        fields.total !== undefined
-          ? fields.total
-          : (merged.qty || 1) * (merged.unitPrice || 0);
+    try {
+      await fetch(`/api/invoices/${invoiceIdState}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          issuedAt,
+          dueDate: expiryDate || null,
+        }),
+      });
+    } catch (err) {
+      console.error("❌ Error saving dates", err);
+    }
+  };
 
-      updated[index] = merged;
-      return updated;
-    });
-  }, []);
+  // UPDATE ITEM
+  const handleItemChange = useCallback(
+    (index, fields) => {
+      let nextItems;
+      let isManualItem = false;
+
+      setItems((prev) => {
+        nextItems = [...prev];
+
+        nextItems[index] = {
+          ...nextItems[index],
+          ...fields,
+          options: {
+            finish: fields.finish ?? nextItems[index].options?.finish ?? null,
+            design: fields.design ?? nextItems[index].options?.design ?? null,
+            sides: fields.sides ?? nextItems[index].options?.sides ?? null,
+            corners:
+              fields.corners ?? nextItems[index].options?.corners ?? null,
+          },
+          _expanded: fields.__commit ? false : nextItems[index]._expanded,
+        };
+
+        // ✅ AQUÍ ES EL ÚNICO LUGAR DONDE EXISTE
+        isManualItem = !nextItems[index].productId;
+
+        return nextItems;
+      });
+
+      // 🔐 Guardado controlado
+      if (fields.__commit === true && !savingRef.current) {
+        savingRef.current = true;
+
+        Promise.resolve().then(async () => {
+          await saveItems(nextItems);
+          savingRef.current = false;
+        });
+      } else {
+        // ❌ NO autosave para manual
+        if (!isManualItem) {
+          scheduleAutosave(nextItems);
+        }
+      }
+    },
+    [saveItems]
+  );
 
   // 🔥 PASO 4 — handler estable por item (ANTI-LAG)
   const getItemChangeHandler = useCallback(
@@ -591,8 +595,9 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
     [handleItemChange]
   );
 
-  const removeItem = (index) => {
-    setItems(items.filter((_, i) => i !== index));
+  const removeItem = async (index) => {
+    const next = items.filter((_, i) => i !== index);
+    setItems(next);
   };
 
   // ======================================================
@@ -627,7 +632,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
           <div className="absolute right-0 mt-2 w-48 bg-white border rounded-xl shadow-lg z-50">
             {!isVoid && (
               <button
-                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                className="w-full text-left px-4 py-2 text-m  hover:bg-gray-100"
                 onClick={() => {
                   setOpen(false);
                   setShowRecordPaymentModal(true);
@@ -637,6 +642,16 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
               </button>
             )}
             <div className="border-t my-1" />
+
+            <button
+              onClick={async () => {
+                await navigator.clipboard.writeText(clientInvoiceUrl);
+                alert("Client invoice link copied ✅");
+              }}
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+            >
+              Copy Payment Link
+            </button>
             {canVoid && (
               <button
                 className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
@@ -648,24 +663,6 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                 Void
               </button>
             )}
-            <button
-              onClick={async () => {
-                await navigator.clipboard.writeText(clientInvoiceUrl);
-                alert("Client invoice link copied ✅");
-              }}
-              className="px-4 py-2 rounded-lg border text-sm hover:bg-gray-100"
-            >
-              Copy Client Link
-            </button>
-
-            <a
-              href={clientInvoiceUrl}
-              target="_blank"
-              className="text-sm text-blue-600 underline"
-            >
-              Open client view
-            </a>
-            <div className="border-t my-1" />
           </div>
         )}
       </div>
@@ -677,13 +674,28 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   // ======================================================
   return (
     <div className="w-full max-w-7xl mx-auto px-4 space-y-8">
-      <div className="mx-auto  mb-4 flex items-center justify-between">
+      <div className="mx-auto mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-700">
           IN #{invoiceNumber ?? ""}
         </h1>
 
-        <QuoteActionsMenu />
+        <div className="flex items-center gap-3">
+          {/* DOWNLOAD PDF */}
+          <button
+            disabled={!invoiceIdState}
+            onClick={() =>
+              window.open(`/api/invoices/${invoiceIdState}/pdf`, "_blank")
+            }
+            className="border px-4 py-2 rounded-lg"
+          >
+            View PDF
+          </button>
+
+          {/* ACTIONS MENU */}
+          <QuoteActionsMenu />
+        </div>
       </div>
+
       {/* CARD 1 — QUOTE DETAILS */}
       <div className="mx-auto  bg-white border rounded-xl  mb-10 shadow-md">
         <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50 rounded-t-xl">
@@ -693,11 +705,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
 
           <div className="flex items-center gap-4">
             <div className="text-sm">
-              {isSaving ? (
-                <span className="text-yellow-600 font-medium">Saving…</span>
-              ) : (
-                <span className="text-green-600 font-medium">Saved</span>
-              )}
+              <span className="text-green-600 font-medium">Saved</span>
             </div>
 
             <button
@@ -710,7 +718,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         </div>
 
         <div className="px-6 py-6">
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* CUSTOMER */}
             <div className="space-y-4">
               <h4 className="text-lg font-bold text-black-700">Customer</h4>
@@ -811,6 +819,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                   className="mt-1 border rounded-lg px-4 py-2.5 w-full"
                   value={issuedAt}
                   onChange={(e) => setIssuedAt(e.target.value)}
+                  onBlur={updateDates} // 👈 GUARDA AL SALIR
                 />
               </div>
 
@@ -821,25 +830,10 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                   className="mt-1 border rounded-lg px-4 py-2.5 w-full"
                   value={expiryDate}
                   onChange={(e) => setExpiryDate(e.target.value)}
+                  onBlur={updateDates} // 👈 GUARDA AL SALIR
                 />
               </div>
             </div>
-            {/* QR CODE */}
-            {invoice?.qrToken && (
-              <div className="flex flex-col items-center  p-3 bg-white">
-                <QRCodeCanvas
-                  value={`${process.env.NEXT_PUBLIC_APP_URL}/api/scan?token=${invoice.qrToken}`}
-                  size={120}
-                />
-                <a
-                  href={`/api/invoices/${invoiceIdState}/qr-pdf`}
-                  target="_blank"
-                  className="mt-2 text-xs text-blue-600 hover:underline"
-                >
-                  Download QR PDF
-                </a>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -852,14 +846,6 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              disabled={!invoiceIdState || checkingJob}
-              onClick={() => setShowAddCard(!showAddCard)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg shadow text-sm font-medium"
-            >
-              + Add New Item
-            </button>
-
             <button
               disabled={!invoiceIdState || checkingJob || jobInfo?.exists}
               onClick={() => {
@@ -877,6 +863,12 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
             >
               {jobInfo?.exists ? "Job already created" : "+ Create Job"}
             </button>
+            <button
+              onClick={() => setShowAddCard(!showAddCard)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg shadow text-sm font-medium"
+            >
+              + Add New Item
+            </button>
           </div>
         </div>
         {/* PRODUCTS CARD — subida */}
@@ -887,7 +879,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
               <div className="bg-gray-50 border rounded-xl p-5 shadow-sm relative">
                 <div className="flex justify-end mb-2">
                   <button
-                    onClick={() => setShowAddCard(false)}
+                    onClick={() => setTaxRate(0)}
                     className="text-gray-500 hover:text-gray-700 text-xl font-bold"
                   >
                     ×
@@ -1018,7 +1010,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
               ) : (
                 items.map((item, index) => {
                   const isManual = !item.productId;
-                  const isConfigurable = !isManual;
+
                   const displayQty = isManual ? item.qty : 1;
                   {
                     /* caja */
@@ -1038,13 +1030,18 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                           <Trash2 size={18} />
                         </button>
                       </div>
-
                       {!item._expanded ? (
+                        /* COLLAPSED */
                         <div
                           className="cursor-pointer"
-                          onClick={() =>
-                            handleItemChange(index, { _expanded: true })
-                          }
+                          onClick={() => {
+                            setItems((prev) =>
+                              prev.map((it, i) => ({
+                                ...it,
+                                _expanded: i === index,
+                              }))
+                            );
+                          }}
                         >
                           <div className="grid grid-cols-[30%_2fr_150px_200px_150px] gap-4 p-4 bg-white-50 border-gray-300 rounded-lg">
                             <div>
@@ -1058,13 +1055,11 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                                 </p>
                               )}
                             </div>
-                            {/* 🟨 Columna 2 — ESPACIO VACÍO */}
                             <div />
                             <div>
                               <p className="text-sm text-gray-500">Qty</p>
                               <p className="font-bold">{displayQty}</p>
                             </div>
-
                             <div>
                               <p className="text-sm text-gray-500">
                                 Unit Price
@@ -1073,96 +1068,21 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                                 ${Number(item.unitPrice).toLocaleString()}
                               </p>
                             </div>
-
                             <div>
                               <p className="text-sm text-gray-500">Total</p>
-                              <p className="font-bold text-black-500">
+                              <p className="font-bold">
                                 ${Number(item.total).toLocaleString()}
                               </p>
                             </div>
                           </div>
                         </div>
-                      ) : isConfigurable ? (
+                      ) : (
+                        /* ✅ CONFIGURABLE Y MANUAL USAN EL MISMO EDITOR */
                         <InlineProductEditor
-                          product={item.product}
+                          product={item.product || null}
                           data={item}
                           onChange={getItemChangeHandler(index)}
                         />
-                      ) : (
-                        // 🧾 MANUAL ITEM EDITOR
-                        <div className="grid grid-cols-4  gap-4 p-4 bg-white-50 shadow-lx rounded-lg ">
-                          <div>
-                            <label className="text-xs text-gray-500">
-                              Description
-                            </label>
-                            <input
-                              className="border rounded px-2 py-1 w-full"
-                              value={item.name}
-                              onChange={(e) =>
-                                handleItemChange(index, {
-                                  name: e.target.value,
-                                })
-                              }
-                            />
-                          </div>
-
-                          <div>
-                            <label className="text-xs text-gray-500">Qty</label>
-                            <input
-                              type="number"
-                              className="border rounded px-2 py-1 w-full"
-                              value={item.qty}
-                              onChange={(e) =>
-                                handleItemChange(index, {
-                                  qty: Number(e.target.value),
-                                })
-                              }
-                            />
-                          </div>
-
-                          <div>
-                            <label className="text-xs text-gray-500">
-                              Unit
-                            </label>
-                            <input
-                              type="number"
-                              className="border rounded px-2 py-1 w-full"
-                              value={item.unitPrice}
-                              onChange={(e) =>
-                                handleItemChange(index, {
-                                  unitPrice: Number(e.target.value),
-                                })
-                              }
-                            />
-                          </div>
-
-                          <div>
-                            <label className="text-xs text-gray-500">
-                              Total
-                            </label>
-                            <input
-                              type="number"
-                              className="border rounded px-2 py-1 w-full"
-                              value={item.total}
-                              onChange={(e) =>
-                                handleItemChange(index, {
-                                  total: Number(e.target.value),
-                                })
-                              }
-                            />
-                          </div>
-
-                          <div className="col-span-4 text-right">
-                            <button
-                              className="text-blue-600 text-sm"
-                              onClick={() =>
-                                handleItemChange(index, { _expanded: false })
-                              }
-                            >
-                              Done
-                            </button>
-                          </div>
-                        </div>
                       )}
                     </div>
                   );
@@ -1217,17 +1137,6 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         {/* RIGHT — TOTALS */}
         <div className="flex justify-end">
           <div className="grid grid-cols-2 gap-x-6 text-base min-w-[270px]">
-            {/* APPLY DISCOUNT */}
-            <div className="col-span-2 text-left mb-2">
-              <button
-                type="button"
-                onClick={() => setShowDiscountModal(true)}
-                className="text-sm text-blue-600 hover:underline"
-              >
-                Apply Discount
-              </button>
-            </div>
-
             {/* LABELS */}
             <div className="text-xl font-medium space-y-2 text-left text-gray-700">
               <p>Subtotal</p>
@@ -1238,8 +1147,44 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                   {d.type === "percent" ? ` ${d.value}%` : ""})
                 </p>
               ))}
+              {appliedDiscount && (
+                <button
+                  className="text-xs text-red-600 hover:underline"
+                  onClick={async () => {
+                    setAppliedDiscounts([]);
 
-              <p>Tax</p>
+                    await fetch(`/api/invoices/${invoiceIdState}/discount`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ discount: null }),
+                    });
+                  }}
+                >
+                  Remove Discount
+                </button>
+              )}
+
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={taxEnabled}
+                  onChange={async (e) => {
+                    const next = e.target.checked;
+                    setTaxEnabled(next);
+
+                    await fetch(`/api/invoices/${invoiceIdState}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        taxEnabled: next,
+                        taxRate: next ? settings?.defaultTaxRate ?? 0 : taxRate,
+                      }),
+                    });
+                  }}
+                />
+                Apply Tax
+              </label>
+
               <p className=" text-2xl font-bold text-gray-900">Total</p>
 
               {hasPayments && <p className="text-base font-bold">Payments</p>}
@@ -1289,18 +1234,22 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                 body: JSON.stringify({
                   clientId: customer.id,
 
-                  // ✅ FECHAS
+                  // 📅 FECHAS
                   issuedAt,
                   dueDate: expiryDate || null,
 
-                  // ✅ FINANZAS
+                  // 💰 FINANZAS BASE
                   subtotal: 0,
                   tax: 0,
                   total: 0,
                   balance: 0,
 
-                  // ✅ CAMPOS OBLIGATORIOS
-                  paymentStatus: "Unpaid", // 🔥 CLAVE
+                  // 🧾 TAX (DEFAULT ACTIVO)
+                  taxEnabled: true,
+                  taxRate: settings?.defaultTaxRate ?? 0,
+
+                  // 📌 ESTADO
+                  paymentStatus: "Unpaid",
                   notes: customerNotes || "",
 
                   items: [],
@@ -1430,6 +1379,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
           }}
         />
       )}
+
       <ConfirmModal
         open={showVoidModal}
         title="Void Invoice"
@@ -1466,8 +1416,38 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         onClose={() => setShowDiscountModal(false)}
         discounts={settings?.discountRules || []}
         selectedDiscounts={appliedDiscounts}
-        setSelectedDiscounts={setAppliedDiscounts}
-        onApply={() => setShowDiscountModal(false)}
+        onApply={async (discount) => {
+          if (!invoiceIdState) return;
+
+          // 1️⃣ Actualiza UI inmediatamente
+          setAppliedDiscounts(discount ? [discount] : []);
+
+          // 2️⃣ Calcula amount
+          const amount = discount
+            ? discount.type === "percent"
+              ? Math.min(subtotal * (discount.value / 100), subtotal)
+              : Math.min(discount.value, subtotal)
+            : 0;
+
+          // 3️⃣ Guarda en DB
+          await fetch(`/api/invoices/${invoiceIdState}/discount`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              discount: discount
+                ? {
+                    id: discount.id,
+                    type: discount.type,
+                    value: discount.value,
+                    amount,
+                  }
+                : null,
+            }),
+          });
+
+          // 4️⃣ Cierra modal DESPUÉS de guardar
+          setShowDiscountModal(false);
+        }}
       />
     </div>
   );

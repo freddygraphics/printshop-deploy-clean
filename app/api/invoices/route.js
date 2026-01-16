@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import prisma from "@/lib/db";
+
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { generateInvoiceToken } from "@/lib/qrToken";
-
-const prisma = new PrismaClient();
 
 // ----------------------------------------
 // GET — LIST ALL INVOICES
@@ -21,16 +20,39 @@ export async function GET() {
       include: {
         client: true,
         payments: true,
+        invoiceItems: true,
       },
     });
-
     const result = invoices.map((inv) => {
-      const paymentsTotal = inv.payments.reduce((sum, p) => sum + p.amount, 0);
+      // 1️⃣ SUBTOTAL
+      const subtotal = inv.invoiceItems.reduce(
+        (sum, item) =>
+          sum + Number(item.total ?? item.unitPrice * item.qty ?? 0),
+        0
+      );
+
+      // 2️⃣ TAX (USA LA MISMA BANDERA QUE EL EDITOR)
+      const taxRate = Number(inv.taxRate || 0);
+
+      const tax =
+        inv.taxEnabled && taxRate > 0 ? subtotal * (taxRate / 100) : 0;
+
+      // 3️⃣ TOTAL
+      const invoiceTotal = subtotal + tax;
+
+      // 4️⃣ PAYMENTS
+      const paymentsTotal = inv.payments.reduce(
+        (sum, p) => sum + Number(p.amount || 0),
+        0
+      );
 
       return {
         ...inv,
+        subtotal,
+        tax,
+        invoiceTotal,
         paymentsTotal,
-        balance: inv.total - paymentsTotal,
+        balance: invoiceTotal - paymentsTotal,
       };
     });
 
@@ -92,6 +114,7 @@ export async function POST(req) {
         subtotal,
         tax,
         total,
+        applyTax: true, // ✅ default
         paymentStatus: "Unpaid",
         notes,
         invoiceItems: {

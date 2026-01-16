@@ -23,7 +23,7 @@ export default function DiscountModal({
     setDraftSelected(selectedDiscounts?.[0] || null);
     setCustomName("");
     setCustomValue("");
-  }, [open, selectedDiscounts]);
+  }, [open]);
 
   // ✅ seleccionar descuento (solo cambia draft)
   const selectDiscount = (discount) => {
@@ -32,24 +32,20 @@ export default function DiscountModal({
 
   // ✅ aplicar al invoice (aquí sí cambia totals)
   const handleApply = () => {
-    // 🔥 PRIORIDAD: Custom Discount
-    if (customValue && Number(customValue) > 0) {
-      setSelectedDiscounts([
-        {
-          id: `custom-${Date.now()}`, // ID único
-          name: customName?.trim() || "",
-          type: "percent",
-          value: Number(customValue),
-        },
-      ]);
+    let result = null;
 
-      onApply?.();
-      return;
+    if (customValue && Number(customValue) > 0) {
+      result = {
+        id: `custom-${Date.now()}`,
+        name: customName?.trim() || "Custom",
+        type: "percent",
+        value: Number(customValue),
+      };
+    } else {
+      result = draftSelected;
     }
 
-    // ✅ Si no hay custom, aplicar el seleccionado
-    setSelectedDiscounts(draftSelected ? [draftSelected] : []);
-    onApply?.();
+    onApply?.(result); // 👈 SOLO DEVUELVE EL DESCUENTO
   };
 
   // (opcional) quitar descuento

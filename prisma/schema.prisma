@@ -101,7 +101,11 @@ model Invoice {
   quoteId          Int?
   subtotal         Float             @default(0)
   tax              Float             @default(0)
+   // 🆕 NUEVOS CAMPOS (NO ROMPEN NADA)
+  taxRate          Float             @default(6.625)
+  taxEnabled       Boolean           @default(true)
   total            Float             @default(0)
+    applyTax     Boolean  @default(true) // ✅ NUEVO
   paymentStatus    String            @default("Unpaid")
   issuedAt         DateTime
   dueDate          DateTime?
@@ -111,7 +115,8 @@ model Invoice {
   qrToken          String?
   userId           Int?
   invoiceNumber    Int               @unique
-  discountAmount   Float             @default(0)
+  discountAmount   Float             @default(0) 
+ 
   paidAt           DateTime?
   qrGeneratedAt    DateTime?
   balance          Float             @default(0)
@@ -124,6 +129,7 @@ model Invoice {
   client           Client            @relation(fields: [clientId], references: [id])
   quote            Quote?            @relation(fields: [quoteId], references: [id])
   user             User?             @relation(fields: [userId], references: [id])
+
   appliedDiscounts InvoiceDiscount[]
   invoiceItems     InvoiceItem[]
   payments         InvoicePayment[]

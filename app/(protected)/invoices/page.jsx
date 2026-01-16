@@ -120,14 +120,14 @@ export default function InvoicesPage() {
 
   // TOTAL DE TODAS LAS INVOICES
   const totalInvoices = invoices.reduce(
-    (sum, i) => sum + Number(i.total || 0),
+    (sum, i) => sum + Number(i.invoiceTotal || 0),
     0
   );
 
   // TOTAL PAGADO
   const paidInvoices = invoices
     .filter((i) => getInvoiceStatus(i) === "Paid")
-    .reduce((sum, i) => sum + Number(i.total || 0), 0);
+    .reduce((sum, i) => sum + Number(i.invoiceTotal || 0), 0);
 
   // TOTAL PENDIENTE (sent + partial)
   const pendingInvoices = invoices
@@ -290,7 +290,7 @@ export default function InvoicesPage() {
                       </td>
 
                       <td className="px-6 py-3">
-                        ${Number(i.total || 0).toFixed(2)}
+                        ${Number(i.invoiceTotal || 0).toFixed(2)}
                       </td>
 
                       <td className="px-6 py-3">

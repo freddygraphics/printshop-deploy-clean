@@ -3,29 +3,31 @@
 import { useEffect, useState } from "react";
 import { memo } from "react";
 
-function InlineProductEditor({ product, data, onChange }) {
-  if (!product) {
-    return (
-      <div className="p-4 text-gray-500">Select a product to configure.</div>
-    );
-  }
-
-  const cfg = product.customFields || {};
-  const isManual = Object.keys(cfg).length === 0;
+function InlineProductEditor({ product, data, onChange, onClose }) {
+  const cfg = product?.customFields || {};
+  const isManual = !product;
 
   // ------------------------------------------
   // SAFE INITIAL VALUES
   // ------------------------------------------
+
+  const opts = data?.options || {};
   const safe = {
     description: data?.name ?? "",
     qty: Number(data?.qty ?? 1),
     unitPrice: Number(data?.unitPrice ?? 0),
+
+    subtotal: Number(data?.total ?? 0), // 👈 NUEVO
     total: Number(data?.total ?? 0),
 
-    finish: data?.finish ?? cfg.finish?.[0]?.name ?? "",
-    design: data?.design ?? cfg.design?.[0]?.name ?? "",
-    sides: data?.sides ?? cfg.sides?.[0]?.name ?? "",
-    corners: data?.corners ?? cfg.corners?.[0]?.name ?? "",
+    discountType: data?.discountType ?? null,
+    discountValue: data?.discountValue ?? null,
+    discountReason: data?.discountReason ?? "",
+
+    finish: opts.finish ?? cfg.finish?.[0]?.name ?? "",
+    design: opts.design ?? cfg.design?.[0]?.name ?? "",
+    sides: opts.sides ?? cfg.sides?.[0]?.name ?? "",
+    corners: opts.corners ?? cfg.corners?.[0]?.name ?? "",
   };
 
   const [local, setLocal] = useState(safe);
@@ -67,10 +69,13 @@ function InlineProductEditor({ product, data, onChange }) {
   // ------------------------------------------
   const updateManual = (patch = {}) => {
     const updated = { ...local, ...patch };
-    updated.total = Number(updated.qty) * Number(updated.unitPrice);
+    const subtotal = Number(updated.qty) * Number(updated.unitPrice);
 
-    setLocal(updated);
-    onChange(updated);
+    const total = applyDiscount(subtotal, updated);
+
+    const final = { ...updated, subtotal, total };
+
+    setLocal(final);
   };
 
   const handleManualDone = () =>
@@ -104,12 +109,40 @@ function InlineProductEditor({ product, data, onChange }) {
       cfg.corners?.find((c) => c.name === updated.corners)?.price || 0
     );
 
-    const total =
+    const subtotal =
       qtyPrice + finishPrice + designPrice + sidesPrice + cornersPrice;
 
-    const final = { ...updated, unitPrice: total, total };
+    const total = applyDiscount(subtotal, updated);
+
+    const final = {
+      ...updated,
+      unitPrice: subtotal,
+      subtotal,
+      total,
+    };
+
     setLocal(final);
     onChange(final);
+  };
+  const applyDiscount = (subtotal, item) => {
+    let total = subtotal;
+    const v = Number(item.discountValue);
+
+    if (item.discountType && !isNaN(v)) {
+      if (item.discountType === "amount") {
+        total = Math.max(0, subtotal - v);
+      }
+
+      if (item.discountType === "percent") {
+        total = subtotal - (subtotal * v) / 100;
+      }
+
+      if (item.discountType === "override") {
+        total = Math.max(0, v);
+      }
+    }
+
+    return Number(total.toFixed(2));
   };
 
   // ------------------------------------------
@@ -154,22 +187,101 @@ function InlineProductEditor({ product, data, onChange }) {
                 }
               />
             </div>
+          </div>
+          {/* 🔥 DISCOUNT BLOCK — AQUÍ MISMO */}
+          {/* 🔥 DISCOUNT + TOTAL — MANUAL (KANAKKU / SHOPVOX STYLE) */}
+          <div className="mt-6 pt-4 border-t border-gray-200 flex items-center gap-4">
+            {/* LEFT — DISCOUNT */}
+            <div className="flex items-center gap-2 flex-1">
+              {/* % */}
+              <button
+                onClick={() =>
+                  updateManual({ discountType: "percent", discountValue: "" })
+                }
+                className={`w-9 h-9 rounded-md border text-sm font-medium transition
+        ${
+          local.discountType === "percent"
+            ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+            : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+        }`}
+              >
+                %
+              </button>
 
-            <div>
-              <label className="text-sm font-semibold">Total</label>
+              {/* $ */}
+              <button
+                onClick={() =>
+                  updateManual({ discountType: "amount", discountValue: "" })
+                }
+                className={`w-9 h-9 rounded-md border text-sm font-medium transition
+        ${
+          local.discountType === "amount"
+            ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+            : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+        }`}
+              >
+                $
+              </button>
+
+              {/* INPUT */}
               <input
                 type="number"
-                readOnly
-                className="border rounded-lg p-2 w-full mt-1 bg-gray-100"
-                value={local.total}
+                step="0.01"
+                disabled={!local.discountType}
+                placeholder={
+                  local.discountType === "percent"
+                    ? "Discount %"
+                    : local.discountType === "amount"
+                    ? "Discount amount"
+                    : "Add discount"
+                }
+                value={local.discountValue ?? ""}
+                onChange={(e) =>
+                  updateManual({ discountValue: e.target.value })
+                }
+                className={`w-40 h-11 px-3 rounded-lg border border-gray-200 text-sm transition
+        ${
+          local.discountType
+            ? "bg-white focus:ring-2 focus:ring-blue-100"
+            : "bg-gray-50 text-gray-400 cursor-not-allowed"
+        }`}
               />
             </div>
-          </div>
 
-          <div className="flex justify-end mt-4">
+            {/* TOTAL */}
+            <div className="text-right min-w-[160px] ml-6">
+              <p className="text-xs text-gray-400 uppercase tracking-wide">
+                Total
+              </p>
+              <p className="text-xl font-semibold text-gray-900">
+                ${Number(local.total).toLocaleString()}
+              </p>
+            </div>
+
+            {/* DONE */}
             <button
-              onClick={handleManualDone}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+              onClick={() =>
+                onChange({
+                  qty: local.qty,
+                  name: local.description,
+                  unitPrice: local.unitPrice,
+                  total: local.total,
+
+                  // SOLO SI APLICA
+                  finish: local.finish,
+                  design: local.design,
+                  sides: local.sides,
+                  corners: local.corners,
+
+                  discountType: local.discountType,
+                  discountValue: local.discountValue,
+
+                  _expanded: false,
+                  __commit: true,
+                })
+              }
+              className="h-11 px-6 rounded-xl bg-blue-600 text-white font-medium
+               hover:bg-blue-700 transition shadow-sm"
             >
               Done
             </button>
@@ -280,13 +392,104 @@ function InlineProductEditor({ product, data, onChange }) {
             )}
           </div>
 
-          <div className="flex justify-between items-center mt-6">
-            <p className="font-bold text-blue-600 text-lg">
-              Total: ${Number(local.total).toLocaleString()}
-            </p>
+          {/* 🔥 DISCOUNT + TOTAL — KANAKKU / SHOPVOX STYLE */}
+          <div className="mt-6 pt-4 border-t border-gray-200 flex items-center gap-4">
+            {/* LEFT — DISCOUNT */}
+            <div className="flex items-center gap-2 flex-1">
+              {/* % */}
+              <button
+                onClick={() =>
+                  recalcConfigured({
+                    discountType: "percent",
+                    discountValue: "",
+                  })
+                }
+                className={`w-9 h-9 rounded-md border text-sm font-medium transition
+        ${
+          local.discountType === "percent"
+            ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+            : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+        }`}
+              >
+                %
+              </button>
+
+              {/* $ */}
+              <button
+                onClick={() =>
+                  recalcConfigured({
+                    discountType: "amount",
+                    discountValue: "",
+                  })
+                }
+                className={`w-9 h-9 rounded-md border text-sm font-medium transition
+        ${
+          local.discountType === "amount"
+            ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+            : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+        }`}
+              >
+                $
+              </button>
+
+              {/* INPUT */}
+              <input
+                type="number"
+                step="0.01"
+                disabled={!local.discountType}
+                placeholder={
+                  local.discountType === "percent"
+                    ? "Discount %"
+                    : local.discountType === "amount"
+                    ? "Discount amount"
+                    : "Add discount"
+                }
+                value={local.discountValue ?? ""}
+                onChange={(e) =>
+                  recalcConfigured({ discountValue: e.target.value })
+                }
+                className={`w-40 h-11 px-3  border border-gray-200 text-sm
+        ${
+          local.discountType
+            ? "bg-white border-gray-200 focus:ring-2 focus:ring-blue-100"
+            : "bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed"
+        }`}
+              />
+            </div>
+
+            {/* TOTAL */}
+            <div className="text-left min-w-[140px] ">
+              <p className="text-m text-gray-400 uppercase tracking-wide">
+                Total
+              </p>
+              <p className="text-xl font-semibold text-blue-600">
+                ${Number(local.total).toLocaleString()}
+              </p>
+            </div>
+
+            {/* DONE */}
             <button
-              onClick={() => onChange({ ...local, _expanded: false })}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+              onClick={() =>
+                onChange({
+                  qty: local.qty,
+                  unitPrice: local.unitPrice,
+                  total: local.total,
+
+                  // SOLO SI APLICA
+                  finish: local.finish,
+                  design: local.design,
+                  sides: local.sides,
+                  corners: local.corners,
+
+                  discountType: local.discountType,
+                  discountValue: local.discountValue,
+
+                  _expanded: false,
+                  __commit: true,
+                })
+              }
+              className="h-11 px-6 rounded-xl bg-blue-600 text-white font-medium
+               hover:bg-blue-700 transition shadow-sm"
             >
               Done
             </button>
