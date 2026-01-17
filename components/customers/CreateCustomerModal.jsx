@@ -22,8 +22,8 @@ export default function CreateCustomerModal({ onClose, onCreated }) {
 
   const handleCreate = async () => {
     // ✅ VALIDACIÓN OBLIGATORIA (OPCIÓN A)
-    if (!form.name.trim() || !form.email.trim()) {
-      alert("Customer name and email are required");
+    if (!form.name.trim()) {
+      alert("Customer name is required");
       return;
     }
 
@@ -36,7 +36,8 @@ export default function CreateCustomerModal({ onClose, onCreated }) {
         body: JSON.stringify({
           name: form.name,
           company: form.company || null,
-          email: form.email,
+          email: form.email || null,
+
           phone: form.phone || null,
           address: form.address || null,
           city: form.city || null,
@@ -108,12 +109,11 @@ export default function CreateCustomerModal({ onClose, onCreated }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-semibold text-gray-500">
-                Email *
+                Email
               </label>
               <input
                 type="email"
-                required
-                placeholder="john@company.com"
+                placeholder="john@company.com (optional)"
                 value={form.email}
                 onChange={(e) => update("email", e.target.value)}
                 className="mt-1 w-full border rounded-lg px-4 py-2.5 placeholder:text-gray-400"

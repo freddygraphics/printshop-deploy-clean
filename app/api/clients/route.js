@@ -1,4 +1,3 @@
-
 import { NextResponse } from "next/server";
 import prisma from "../../../lib/db";
 
@@ -60,16 +59,15 @@ export async function GET(req) {
   return NextResponse.json(clients);
 }
 
-
 // ✅ POST - Crear un nuevo cliente
 export async function POST(req) {
   try {
     const data = await req.json();
 
-    if (!data.name || !data.email) {
+    if (!data.name) {
       return Response.json(
-        { error: "El nombre y el correo son requeridos" },
-        { status: 400 }
+        { error: "El nombre es requerido" },
+        { status: 400 },
       );
     }
 
@@ -77,7 +75,8 @@ export async function POST(req) {
       data: {
         name: data.name,
         company: data.company || null,
-        email: data.email,
+        email: data.email || null,
+
         phone: data.phone || null,
         address: data.address || null,
       },

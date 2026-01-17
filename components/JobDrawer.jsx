@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { X } from "lucide-react";
 import JobQRCode from "@/components/JobQRCode";
+import JobFileUpload from "@/components/JobFileUpload";
+import { useState, useEffect } from "react";
 
 export default function JobDrawer({ job, onClose }) {
   if (!job) return null;
 
+  const [files, setFiles] = useState(job.files || []);
   return (
     <>
       {/* OVERLAY */}
@@ -16,6 +19,7 @@ export default function JobDrawer({ job, onClose }) {
         <div className="flex items-center justify-between px-5 py-4 border-b">
           <div>
             <div className="text-xs text-gray-500">JOB #{job.jobNumber}</div>
+
             <div className="text-lg font-semibold text-gray-900">
               {job.client?.name || "No client"}
             </div>
@@ -43,6 +47,60 @@ export default function JobDrawer({ job, onClose }) {
               </Link>
             ) : (
               <span className="text-sm text-gray-400">—</span>
+            )}
+          </div>
+          {/* FILES */}
+          <div className="rounded-xl border p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-xs text-gray-500">Attached files</div>
+
+              {/* 📎 UPLOAD BUTTON */}
+              <JobFileUpload
+                jobId={job.id}
+                onUploaded={(file) => {
+                  setFiles((prev) => [...prev, file]);
+                }}
+              />
+            </div>
+
+            {files.length > 0 ? (
+              <div className="space-y-2">
+                {files.map((f) => (
+                  <div
+                    key={f.id}
+                    className="flex items-center justify-between gap-2 text-sm border rounded-lg px-3 py-2"
+                  >
+                    <a
+                      href={f.url}
+                      target="_blank"
+                      className="text-blue-600 hover:underline truncate"
+                    >
+                      📎 {f.name}
+                    </a>
+
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+
+                        if (!confirm("Delete this file?")) return;
+
+                        const res = await fetch(`/api/jobs/files/${f.id}`, {
+                          method: "DELETE",
+                        });
+
+                        if (res.ok) {
+                          setFiles((prev) => prev.filter((x) => x.id !== f.id));
+                        }
+                      }}
+                      className="text-red-500 hover:text-red-700 text-xs"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-400">No files attached</p>
             )}
           </div>
 

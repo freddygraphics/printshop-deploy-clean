@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Receipt, Loader2, Calendar, Plus, ChevronDown } from "lucide-react";
+import { formatCurrency } from "@/lib/formatCurrency";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -108,12 +109,15 @@ export default function InvoicesPage() {
   // --------------------------
   const searchedInvoices = filteredInvoices.filter((i) => {
     const q = search.toLowerCase();
+
     return (
       String(i.invoiceNumber).includes(q) ||
       `in-${i.id}`.includes(q) ||
-      i.client?.name?.toLowerCase().includes(q)
+      i.client?.name?.toLowerCase().includes(q) ||
+      i.client?.company?.toLowerCase().includes(q)
     );
   });
+
   // --------------------------
   // SUMMARY CARDS (KANAKKU) - TOTALS $
   // --------------------------
@@ -121,7 +125,7 @@ export default function InvoicesPage() {
   // TOTAL DE TODAS LAS INVOICES
   const totalInvoices = invoices.reduce(
     (sum, i) => sum + Number(i.invoiceTotal || 0),
-    0
+    0,
   );
 
   // TOTAL PAGADO
@@ -133,8 +137,8 @@ export default function InvoicesPage() {
   const pendingInvoices = invoices
     .filter(
       (i) =>
-        getInvoiceStatus(i) === "Sent" ||
-        getInvoiceStatus(i) === "Partially Paid"
+        getInvoiceStatus(i) === "Issued" ||
+        getInvoiceStatus(i) === "Partially Paid",
     )
     .reduce((sum, i) => sum + Number(i.balance || 0), 0);
 
@@ -175,22 +179,22 @@ export default function InvoicesPage() {
         <div className="grid grid-cols-1 mt-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <SummaryCard
             title="Total Invoices"
-            value={`$${totalInvoices.toFixed(2)}`}
+            value={formatCurrency(totalInvoices)}
             color="bg-white-50 text-blue-700"
           />
           <SummaryCard
             title="Paid Invoices"
-            value={`$${paidInvoices.toFixed(2)}`}
+            value={formatCurrency(paidInvoices)}
             color="bg-white-50 text-blue-700"
           />
           <SummaryCard
             title="Pending Invoices"
-            value={`$${pendingInvoices.toFixed(2)}`}
+            value={formatCurrency(pendingInvoices)}
             color="bg-white-50 text-blue-700"
           />
           <SummaryCard
             title="Overdue Invoices"
-            value={`$${overdueInvoices.toFixed(2)}`}
+            value={formatCurrency(overdueInvoices)}
             color="bg-white-50 text-blue-700"
           />
         </div>
@@ -258,6 +262,7 @@ export default function InvoicesPage() {
               <tr className="bg-gray-50 text-sm text-gray-600 text-left">
                 <th className="px-6 py-3">Invoice #</th>
                 <th className="px-6 py-3">Customer</th>
+                <th className="px-6 py-3">Company</th>
                 <th className="px-6 py-3">Date</th>
                 <th className="px-6 py-3">Invoice Total</th>
                 <th className="px-6 py-3">Payments</th>
@@ -284,17 +289,20 @@ export default function InvoicesPage() {
                       <td className="px-6 py-3">
                         {i.client?.name || "No Client"}
                       </td>
+                      <td className="px-6 py-3 text-gray-600">
+                        {i.client?.company || "—"}
+                      </td>
 
                       <td className="px-6 py-3">
                         {new Date(i.createdAt).toLocaleDateString()}
                       </td>
 
                       <td className="px-6 py-3">
-                        ${Number(i.invoiceTotal || 0).toFixed(2)}
+                        {formatCurrency(i.invoiceTotal)}
                       </td>
 
                       <td className="px-6 py-3">
-                        ${Number(i.paymentsTotal || 0).toFixed(2)}
+                        {formatCurrency(i.paymentsTotal)}
                       </td>
 
                       <td
@@ -302,7 +310,7 @@ export default function InvoicesPage() {
                           i.balance > 0 ? "text-red-600" : "text-green-600"
                         }`}
                       >
-                        ${Number(i.balance || 0).toFixed(2)}
+                        {formatCurrency(i.balance)}
                       </td>
 
                       <td className="px-6 py-3">
@@ -313,7 +321,7 @@ export default function InvoicesPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan="7" className="text-center py-6 text-gray-400">
+                  <td colSpan="8" className="text-center py-6 text-gray-400">
                     No invoices found.
                   </td>
                 </tr>
@@ -343,7 +351,8 @@ function SummaryCard({ title, value, color }) {
 function StatusBadge({ status }) {
   const colors = {
     Draft: "bg-gray-100 text-gray-600",
-    Sent: "bg-blue-100 text-blue-700",
+    Issued: "bg-blue-100 text-blue-700",
+
     "Partially Paid": "bg-yellow-100 text-yellow-700",
     Paid: "bg-green-100 text-green-700",
     Overdue: "bg-red-100 text-red-700",

@@ -14,22 +14,28 @@ export async function GET() {
         jobNumber: true,
         status: true,
         position: true,
-
-        // ✅ PICKUP
         pickupToken: true,
         pickedUpAt: true,
 
         client: {
           select: { id: true, name: true },
         },
+
+        files: {
+          select: {
+            id: true,
+            name: true,
+            url: true,
+            type: true,
+          },
+        },
+
         invoice: {
           select: {
+            id: true,
             invoiceNumber: true,
             invoiceItems: {
-              select: {
-                name: true,
-                qty: true,
-              },
+              select: { name: true, qty: true },
             },
           },
         },

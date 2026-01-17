@@ -1,5 +1,7 @@
 "use client";
+
 export const dynamic = "force-dynamic";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
@@ -111,12 +113,12 @@ function SortableJobCard({ job, onOpen, isOverlay = false }) {
     isDragging,
   } = useSortable({ id: job.id });
 
+  const imageFile = job.files?.find((f) => f.type?.startsWith("image/"));
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition: transition || "transform 180ms ease",
   };
-
-  const overdue = isOverdue(job.dueDate);
 
   return (
     <div
@@ -126,60 +128,70 @@ function SortableJobCard({ job, onOpen, isOverlay = false }) {
         if (!isDragging && !isOverlay) onOpen(job);
       }}
       className={[
-        "bg-white  border shadow-md p-5 select-none border-t-4",
+        "bg-white border shadow-md select-none border-t-4 w-full overflow-hidden",
         STATUS_ACCENT[job.status],
-        overdue ? "border-red-400" : "border-gray-200",
-        "hover:shadow-lg transition",
         isDragging && !isOverlay ? "opacity-60" : "",
       ].join(" ")}
       {...(!isOverlay ? attributes : {})}
       {...(!isOverlay ? listeners : {})}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <Link
-            href={`/invoices/${job.invoiceId}`}
-            onClick={(e) => e.stopPropagation()}
-            className="text-sm font-medium text-blue-700 hover:underline"
-          >
-            Invoice #{job.invoice?.invoiceNumber ?? "—"}
-          </Link>
+      {/* IMAGE — FULL WIDTH REAL */}
+      {imageFile && (
+        <div className="w-full h-36 overflow-hidden">
+          <img
+            src={imageFile.url}
+            alt="Job preview"
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
 
-          <div className="font-semibold text-base text-gray-900">
-            JOB #{job.jobNumber}
+      {/* CONTENT */}
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            {job.invoice ? (
+              <Link
+                href={`/invoices/${job.invoice.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="text-sm font-medium text-blue-700 hover:underline"
+              >
+                Invoice #{job.invoice.invoiceNumber}
+              </Link>
+            ) : (
+              <div className="text-sm text-gray-400 italic">No invoice</div>
+            )}
+
+            <div className="font-semibold text-base text-gray-900">
+              JOB #{job.jobNumber}
+            </div>
           </div>
 
-          <div className="text-xs text-gray-500 mt-1">
-            Qty{" "}
-            {job.invoice?.invoiceItems?.reduce((s, i) => s + (i.qty || 0), 0) ||
-              0}
-          </div>
+          <span className="text-[11px] text-gray-400 border px-2 py-1 rounded-lg">
+            Drag
+          </span>
         </div>
 
-        <span className="text-[11px] text-gray-400 border px-2 py-1 rounded-lg">
-          Drag
-        </span>
-      </div>
+        <div className="mt-2 text-sm font-medium text-gray-900">
+          {job.client?.name || "No client"}
+        </div>
 
-      <div className="mt-2 text-sm font-medium text-gray-900">
-        {job.client?.name || "No client"}
-      </div>
+        <div className="text-sm text-gray-800">
+          {job.invoice?.invoiceItems?.length
+            ? job.invoice.invoiceItems.map((i) => i.name).join(", ")
+            : "No items"}
+        </div>
 
-      <div className="text-sm text-gray-800">
-        {job.invoice?.invoiceItems?.length
-          ? job.invoice.invoiceItems.map((i) => i.name).join(", ")
-          : "No items"}
-      </div>
-
-      <div className="mt-3 flex items-center gap-4 text-xs text-gray-600">
-        <span className="flex items-center gap-1">
-          <Calendar className="w-3.5 h-3.5" />
-          Due {formatDue(job.dueDate)}
-        </span>
-        <span className="flex items-center gap-1">
-          <User2 className="w-3.5 h-3.5" />
-          {job.assignedTo || "Unassigned"}
-        </span>
+        <div className="mt-3 flex items-center gap-4 text-xs text-gray-600">
+          <span className="flex items-center gap-1">
+            <Calendar className="w-3.5 h-3.5" />
+            Due {formatDue(job.dueDate)}
+          </span>
+          <span className="flex items-center gap-1">
+            <User2 className="w-3.5 h-3.5" />
+            {job.assignedTo || "Unassigned"}
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -189,11 +201,8 @@ function SortableJobCard({ job, onOpen, isOverlay = false }) {
 function Column({ title, statusKey, jobs, onOpen }) {
   const { setNodeRef, isOver } = useDroppable({ id: statusKey });
 
-  // ✅ AQUÍ SÍ EXISTE jobs
-  const isEmpty = jobs.length === 0;
-
   return (
-    <div className="min-w-[280px] w-[280px] lg:min-w-[320px] lg:w-[320px]">
+    <div className="w-full">
       <div className="flex items-center gap-2 mb-2">
         <div className="font-semibold">{title}</div>
         <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 border">
@@ -204,19 +213,19 @@ function Column({ title, statusKey, jobs, onOpen }) {
       <div
         ref={setNodeRef}
         className={[
-          "rounded-2xl transition-colors",
-          "min-h-[70vh]", // 👈 CLAVE
-          isEmpty ? COLUMN_BG[statusKey] : "bg-gray-100",
+          "w-full rounded-2xl min-h-[70vh] bg-gray-100 transition-colors",
           isOver ? "bg-blue-100/70" : "",
         ].join(" ")}
       >
-        <div className="p-3 space-y-3 h-full overflow-auto">
+        <div className="w-full h-full overflow-auto flex flex-col">
           <SortableContext
             items={jobs.map((j) => j.id)}
             strategy={verticalListSortingStrategy}
           >
             {jobs.map((job) => (
-              <SortableJobCard key={job.id} job={job} onOpen={onOpen} />
+              <div key={job.id} className="px-3 pt-3 last:pb-3">
+                <SortableJobCard job={job} onOpen={onOpen} />
+              </div>
             ))}
           </SortableContext>
         </div>
@@ -240,13 +249,28 @@ export default function ProductionBoardPage() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 6 },
-    })
+    }),
   );
 
   useEffect(() => {
-    fetch("/api/jobs")
-      .then((r) => r.json())
-      .then(setJobs);
+    const loadJobs = async () => {
+      try {
+        const res = await fetch("/api/jobs");
+        if (!res.ok) throw new Error("API error");
+
+        const data = await res.json();
+        console.log("✅ JOBS FROM API:", data);
+
+        if (Array.isArray(data)) {
+          setJobs(data);
+        }
+      } catch (err) {
+        console.error("❌ Jobs load failed:", err);
+        // ⚠️ NO borrar jobs
+      }
+    };
+
+    loadJobs();
   }, []);
 
   const assignees = useMemo(() => {
@@ -273,10 +297,21 @@ export default function ProductionBoardPage() {
   }, [jobs, search, quickFilter, assignedTo, priority]);
 
   const jobsByStatus = useMemo(() => {
-    const map = Object.fromEntries(STATUSES.map((s) => [s.key, []]));
-    filtered.forEach((j) => map[j.status]?.push(j));
+    const map = {
+      Pending: [],
+      Design: [],
+      Production: [],
+      Ready: [],
+      Delivered: [],
+    };
+
+    jobs.forEach((j) => {
+      const key = map[j.status] ? j.status : "Pending";
+      map[key].push(j);
+    });
+
     return map;
-  }, [filtered]);
+  }, [jobs]);
 
   function handleDragEnd({ active, over }) {
     if (!over) return;
@@ -293,7 +328,7 @@ export default function ProductionBoardPage() {
       if (overJob) newStatus = overJob.status;
 
       let updated = prev.map((j) =>
-        j.id === active.id ? { ...j, status: newStatus } : j
+        j.id === active.id ? { ...j, status: newStatus } : j,
       );
 
       const oldIndex = updated.findIndex((j) => j.id === active.id);
@@ -315,7 +350,7 @@ export default function ProductionBoardPage() {
 
   return (
     <div className="min-h-screen bg-[#F5F7F9]">
-      <div className="max-w-[1900px] mx-auto px-6 py-6">
+      <div className="max-w-[2500px] mx-auto px-6 py-6">
         {/* HEADER */}
         <div className="flex items-start justify-between">
           <div>
@@ -376,9 +411,20 @@ export default function ProductionBoardPage() {
             </select>
           </div>
         </div>
-
         {selectedJob && (
-          <JobDrawer job={selectedJob} onClose={() => setSelectedJob(null)} />
+          <JobDrawer
+            job={selectedJob}
+            onClose={() => {
+              setSelectedJob(null);
+
+              // 🔥 refresca jobs para que entren los files
+              fetch("/api/jobs")
+                .then((r) => r.json())
+                .then((data) => {
+                  if (Array.isArray(data)) setJobs(data);
+                });
+            }}
+          />
         )}
 
         {/* BOARD */}
@@ -394,18 +440,22 @@ export default function ProductionBoardPage() {
             onDragEnd={handleDragEnd}
             onDragCancel={() => setActiveJob(null)}
           >
-            <div className="flex gap-4 pb-4">
-              {STATUSES.map((s) => (
-                <Column
-                  key={s.key}
-                  title={s.label}
-                  statusKey={s.key}
-                  jobs={jobsByStatus[s.key] || []}
-                  onOpen={setSelectedJob}
-                />
-              ))}
+            <div className="mt-5 overflow-x-auto">
+              <div
+                className="grid grid-flow-col auto-cols-[minmax(260px,1fr)] gap-6
+ pb-6 min-w-max"
+              >
+                {STATUSES.map((s) => (
+                  <Column
+                    key={s.key}
+                    title={s.label}
+                    statusKey={s.key}
+                    jobs={jobsByStatus[s.key] || []}
+                    onOpen={setSelectedJob}
+                  />
+                ))}
+              </div>
             </div>
-
             <DragOverlay dropAnimation={null}>
               {activeJob ? (
                 <div className="w-[320px]">

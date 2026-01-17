@@ -216,7 +216,7 @@ model Job {
   pickupToken         String?   @unique
   pickedUpAt          DateTime?
   pickedUpBy          String?   // simple, luego lo mejoras a UserId si quieres
-
+ files     JobFile[]   // ✅ ESTA LÍNEA ES LA CLAVE
   client              Client    @relation(fields: [clientId], references: [id])
   invoice             Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
   items               JobItem[]
@@ -311,4 +311,14 @@ enum JobStatus {
   Production
   Ready
   Delivered
+}
+model JobFile {
+  id        Int      @id @default(autoincrement())
+  jobId     Int
+  name      String
+  url       String
+  type      String
+  createdAt DateTime @default(now())
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
 }

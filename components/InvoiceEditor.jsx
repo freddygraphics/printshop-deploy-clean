@@ -89,7 +89,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   // QUOTE FIELDS
   // ----------------------------------------
   const [issuedAt, setIssuedAt] = useState(
-    new Date().toISOString().split("T")[0]
+    new Date().toISOString().split("T")[0],
   );
   const [expiryDate, setExpiryDate] = useState("");
 
@@ -241,13 +241,13 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         setTaxEnabled(
           typeof invoiceData.taxEnabled === "boolean"
             ? invoiceData.taxEnabled
-            : true
+            : true,
         );
 
         setTaxRate(
           typeof invoiceData.taxRate === "number"
             ? invoiceData.taxRate
-            : settingsData.defaultTaxRate
+            : settingsData.defaultTaxRate,
         );
 
         console.log("🧾 INVOICE FROM API:", invoiceData);
@@ -259,7 +259,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         setAppliedDiscounts(
           invoiceData.appliedDiscounts?.length
             ? [invoiceData.appliedDiscounts[0]]
-            : []
+            : [],
         );
 
         // ---------------------------
@@ -281,13 +281,13 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         setIssuedAt(
           invoiceData.issuedAt
             ? new Date(invoiceData.issuedAt).toISOString().split("T")[0]
-            : ""
+            : "",
         );
 
         setExpiryDate(
           invoiceData.dueDate
             ? new Date(invoiceData.dueDate).toISOString().split("T")[0]
-            : ""
+            : "",
         );
 
         setCustomerNotes(invoiceData.notes || "");
@@ -313,7 +313,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
             options: normalizeOptions(
               i.options ??
                 productData?.defaultOptions ??
-                productData?.template?.options
+                productData?.template?.options,
             ),
             _expanded: false,
           };
@@ -431,7 +431,13 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
     isVoided: paymentStatus === "Voided",
   };
 
-  const status = getInvoiceStatus(invoiceForStatus);
+  const status = getInvoiceStatus({
+    invoiceTotal: total,
+    paymentsTotal: totalPaid,
+    balance,
+    dueDate: expiryDate,
+    status: invoice?.status,
+  });
 
   useEffect(() => {
     if (!settings) return;
@@ -463,7 +469,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
 
       // ✅ TODO VA EN options (objeto)
       options: normalizeOptions(
-        full.defaultOptions ?? full.template?.options ?? {}
+        full.defaultOptions ?? full.template?.options ?? {},
       ),
 
       _expanded: true,
@@ -475,7 +481,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         .concat({
           ...newLine,
           _expanded: true, // 👈 AQUÍ se abre el configurable
-        })
+        }),
     );
     setTimeout(() => {
       isMutatingItemsRef.current = false;
@@ -582,7 +588,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         }
       }
     },
-    [saveItems]
+    [saveItems],
   );
 
   // 🔥 PASO 4 — handler estable por item (ANTI-LAG)
@@ -592,7 +598,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         handleItemChange(index, fields);
       };
     },
-    [handleItemChange]
+    [handleItemChange],
   );
 
   const removeItem = async (index) => {
@@ -759,12 +765,12 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                   status === "Paid"
                     ? "bg-green-100 text-green-700"
                     : status === "Partially Paid"
-                    ? "bg-yellow-100 text-yellow-700"
-                    : status === "Overdue"
-                    ? "bg-red-100 text-red-700"
-                    : status === "Void"
-                    ? "bg-gray-200 text-gray-600"
-                    : "bg-blue-100 text-blue-700"
+                      ? "bg-yellow-100 text-yellow-700"
+                      : status === "Overdue"
+                        ? "bg-red-100 text-red-700"
+                        : status === "Void"
+                          ? "bg-gray-200 text-gray-600"
+                          : "bg-blue-100 text-blue-700"
                 }`}
               >
                 {status}
@@ -857,8 +863,8 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                 !invoiceIdState || checkingJob
                   ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                   : jobInfo?.exists
-                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                  : "bg-white border border-blue-600 text-blue-600 hover:bg-blue-50"
+                    ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                    : "bg-white border border-blue-600 text-blue-600 hover:bg-blue-50"
               }`}
             >
               {jobInfo?.exists ? "Job already created" : "+ Create Job"}
@@ -1039,7 +1045,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                               prev.map((it, i) => ({
                                 ...it,
                                 _expanded: i === index,
-                              }))
+                              })),
                             );
                           }}
                         >
@@ -1177,7 +1183,9 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
                         taxEnabled: next,
-                        taxRate: next ? settings?.defaultTaxRate ?? 0 : taxRate,
+                        taxRate: next
+                          ? (settings?.defaultTaxRate ?? 0)
+                          : taxRate,
                       }),
                     });
                   }}
@@ -1358,14 +1366,14 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                     method: payment.paymentMethod,
                     note: payment.note,
                   }),
-                }
+                },
               );
 
               if (!res.ok) throw new Error();
 
               // 🔄 recargar SOLO pagos
               const pRes = await fetch(
-                `/api/invoices/${invoiceIdState}/payments`
+                `/api/invoices/${invoiceIdState}/payments`,
               );
               const updatedPayments = await pRes.json();
               setPayments(updatedPayments);

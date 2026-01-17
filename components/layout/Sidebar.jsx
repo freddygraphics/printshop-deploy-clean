@@ -15,7 +15,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 
-export default function Sidebar() {
+export default function Sidebar({ open, onClose }) {
   const pathname = usePathname();
 
   /* ---------------- ROUTE HELPERS ---------------- */
@@ -36,14 +36,12 @@ export default function Sidebar() {
 
   return (
     <aside
-      className="
-        fixed top-0 left-0
-        w-60 h-screen
-        bg-white py-6
-        p-4 flex flex-col
-        border-r border-gray-200
-        z-40
-      "
+      className={`
+    fixed left-0 top-0 h-screen w-64 bg-white border-r z-40 hidden md:block
+    transform transition-transform duration-300
+    ${open ? "translate-x-0" : "-translate-x-full"}
+    md:translate-x-0
+  `}
     >
       {/* LOGO */}
       <div className="text-gray-900 font-semibold text-lg mb-2">
