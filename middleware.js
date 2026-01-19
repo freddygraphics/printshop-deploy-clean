@@ -15,7 +15,10 @@ export function middleware(req) {
 
   // 🔒 SOLO proteger dominio interno
   if (hostname === "app.freddygraphics.com") {
-    const session = req.cookies.get("session")?.value;
+    // ✅ COOKIE REAL DE NEXTAUTH
+    const session =
+      req.cookies.get("__Secure-next-auth.session-token") ||
+      req.cookies.get("next-auth.session-token");
 
     // permitir login
     if (pathname === "/login") {
