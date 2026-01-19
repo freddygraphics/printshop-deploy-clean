@@ -4,9 +4,27 @@ import bcrypt from "bcryptjs";
 import prisma from "@/lib/db";
 
 export const authOptions = {
+  // 🔐 SESSION
   session: {
     strategy: "jwt",
   },
+
+  // 🔥 CLAVE PARA SUBDOMINIOS
+  useSecureCookies: true,
+
+  cookies: {
+    sessionToken: {
+      name: "__Secure-next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: true,
+        domain: ".freddygraphics.com", // 👈 CRÍTICO
+      },
+    },
+  },
+
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -26,7 +44,7 @@ export const authOptions = {
 
         const isValid = await bcrypt.compare(
           credentials.password,
-          user.password
+          user.password,
         );
 
         if (!isValid) return null;
@@ -62,7 +80,8 @@ export const authOptions = {
   pages: {
     signIn: "/login",
   },
-  secret: process.env.NEXTAUTH_SECRET || "dev-secret",
+
+  secret: process.env.NEXTAUTH_SECRET,
 };
 
 const handler = NextAuth(authOptions);

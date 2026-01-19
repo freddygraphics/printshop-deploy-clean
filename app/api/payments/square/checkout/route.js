@@ -100,6 +100,7 @@ export async function POST(req) {
         idempotency_key: crypto.randomUUID(),
         order: {
           location_id: locationId,
+          reference_id: `INV-${invoiceId}`, // 👈 CLAVE
           line_items: [
             {
               name: `Invoice #${invoice.invoiceNumber}`,
