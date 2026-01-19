@@ -15,9 +15,6 @@ import { getInvoiceStatus } from "@/lib/invoiceStatus";
 import DiscountModal from "@/components/modals/DiscountModal";
 
 export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-
-  const clientInvoiceUrl = `${baseUrl}/invoice/${invoiceId}`;
   const [taxEnabled, setTaxEnabled] = useState(true);
   const normalizeOptions = (opts) => {
     if (!opts || Array.isArray(opts)) return {};
@@ -94,7 +91,6 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   const [expiryDate, setExpiryDate] = useState("");
 
   const [taxRate, setTaxRate] = useState(6.625);
-  const [paymentStatus, setPaymentStatus] = useState("Unpaid");
 
   const [customerNotes, setCustomerNotes] = useState("");
 
@@ -106,6 +102,12 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   // ----------------------------------------
 
   // ----------------------------------------
+  const publicSiteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+  const publicInvoiceLink = invoice?.publicToken
+    ? `${publicSiteUrl}/i/${invoice.publicToken}`
+    : null;
 
   // ----------------------------------------
   // MANUAL ITEM FIELDS
@@ -222,6 +224,15 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
     // 🔜 en el futuro:
     // router.push(`/jobs/${jobInfo.job.id}`);
   }
+  const persistTotals = async ({ subtotal, tax, total, balance }) => {
+    if (!invoiceIdState) return;
+
+    await fetch(`/api/invoices/${invoiceIdState}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ subtotal, tax, total, balance }),
+    });
+  };
 
   useEffect(() => {
     if (mode !== "edit" || !invoiceId) return;
@@ -276,7 +287,6 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
 
         setInvoiceNumber(invoiceData.invoiceNumber);
         setSelectedClient(invoiceData.client);
-        setPaymentStatus(invoiceData.paymentStatus || "Unpaid");
 
         setIssuedAt(
           invoiceData.issuedAt
@@ -422,14 +432,22 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
   const balance = total - totalPaid;
   // ----------------------------------------
+  // 🧠 STATUS AUTOMÁTICO (DEBE IR AQUÍ)
+  // ----------------------------------------
+
+  // ----------------------------------------
+  // 💾 PERSIST TOTALS (DEBE IR AQUÍ)
+  // ----------------------------------------
+  useEffect(() => {
+    if (!invoiceIdState) return;
+    if (!invoiceReadyRef.current) return;
+
+    persistTotals({ subtotal, tax, total, balance });
+  }, [subtotal, tax, total, balance, payments.length]);
+
+  // ----------------------------------------
   // INVOICE STATUS (AUTOMÁTICO)
   // ----------------------------------------
-  const invoiceForStatus = {
-    balance,
-    dueDate: expiryDate,
-    payments,
-    isVoided: paymentStatus === "Voided",
-  };
 
   const status = getInvoiceStatus({
     invoiceTotal: total,
@@ -651,13 +669,19 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
 
             <button
               onClick={async () => {
-                await navigator.clipboard.writeText(clientInvoiceUrl);
-                alert("Client invoice link copied ✅");
+                if (!publicInvoiceLink) {
+                  alert("Public invoice link not ready yet");
+                  return;
+                }
+
+                await navigator.clipboard.writeText(publicInvoiceLink);
+                alert("Public invoice link copied ✅");
               }}
               className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
             >
               Copy Payment Link
             </button>
+
             {canVoid && (
               <button
                 className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
@@ -1241,25 +1265,15 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   clientId: customer.id,
-
-                  // 📅 FECHAS
                   issuedAt,
                   dueDate: expiryDate || null,
-
-                  // 💰 FINANZAS BASE
                   subtotal: 0,
                   tax: 0,
                   total: 0,
                   balance: 0,
-
-                  // 🧾 TAX (DEFAULT ACTIVO)
                   taxEnabled: true,
                   taxRate: settings?.defaultTaxRate ?? 0,
-
-                  // 📌 ESTADO
-                  paymentStatus: "Unpaid",
                   notes: customerNotes || "",
-
                   items: [],
                 }),
               });

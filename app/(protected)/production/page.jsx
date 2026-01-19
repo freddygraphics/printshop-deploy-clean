@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import JobModal from "@/components/JobModal/JobModal";
 
 import {
   DndContext,
@@ -29,8 +30,6 @@ import {
   AlertTriangle,
   SlidersHorizontal,
 } from "lucide-react";
-
-import JobDrawer from "@/components/JobDrawer";
 
 /* ================= CONSTANTS ================= */
 
@@ -154,7 +153,7 @@ function SortableJobCard({ job, onOpen, isOverlay = false }) {
               <Link
                 href={`/invoices/${job.invoice.id}`}
                 onClick={(e) => e.stopPropagation()}
-                className="text-sm font-medium text-blue-700 hover:underline"
+                className=" bg-blue-600 text-white px-3 py-1.5 rounded-md text-m hover:bg-blue-700 transition"
               >
                 Invoice #{job.invoice.invoiceNumber}
               </Link>
@@ -162,7 +161,7 @@ function SortableJobCard({ job, onOpen, isOverlay = false }) {
               <div className="text-sm text-gray-400 italic">No invoice</div>
             )}
 
-            <div className="font-semibold text-base text-gray-900">
+            <div className="text-sm text-gray-900 mt-2">
               JOB #{job.jobNumber}
             </div>
           </div>
@@ -412,7 +411,7 @@ export default function ProductionBoardPage() {
           </div>
         </div>
         {selectedJob && (
-          <JobDrawer
+          <JobModal
             job={selectedJob}
             onClose={() => {
               setSelectedJob(null);

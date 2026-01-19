@@ -115,6 +115,9 @@ model Invoice {
 
   userId           Int?
   invoiceNumber    Int               @unique
+ publicToken String @unique
+
+
   discountAmount   Float             @default(0) 
  
   paidAt           DateTime?

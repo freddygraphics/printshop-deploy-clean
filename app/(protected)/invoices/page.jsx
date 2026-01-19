@@ -280,7 +280,7 @@ export default function InvoicesPage() {
                     <tr
                       key={i.id}
                       onClick={() => router.push(`/invoices/${i.id}`)}
-                      className="border-t text-sm hover:bg-blue-50 cursor-pointer transition"
+                      className="border-t text-sm font-medium  hover:bg-blue-50 cursor-pointer transition"
                     >
                       <td className="px-6 py-3">
                         {i.invoiceNumber ?? `IN-${i.id}`}
@@ -305,13 +305,7 @@ export default function InvoicesPage() {
                         {formatCurrency(i.paymentsTotal)}
                       </td>
 
-                      <td
-                        className={`px-6 py-3 font-bold text-[12pt] ${
-                          i.balance > 0 ? "text-red-600" : "text-green-600"
-                        }`}
-                      >
-                        {formatCurrency(i.balance)}
-                      </td>
+                      <td className="px-6 py-3">{formatCurrency(i.balance)}</td>
 
                       <td className="px-6 py-3">
                         <StatusBadge status={status} />

@@ -15,7 +15,7 @@ export default function RecordPaymentModal({
 
   // Texto que el usuario escribe
   const [amountPaidInput, setAmountPaidInput] = useState(
-    invoice.balance?.toFixed(2) || ""
+    invoice.balance?.toFixed(2) || "",
   );
 
   // Número real para cálculos
@@ -57,13 +57,33 @@ export default function RecordPaymentModal({
     return isNaN(num) ? 0 : num;
   };
   useEffect(() => {
-    if (!invoice?.balance) return;
+    if (invoice?.balance == null) return;
 
-    // ✅ SIEMPRE Full al abrir
     setPreset("full");
-    setAmountPaid(invoice.balance);
-    setAmountPaidInput(invoice.balance.toFixed(2));
+    setAmountPaid(Number(invoice.balance));
+    setAmountPaidInput(Number(invoice.balance).toFixed(2));
   }, [invoice?.balance]);
+
+  if (invoice.balance <= 0) {
+    return (
+      <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
+        <div className="bg-white w-full max-w-md rounded-lg shadow-xl p-6 text-center">
+          <h2 className="text-lg font-semibold mb-2">
+            Invoice #{invoice.invoiceNumber}
+          </h2>
+          <p className="text-green-600 font-semibold">
+            This invoice is already paid in full
+          </p>
+          <button
+            onClick={onClose}
+            className="mt-4 px-5 py-2 rounded-md border hover:bg-gray-100"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
@@ -134,7 +154,7 @@ export default function RecordPaymentModal({
                   onClick={() => {
                     const value =
                       Math.round(
-                        ((invoice.balance * defaultDepositPercent) / 100) * 100
+                        ((invoice.balance * defaultDepositPercent) / 100) * 100,
                       ) / 100;
 
                     setPreset("deposit");
@@ -335,15 +355,20 @@ export default function RecordPaymentModal({
                 setErrors({
                   ...errors,
                   amountPaid: `Amount cannot exceed balance ($${invoice.balance.toFixed(
-                    2
+                    2,
                   )})`,
                 });
                 return;
               }
 
+              const safeAmount = Math.min(
+                Number(amountPaid),
+                Number(invoice.balance),
+              );
+
               onSave({
                 paymentMethod,
-                amountPaid: Number(amountPaid),
+                amountPaid: safeAmount,
                 paidOn,
                 note,
               });
