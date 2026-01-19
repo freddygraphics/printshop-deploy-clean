@@ -4,11 +4,11 @@ import prisma from "@/lib/db";
 
 export const runtime = "nodejs";
 
-// 🔐 Verificar firma Square
+// 🔐 Verificar firma de Square
 function verifySignature({ body, signature, url, secret }) {
   const payload = url + body;
   const hmac = crypto
-    .createHmac("sha1", secret)
+    .createHmac("sha256", secret)
     .update(payload)
     .digest("base64");
 
@@ -16,50 +16,70 @@ function verifySignature({ body, signature, url, secret }) {
 }
 
 export async function POST(req) {
-  const rawBody = await req.text();
-  const signature = req.headers.get("x-square-hmacsha1-signature");
+  try {
+    const signature = req.headers.get("x-square-hmacsha256-signature");
+    const url = process.env.NEXT_PUBLIC_SITE_URL + "/api/webhooks/square";
+    const secret = process.env.SQUARE_WEBHOOK_SECRET;
 
-  const secret = process.env.SQUARE_WEBHOOK_SECRET;
-  const url = process.env.SQUARE_WEBHOOK_URL;
+    if (!signature || !secret) {
+      return NextResponse.json({ error: "Missing signature" }, { status: 400 });
+    }
 
-  if (!signature || !secret || !url) {
-    return NextResponse.json(
-      { error: "Missing webhook config" },
-      { status: 400 },
-    );
-  }
+    // 🚨 RAW BODY (CRÍTICO)
+    const body = await req.text();
 
-  const isValid = verifySignature({
-    body: rawBody,
-    signature,
-    url,
-    secret,
-  });
+    const isValid = verifySignature({
+      body,
+      signature,
+      url,
+      secret,
+    });
 
-  if (!isValid) {
-    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-  }
+    if (!isValid) {
+      console.error("❌ Invalid Square signature");
+      return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+    }
 
-  const event = JSON.parse(rawBody);
+    const event = JSON.parse(body);
 
-  // 🎯 SOLO pagos completados
-  if (
-    event.type === "payment.updated" &&
-    event.data?.object?.payment?.status === "COMPLETED"
-  ) {
-    const payment = event.data.object.payment;
-
-    const reference = payment.order_id || payment.reference_id;
-    if (!reference || !reference.startsWith("INV-")) {
+    // 👉 Solo pagos completados
+    if (event.type !== "payment.updated") {
       return NextResponse.json({ ok: true });
     }
 
-    const invoiceId = Number(reference.replace("INV-", ""));
-    if (!invoiceId) return NextResponse.json({ ok: true });
+    const payment = event.data.object.payment;
 
-    // 🔎 Buscar invoice
+    if (payment.status !== "COMPLETED") {
+      return NextResponse.json({ ok: true });
+    }
+
+    // 1️⃣ Obtener order_id
+    const orderId = payment.order_id;
+    if (!orderId) return NextResponse.json({ ok: true });
+
+    // 2️⃣ Obtener order para leer reference_id
+    const orderRes = await fetch(
+      `https://connect.squareup.com/v2/orders/${orderId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.SQUARE_ACCESS_TOKEN}`,
+          "Square-Version": "2024-01-18",
+        },
+      },
+    );
+
+    const orderData = await orderRes.json();
+    const referenceId = orderData?.order?.reference_id;
+
+    if (!referenceId || !referenceId.startsWith("INV-TOKEN-")) {
+      return NextResponse.json({ ok: true });
+    }
+
+    const publicToken = referenceId.replace("INV-TOKEN-", "");
+
+    // 3️⃣ Buscar invoice
     const invoice = await prisma.invoice.findUnique({
-      where: { id: invoiceId },
+      where: { publicToken },
       include: { payments: true },
     });
 
@@ -67,7 +87,7 @@ export async function POST(req) {
 
     const amount = payment.amount_money.amount / 100;
 
-    // 🧾 Crear payment
+    // 4️⃣ Crear payment
     await prisma.payment.create({
       data: {
         invoiceId: invoice.id,
@@ -78,25 +98,23 @@ export async function POST(req) {
       },
     });
 
-    // 💰 Recalcular balance
+    // 5️⃣ Recalcular balance
     const totalPaid =
       invoice.payments.reduce((s, p) => s + p.amount, 0) + amount;
 
     const balance = Math.max(invoice.total - totalPaid, 0);
 
-    // 🏷️ Estado automático
-    let paymentStatus = "Unpaid";
-    if (balance === 0) paymentStatus = "Paid";
-    else if (totalPaid > 0) paymentStatus = "Partially Paid";
-
     await prisma.invoice.update({
       where: { id: invoice.id },
       data: {
         balance,
-        paymentStatus,
+        paymentStatus: balance === 0 ? "Paid" : "Partially Paid",
       },
     });
-  }
 
-  return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("❌ Webhook error:", err);
+    return NextResponse.json({ error: "Webhook failed" }, { status: 400 });
+  }
 }
