@@ -100,18 +100,19 @@ export async function POST(req) {
         idempotency_key: crypto.randomUUID(),
         order: {
           location_id: locationId,
-          reference_id: `INV-${invoiceId}`, // 👈 CLAVE
+          reference_id: `INV-TOKEN-${invoice.publicToken}`,
           line_items: [
             {
               name: `Invoice #${invoice.invoiceNumber}`,
               quantity: "1",
               base_price_money: {
-                amount: Math.round(balance * 100), // 👈 SOLO BALANCE
+                amount: Math.round(balance * 100),
                 currency: "USD",
               },
             },
           ],
         },
+
         checkout_options: {
           redirect_url: `${siteUrl}/i/${invoice.publicToken}?paid=1`,
         },
