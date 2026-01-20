@@ -14,6 +14,9 @@ export async function GET() {
         jobNumber: true,
         status: true,
         position: true,
+
+        description: true, // 👈 🔥 ESTA ES LA CLAVE
+
         pickupToken: true,
         pickedUpAt: true,
 
@@ -47,7 +50,7 @@ export async function GET() {
     console.error("❌ GET JOBS ERROR:", error);
     return NextResponse.json(
       { error: "Failed to fetch jobs" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -62,7 +65,7 @@ export async function POST(req) {
     if (!invoiceId) {
       return NextResponse.json(
         { error: "invoiceId is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -81,7 +84,7 @@ export async function POST(req) {
     if (existingJob) {
       return NextResponse.json(
         { error: "Job already exists for this invoice" },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -111,7 +114,7 @@ export async function POST(req) {
     console.error("❌ CREATE JOB ERROR:", error);
     return NextResponse.json(
       { error: "Failed to create job" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

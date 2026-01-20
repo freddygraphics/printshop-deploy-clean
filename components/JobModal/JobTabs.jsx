@@ -1,11 +1,9 @@
 import JobDetailsTab from "./tabs/JobDetailsTab";
 import JobFilesTab from "./tabs/JobFilesTab";
-import JobInvoiceTab from "./tabs/JobInvoiceTab";
 
 const TABS = [
   { key: "details", label: "Details" },
   { key: "files", label: "Files" },
-  { key: "invoice", label: "Invoice" },
 ];
 
 export default function JobTabs({ job, activeTab, setActiveTab }) {
@@ -33,7 +31,6 @@ export default function JobTabs({ job, activeTab, setActiveTab }) {
       <div className="p-6 overflow-y-auto flex-1">
         {activeTab === "details" && <JobDetailsTab job={job} />}
         {activeTab === "files" && <JobFilesTab job={job} />}
-        {activeTab === "invoice" && <JobInvoiceTab job={job} />}
       </div>
     </>
   );

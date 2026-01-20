@@ -1,33 +1,59 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
-import fs from "fs";
-import path from "path";
+import cloudinary from "@/lib/cloudinary";
 
-export async function DELETE(req, { params }) {
-  const fileId = Number(params.fileId);
+export const runtime = "nodejs";
 
-  if (isNaN(fileId)) {
-    return NextResponse.json({ error: "Invalid file id" }, { status: 400 });
+export async function POST(req) {
+  try {
+    const formData = await req.formData();
+    const jobId = Number(formData.get("jobId"));
+    const files = formData.getAll("files");
+
+    if (!jobId || files.length === 0) {
+      return NextResponse.json(
+        { error: "Missing jobId or files" },
+        { status: 400 },
+      );
+    }
+
+    const savedFiles = [];
+
+    for (const file of files) {
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+
+      // subir a Cloudinary
+      const upload = await new Promise((resolve, reject) => {
+        cloudinary.uploader
+          .upload_stream(
+            {
+              folder: "printshop/jobs",
+              resource_type: "image",
+            },
+            (err, result) => {
+              if (err) reject(err);
+              else resolve(result);
+            },
+          )
+          .end(buffer);
+      });
+
+      const saved = await prisma.jobFile.create({
+        data: {
+          jobId,
+          name: file.name,
+          type: file.type,
+          url: upload.secure_url, // 🔥 URL REAL
+        },
+      });
+
+      savedFiles.push(saved);
+    }
+
+    return NextResponse.json({ files: savedFiles });
+  } catch (err) {
+    console.error("UPLOAD ERROR", err);
+    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
-
-  const file = await prisma.jobFile.findUnique({
-    where: { id: fileId },
-  });
-
-  if (!file) {
-    return NextResponse.json({ error: "File not found" }, { status: 404 });
-  }
-
-  // 📂 borrar archivo físico
-  const filePath = path.join(process.cwd(), "public", file.url);
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
-  }
-
-  // 🗑️ borrar registro
-  await prisma.jobFile.delete({
-    where: { id: fileId },
-  });
-
-  return NextResponse.json({ success: true });
 }

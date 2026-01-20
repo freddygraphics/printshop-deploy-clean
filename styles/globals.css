@@ -6,7 +6,9 @@ body {
   font-family: system-ui, sans-serif;
 }
 
-/* Scrollbar personalizado */
+/* =========================
+   Scrollbar personalizado
+========================= */
 .scrollbar-thin::-webkit-scrollbar {
   width: 6px;
 }
@@ -18,4 +20,33 @@ body {
 
 .scrollbar-thin::-webkit-scrollbar-track {
   background: #f1f5f9; /* gray-100 */
+}
+
+/* =========================
+   Botones editor
+========================= */
+.btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  background: white;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: #f3f4f6;
+}
+
+/* =========================
+   TipTap / Job Description
+========================= */
+.prose a {
+  color: #2563eb; /* blue-600 */
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.prose a:hover {
+  color: #1d4ed8; /* blue-700 */
 }

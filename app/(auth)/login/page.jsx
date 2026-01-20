@@ -1,12 +1,23 @@
 "use client";
 
-import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { signIn, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function LoginPage() {
+  const { status } = useSession();
+  const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // ✅ MEJORA: si ya está autenticado, no mostrar login
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.replace("/dashboard");
+    }
+  }, [status, router]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -21,6 +32,15 @@ export default function LoginPage() {
     setLoading(false);
   }
 
+  // Opcional: loader mientras NextAuth verifica sesión
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        Loading…
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100">
       <form
@@ -33,14 +53,18 @@ export default function LoginPage() {
           type="email"
           placeholder="Email"
           className="w-full border p-2 rounded"
+          value={email}
           onChange={(e) => setEmail(e.target.value)}
+          required
         />
 
         <input
           type="password"
           placeholder="Password"
           className="w-full border p-2 rounded"
+          value={password}
           onChange={(e) => setPassword(e.target.value)}
+          required
         />
 
         <button

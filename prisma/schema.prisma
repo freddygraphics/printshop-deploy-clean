@@ -204,7 +204,7 @@ model Job {
   jobNumber           Int       @unique
   clientId            Int
   status              JobStatus @default(Pending)
-
+description String?
   dueDate             DateTime?
   notes               String?
   salesRepId          Int?

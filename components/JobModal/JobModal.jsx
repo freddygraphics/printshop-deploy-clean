@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { X } from "lucide-react";
 import JobQRCode from "@/components/JobQRCode";
 import JobTabs from "./JobTabs";
 import Link from "next/link";
+import JobDescriptionEditor from "./JobDescriptionEditor";
+import JobFileUpload from "@/components/JobFileUpload";
+import JobAttachments from "./JobAttachments";
 
 const STATUS_STYLE = {
   Pending: "bg-gray-100 text-gray-700",
@@ -15,7 +18,20 @@ const STATUS_STYLE = {
 };
 
 export default function JobModal({ job, onClose }) {
+  const [files, setFiles] = useState([]);
+  const items = job.invoice?.invoiceItems || [];
   const [activeTab, setActiveTab] = useState("details");
+  const [description, setDescription] = useState("");
+  const saveTimeout = useRef(null);
+  const lastSaved = useRef("");
+  useEffect(() => {
+    const initial = job?.description || "";
+    setDescription(initial);
+    lastSaved.current = initial;
+  }, [job]);
+  useEffect(() => {
+    setFiles(job?.files || []);
+  }, [job]);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -23,6 +39,27 @@ export default function JobModal({ job, onClose }) {
   }, []);
 
   if (!job) return null;
+
+  function handleDescriptionChange(value) {
+    setDescription(value);
+
+    if (saveTimeout.current) {
+      clearTimeout(saveTimeout.current);
+    }
+
+    saveTimeout.current = setTimeout(async () => {
+      if (!job?.id) return;
+      if (value === lastSaved.current) return;
+
+      await fetch(`/api/jobs/${job.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description: value }),
+      });
+
+      lastSaved.current = value;
+    }, 1200); // ⏱ debounce PRO
+  }
 
   return (
     <>
@@ -85,12 +122,56 @@ export default function JobModal({ job, onClose }) {
                 </div>
               </div>
 
-              {/* Tabs + Content */}
-              <JobTabs
-                job={job}
-                activeTab={activeTab}
-                setActiveTab={setActiveTab}
-              />
+              <div className="mt-4 px-6 pb-6">
+                <div className="text-m font-semibold text-gray-700 mb-2">
+                  Products
+                </div>
+
+                {items.length === 0 ? (
+                  <div className="text-sm text-gray-500 italic">
+                    No products in invoice
+                  </div>
+                ) : (
+                  <div className="border rounded-lg divide-y bg-white">
+                    {items.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between px-4 py-3 text-sm"
+                      >
+                        <div className="font-medium text-gray-900">
+                          {item.name}
+                        </div>
+
+                        <div className="text-gray-600">Qty: {item.qty}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4 px-6 pb-6">
+                <h3 className="text-m font-semibold text-gray-700 mb-2">
+                  Description
+                </h3>
+
+                <JobDescriptionEditor
+                  value={description}
+                  onChange={handleDescriptionChange}
+                />
+              </div>
+
+              <div className="px-6 pb-6">
+                <JobAttachments
+                  jobId={job.id}
+                  files={files}
+                  onDelete={(fileId) => {
+                    setFiles((prev) => prev.filter((f) => f.id !== fileId));
+                  }}
+                  onUploaded={(newFiles) => {
+                    setFiles((prev) => [...newFiles, ...prev]);
+                  }}
+                />
+              </div>
             </div>
 
             {/* RIGHT */}

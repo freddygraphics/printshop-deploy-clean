@@ -1,39 +1,48 @@
 "use client";
-import { useState } from "react";
+
+import { useRef } from "react";
 
 export default function JobFileUpload({ jobId, onUploaded }) {
-  const [loading, setLoading] = useState(false);
+  const inputRef = useRef(null);
 
-  async function upload(e) {
-    const file = e.target.files[0];
-    if (!file) return;
+  async function handleUpload(e) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    setLoading(true);
+    const formData = new FormData();
+    formData.append("jobId", jobId);
 
-    const form = new FormData();
-    form.append("file", file);
-
-    const res = await fetch(`/api/jobs/${jobId}/files`, {
-      method: "POST",
-      body: form,
+    Array.from(files).forEach((file) => {
+      formData.append("files", file);
     });
 
-    const data = await res.json();
-    onUploaded?.(data);
+    const res = await fetch("/api/jobs/files", {
+      method: "POST",
+      body: formData,
+    });
 
-    setLoading(false);
-    e.target.value = ""; // reset input
+    if (!res.ok) {
+      alert("Error uploading files");
+      return;
+    }
+
+    const data = await res.json();
+
+    // 🔄 notificar al padre para refrescar lista
+    onUploaded?.(data.files);
+
+    // reset input
+    inputRef.current.value = "";
   }
 
   return (
-    <label className="cursor-pointer text-xs text-blue-600 hover:underline">
-      📎 Attach file
-      <input
-        type="file"
-        hidden
-        accept=".pdf,.jpg,.jpeg,.png,.zip,.ai,.psd"
-        onChange={upload}
-      />
-    </label>
+    <input
+      ref={inputRef}
+      type="file"
+      multiple
+      accept="image/*"
+      onChange={handleUpload}
+      className="absolute inset-0 opacity-0 cursor-pointer"
+    />
   );
 }

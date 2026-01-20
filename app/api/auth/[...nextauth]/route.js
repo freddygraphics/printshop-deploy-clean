@@ -3,27 +3,31 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/db";
 
+const isProd = process.env.NODE_ENV === "production";
+
 export const authOptions = {
   // 🔐 SESSION
   session: {
     strategy: "jwt",
   },
 
-  // 🔥 CLAVE PARA SUBDOMINIOS
-  useSecureCookies: true,
+  // 🔐 Cookies seguras SOLO en producción
+  useSecureCookies: isProd,
 
-  cookies: {
-    sessionToken: {
-      name: "__Secure-next-auth.session-token",
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: true,
-        domain: ".freddygraphics.com", // 👈 CRÍTICO
-      },
-    },
-  },
+  cookies: isProd
+    ? {
+        sessionToken: {
+          name: "__Secure-next-auth.session-token",
+          options: {
+            httpOnly: true,
+            sameSite: "lax",
+            path: "/",
+            secure: true,
+            domain: ".freddygraphics.com",
+          },
+        },
+      }
+    : undefined, // 👈 EN LOCAL usar defaults
 
   providers: [
     CredentialsProvider({
