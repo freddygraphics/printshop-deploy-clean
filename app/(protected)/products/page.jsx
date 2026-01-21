@@ -4,13 +4,14 @@ export const dynamic = "force-dynamic";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, Search, Pencil, Trash2, Eye } from "lucide-react";
-import ProductTemplateSelector from "../../components/ProductTemplateSelector";
-import ProductModal from "../../components/ProductModal";
+import ProductTemplateSelector from "@/components/ProductTemplateSelector";
+import ProductModal from "@/components/ProductModal";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [search, setSearch] = useState("");
+  const [editingProduct, setEditingProduct] = useState(null);
 
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
@@ -82,8 +83,17 @@ export default function ProductsPage() {
       )}
 
       {/* HEADER */}
+
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold text-[#1E293B]">Products</h1>
+
+        <button
+          onClick={() => setShowTemplateSelector(true)}
+          className="flex items-center gap-2 bg-[#0051A8] hover:bg-[#00418A] text-white px-4 py-2 rounded-lg text-sm font-medium shadow"
+        >
+          <Plus size={18} />
+          New Product
+        </button>
       </div>
 
       {/* TARJETAS */}
@@ -91,11 +101,12 @@ export default function ProductsPage() {
         <SummaryCard title="Total Products" value={products.length} />
         <SummaryCard
           title="Templates"
-          value={products.filter((p) => p.templateId).length}
+          value={products.filter((p) => p.templateType).length}
         />
+
         <SummaryCard
           title="Without Template"
-          value={products.filter((p) => !p.templateId).length}
+          value={products.filter((p) => !p.templateType).length}
         />
       </div>
 
@@ -144,11 +155,17 @@ export default function ProductsPage() {
                         </button>
                       </Link>
 
-                      <Link href={`/products/${p.id}/edit`}>
-                        <button className="text-gray-600 hover:text-green-600">
-                          <Pencil size={18} />
-                        </button>
-                      </Link>
+                      <button
+                        className="text-gray-600 hover:text-green-600"
+                        title="Edit product"
+                        onClick={() => {
+                          setEditingProduct(p); // 🔥 producto completo
+                          setSelectedTemplateType(null);
+                          setShowProductModal(true);
+                        }}
+                      >
+                        <Pencil size={18} />
+                      </button>
 
                       <button
                         className="text-gray-600 hover:text-red-600"
@@ -184,10 +201,17 @@ export default function ProductsPage() {
       {showProductModal && (
         <ProductModal
           open={showProductModal}
-          onClose={() => setShowProductModal(false)}
-          product={{ templateType: selectedTemplateType }}
-          mode="new"
-          onSave={handleSaveProduct} // 🔥 callback para actualizar lista
+          onClose={() => {
+            setShowProductModal(false);
+            setEditingProduct(null);
+          }}
+          product={
+            editingProduct
+              ? editingProduct // ✏️ EDIT
+              : { templateType: selectedTemplateType } // ➕ NEW
+          }
+          mode={editingProduct ? "edit" : "new"}
+          onSave={handleSaveProduct}
         />
       )}
     </main>

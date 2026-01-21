@@ -16,7 +16,7 @@ export default function CommercialPrintingTemplate({
   const [rows, setRows] = useState(
     Array.isArray(cf.rows) && cf.rows.length > 0
       ? cf.rows
-      : [{ qty: "", price: "" }]
+      : [{ qty: "", price: "" }],
   );
 
   const [finish, setFinish] = useState(
@@ -25,25 +25,25 @@ export default function CommercialPrintingTemplate({
       : [
           { name: "Matte", price: 0, default: true },
           { name: "Gloss", price: 0, default: false },
-        ]
+        ],
   );
 
   const [corners, setCorners] = useState(
     Array.isArray(cf.corners) && cf.corners.length > 0
       ? cf.corners
       : [
-          { name: "Square Corner", price: 0, default: true },
-          { name: "Round Corner", price: 0, default: false },
-        ]
+          { name: "Square", price: 0, default: true },
+          { name: "Round", price: 0, default: false },
+        ],
   );
 
   const [design, setDesign] = useState(
     Array.isArray(cf.design) && cf.design.length > 0
       ? cf.design
       : [
-          { name: "No Design", price: 0, default: true },
-          { name: "With Design", price: 0, default: false },
-        ]
+          { name: "No", price: 0, default: true },
+          { name: "Yes", price: 0, default: false },
+        ],
   );
 
   const [sides, setSides] = useState(
@@ -52,7 +52,7 @@ export default function CommercialPrintingTemplate({
       : [
           { name: "1 Side", price: 0, default: true },
           { name: "2 Sides", price: 0, default: false },
-        ]
+        ],
   );
 
   // ============================================================
@@ -100,8 +100,7 @@ export default function CommercialPrintingTemplate({
       // ⭐ DefaultOptions seguros para que aparezcan en Quote
       defaultOptions: {
         finish: finish.find((f) => f.default)?.name || finish[0]?.name || "",
-        corners:
-          corners.find((c) => c.default)?.name || corners[0]?.name || "",
+        corners: corners.find((c) => c.default)?.name || corners[0]?.name || "",
         design: design.find((d) => d.default)?.name || design[0]?.name || "",
         sides: sides.find((s) => s.default)?.name || sides[0]?.name || "",
       },
@@ -117,11 +116,7 @@ export default function CommercialPrintingTemplate({
   // UI DEL TEMPLATE
   // ============================================================
   return (
-    <div className="bg-white shadow-md rounded-lg p-6 space-y-6">
-      <h2 className="text-xl font-bold text-[#0EA5E9]">
-        Commercial Printing
-      </h2>
-
+    <div className="space-y-8">
       {/* PRODUCT NAME */}
       <div>
         <label className="font-medium text-gray-700">Product Name</label>
@@ -135,197 +130,191 @@ export default function CommercialPrintingTemplate({
       </div>
 
       {/* QUANTITY TABLE */}
-      <div>
-        <h3 className="font-semibold text-gray-700 mb-2">
-          Quantity & Price Table
-        </h3>
+      <div className="rounded-xl border bg-gray-50 p-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-800">
+            Quantity & Pricing
+          </h3>
+          <button
+            onClick={addRow}
+            className="text-sm text-blue-600 hover:underline"
+          >
+            + Add Row
+          </button>
+        </div>
 
-        <table className="w-full border rounded-md text-sm">
-          <thead className="bg-gray-100 text-gray-700">
-            <tr>
-              <th className="p-2 text-left">Quantity</th>
-              <th className="p-2 text-left">Price ($)</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {rows.map((row, i) => (
-              <tr key={i}>
-                <td className="p-2">
-                  <input
-                    type="number"
-                    className="border rounded p-1 w-full"
-                    value={row.qty}
-                    onChange={(e) =>
-                      handleRowChange(i, "qty", e.target.value)
-                    }
-                  />
-                </td>
-
-                <td className="p-2">
-                  <input
-                    type="number"
-                    className="border rounded p-1 w-full"
-                    value={row.price}
-                    onChange={(e) =>
-                      handleRowChange(i, "price", e.target.value)
-                    }
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <button
-          className="text-[#0EA5E9] mt-2 text-sm"
-          onClick={addRow}
-        >
-          + Add Row
-        </button>
+        {rows.map((row, i) => (
+          <div key={i} className="grid grid-cols-2 gap-3">
+            <input
+              type="number"
+              placeholder="Quantity"
+              className="input-kanakku"
+              value={row.qty}
+              onChange={(e) => handleRowChange(i, "qty", e.target.value)}
+            />
+            <input
+              type="number"
+              placeholder="Price ($)"
+              className="input-kanakku"
+              value={row.price}
+              onChange={(e) => handleRowChange(i, "price", e.target.value)}
+            />
+          </div>
+        ))}
       </div>
 
       {/* OPTIONS */}
       <h3 className="text-gray-700 font-semibold">Options</h3>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* FINISH */}
-        <div>
-          <label className="font-medium">Finish</label>
-          {finish.map((f, i) => (
-            <div key={i} className="flex items-center gap-2 mt-2">
-              <input
-                type="checkbox"
-                checked={f.default}
-                onChange={() => toggleExclusive(finish, setFinish, i)}
-              />
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-gray-800">Finish</h3>
 
-              <input
-                type="text"
-                className="border rounded p-1 w-full"
-                value={f.name}
-                onChange={(e) => {
-                  const copy = [...finish];
-                  copy[i].name = e.target.value;
-                  setFinish(copy);
-                }}
-              />
+          <div className="space-y-2">
+            {finish.map((f, i) => (
+              <label
+                key={i}
+                className={`flex items-center justify-between rounded-lg border px-3 py-2 cursor-pointer transition
+        ${f.default ? "border-blue-500 bg-blue-50" : "hover:border-gray-400"}`}
+              >
+                <div className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    checked={f.default}
+                    onChange={() => toggleExclusive(finish, setFinish, i)}
+                  />
+                  <span className="text-sm text-gray-800">{f.name}</span>
+                </div>
 
-              <input
-                type="number"
-                className="border rounded p-1 w-20"
-                value={f.price}
-                onChange={(e) => {
-                  const copy = [...finish];
-                  copy[i].price = Number(e.target.value);
-                  setFinish(copy);
-                }}
-              />
-            </div>
-          ))}
+                <input
+                  type="number"
+                  className="w-20 rounded-md border px-2 py-1 text-sm text-right"
+                  value={f.price}
+                  onChange={(e) => {
+                    const copy = [...finish];
+                    copy[i].price = Number(e.target.value);
+                    setFinish(copy);
+                  }}
+                />
+              </label>
+            ))}
+          </div>
         </div>
 
         {/* CORNERS */}
-        <div>
-          <label className="font-medium">Corners</label>
-          {corners.map((c, i) => (
-            <div key={i} className="flex items-center gap-2 mt-2">
-              <input
-                type="checkbox"
-                checked={c.default}
-                onChange={() => toggleExclusive(corners, setCorners, i)}
-              />
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-gray-800">Corners</h3>
 
-              <input
-                readOnly
-                className="border rounded p-1 w-full bg-gray-100"
-                value={c.name}
-              />
+          <div className="space-y-2">
+            {corners.map((c, i) => (
+              <label
+                key={i}
+                className={`flex items-center justify-between rounded-lg border px-3 py-2 cursor-pointer transition
+        ${c.default ? "border-blue-500 bg-blue-50" : "hover:border-gray-400"}`}
+              >
+                <div className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    checked={c.default}
+                    onChange={() => toggleExclusive(corners, setCorners, i)}
+                  />
+                  <span className="text-sm text-gray-800">{c.name}</span>
+                </div>
 
-              <input
-                type="number"
-                className="border rounded p-1 w-20"
-                value={c.price}
-                onChange={(e) => {
-                  const copy = [...corners];
-                  copy[i].price = Number(e.target.value);
-                  setCorners(copy);
-                }}
-              />
-            </div>
-          ))}
+                <input
+                  type="number"
+                  className="w-20 rounded-md border px-2 py-1 text-sm text-right"
+                  value={c.price}
+                  onChange={(e) => {
+                    const copy = [...corners];
+                    copy[i].price = Number(e.target.value);
+                    setCorners(copy);
+                  }}
+                />
+              </label>
+            ))}
+          </div>
         </div>
 
         {/* DESIGN */}
-        <div>
-          <label className="font-medium">Design</label>
-          {design.map((d, i) => (
-            <div key={i} className="flex items-center gap-2 mt-2">
-              <input
-                type="checkbox"
-                checked={d.default}
-                onChange={() => toggleExclusive(design, setDesign, i)}
-              />
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-gray-800">Design</h3>
 
-              <input
-                readOnly
-                className="border rounded p-1 w-full bg-gray-100"
-                value={d.name}
-              />
+          <div className="space-y-2">
+            {design.map((d, i) => (
+              <label
+                key={i}
+                className={`flex items-center justify-between rounded-lg border px-3 py-2 cursor-pointer transition
+        ${d.default ? "border-blue-500 bg-blue-50" : "hover:border-gray-400"}`}
+              >
+                <div className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    checked={d.default}
+                    onChange={() => toggleExclusive(design, setDesign, i)}
+                  />
+                  <span className="text-sm text-gray-800">{d.name}</span>
+                </div>
 
-              <input
-                type="number"
-                className="border rounded p-1 w-20"
-                value={d.price}
-                onChange={(e) => {
-                  const copy = [...design];
-                  copy[i].price = Number(e.target.value);
-                  setDesign(copy);
-                }}
-              />
-            </div>
-          ))}
+                <input
+                  type="number"
+                  className="w-20 rounded-md border px-2 py-1 text-sm text-right"
+                  value={d.price}
+                  onChange={(e) => {
+                    const copy = [...design];
+                    copy[i].price = Number(e.target.value);
+                    setDesign(copy);
+                  }}
+                />
+              </label>
+            ))}
+          </div>
         </div>
 
         {/* SIDES */}
-        <div>
-          <label className="font-medium">Sides</label>
-          {sides.map((s, i) => (
-            <div key={i} className="flex items-center gap-2 mt-2">
-              <input
-                type="checkbox"
-                checked={s.default}
-                onChange={() => toggleExclusive(sides, setSides, i)}
-              />
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-gray-800">Sides</h3>
 
-              <input
-                readOnly
-                className="border rounded p-1 w-full bg-gray-100"
-                value={s.name}
-              />
+          <div className="space-y-2">
+            {sides.map((s, i) => (
+              <label
+                key={i}
+                className={`flex items-center justify-between rounded-lg border px-3 py-2 cursor-pointer transition
+        ${s.default ? "border-blue-500 bg-blue-50" : "hover:border-gray-400"}`}
+              >
+                <div className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    checked={s.default}
+                    onChange={() => toggleExclusive(sides, setSides, i)}
+                  />
+                  <span className="text-sm text-gray-800">{s.name}</span>
+                </div>
 
-              <input
-                type="number"
-                className="border rounded p-1 w-20"
-                value={s.price}
-                onChange={(e) => {
-                  const copy = [...sides];
-                  copy[i].price = Number(e.target.value);
-                  setSides(copy);
-                }}
-              />
-            </div>
-          ))}
+                <input
+                  type="number"
+                  className="w-20 rounded-md border px-2 py-1 text-sm text-right"
+                  value={s.price}
+                  onChange={(e) => {
+                    const copy = [...sides];
+                    copy[i].price = Number(e.target.value);
+                    setSides(copy);
+                  }}
+                />
+              </label>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* SAVE BUTTON */}
-      <div className="text-right">
+      <div className="flex justify-end border-t pt-4 mt-6">
         <button
           onClick={handleSave}
-          className="px-4 py-2 rounded-md text-white bg-[#0EA5E9] hover:bg-[#0284C7]"
+          className="px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 shadow"
         >
-          Save
+          Save Product
         </button>
       </div>
     </div>

@@ -10,12 +10,21 @@ import ModalPortal from "./ModalPortal";
 import CommercialPrintingTemplate from "@/app/templates/CommercialPrintingTemplate";
 import LargeFormatTemplate from "@/app/templates/LargeFormatTemplate";
 
-export default function ProductModal({ open, onClose, product, mode = "new", onSave }) {
+export default function ProductModal({
+  open,
+  onClose,
+  product,
+  mode = "new",
+  onSave,
+}) {
+  const isEdit = mode === "edit";
+
   const [data, setData] = useState(null);
 
   // ---------------------------------------------
   // Inicializar datos según "new" o "edit"
   // ---------------------------------------------
+
   useEffect(() => {
     if (!open) return;
 
@@ -40,41 +49,47 @@ export default function ProductModal({ open, onClose, product, mode = "new", onS
   // ---------------------------------------------
   // GUARDAR EN BASE DE DATOS
   // ---------------------------------------------
-// --------------------
-// GUARDAR PRODUCTO
-// --------------------
-const handleSave = async (updated) => {
-  try {
-    console.log("🔥 FETCHING: /api/products/from-template");
+  // --------------------
+  // GUARDAR PRODUCTO
+  // --------------------
+  const handleSave = async (updated) => {
+    try {
+      const isEdit = mode === "edit";
 
-    const res = await fetch("/api/products/from-template", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updated),
-    });
+      const payload = {
+        ...data,
+        ...updated,
+        templateType: data.templateType, // 🔥 GARANTIZADO
+      };
 
-    const data = await res.json();
+      const url = isEdit
+        ? `/api/products/${payload.id}`
+        : "/api/products/from-template";
 
-    if (!res.ok) {
-      alert(data.error || "Error saving product");
-      return;
+      const method = isEdit ? "PUT" : "POST";
+
+      console.log("🔥 PAYLOAD FINAL:", payload);
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const saved = await res.json();
+
+      if (!res.ok) {
+        alert(saved.error || "Error saving product");
+        return;
+      }
+
+      if (onSave) onSave(saved);
+      onClose();
+    } catch (err) {
+      console.error("❌ Error saving product:", err);
+      alert("Unexpected error");
     }
-
-    // 🔥 Mensaje bonito
-    alert("Producto guardado con éxito!");
-
-    // 🔥 Enviar producto nuevo al padre (ProductsPage)
-    if (onSave) onSave(data);
-
-    // 🔥 Cerrar modal automáticamente
-    onClose();
-
-  } catch (err) {
-    console.error("❌ Error saving product:", err);
-    alert("Error inesperado");
-  }
-};
-
+  };
 
   // ---------------------------------------------
   // Render del template
@@ -95,9 +110,7 @@ const handleSave = async (updated) => {
 
       default:
         return (
-          <p className="text-gray-500 text-center">
-            Select a product template
-          </p>
+          <p className="text-gray-500 text-center">Select a product template</p>
         );
     }
   };
@@ -105,17 +118,15 @@ const handleSave = async (updated) => {
   return (
     <ModalPortal>
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[9999]">
-
         <div className="bg-white rounded-xl shadow-xl w-[95%] max-w-4xl max-h-[90vh] overflow-y-auto animate-fadeIn border border-gray-200">
-
           {/* HEADER */}
           <div className="flex justify-between items-center border-b px-6 py-4">
             <h2 className="text-lg font-semibold text-gray-900">
               {mode === "edit"
                 ? "Edit Product"
                 : mode === "view"
-                ? "View Product"
-                : "New Product"}
+                  ? "View Product"
+                  : "New Product"}
             </h2>
 
             <button
@@ -127,10 +138,7 @@ const handleSave = async (updated) => {
           </div>
 
           {/* BODY */}
-          <div className="p-6">
-            {renderTemplate()}
-          </div>
-
+          <div className="p-6">{renderTemplate()}</div>
         </div>
 
         {/* Animation */}

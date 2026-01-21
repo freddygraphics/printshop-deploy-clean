@@ -50,3 +50,6 @@ body {
 .prose a:hover {
   color: #1d4ed8; /* blue-700 */
 }
+.input-kanakku {
+  @apply w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white;
+}

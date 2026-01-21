@@ -17,7 +17,7 @@ export async function GET() {
         description: true,
         price: true,
         basePrice: true,
-        templateId: true,
+        templateType: true, // ✅ CLAVE
         customFields: true,
         defaultOptions: true,
       },
@@ -39,7 +39,7 @@ export async function POST(req) {
   if (!session || !can(session.user.role, "products")) {
     return NextResponse.json(
       { error: "You do not have permission to create products" },
-      { status: 403 }
+      { status: 403 },
     );
   }
 

@@ -14,6 +14,7 @@ import {
   Settings,
   ChevronDown,
 } from "lucide-react";
+import Image from "next/image";
 
 export default function Sidebar({ open, onClose }) {
   const pathname = usePathname();
@@ -37,19 +38,28 @@ export default function Sidebar({ open, onClose }) {
   return (
     <aside
       className={`
-    fixed left-0 top-0 h-screen w-64 bg-white border-r z-40 hidden md:block
+    fixed left-0 top-0 h-screen w-64 bg-white border-r z-40 hidden md:flex
+    flex-col
     transform transition-transform duration-300
     ${open ? "translate-x-0" : "-translate-x-full"}
     md:translate-x-0
   `}
     >
       {/* LOGO */}
-      <div className="text-gray-900 font-semibold text-lg mb-2">
-        Freddy Graphics LLC
+      {/* LOGO */}
+      <div className="px-4 py-6  ">
+        <Image
+          src="/logo_side.svg" // o .png
+          alt="Freddy Graphics"
+          width={240}
+          height={80}
+          className="w-full h-auto object-contain"
+          priority
+        />
       </div>
 
       {/* MENU */}
-      <nav className="py-10 space-y-1 flex-1 overflow-y-auto pr-1">
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         <NavItem
           href="/dashboard"
           icon={LayoutDashboard}
@@ -110,9 +120,15 @@ export default function Sidebar({ open, onClose }) {
       </nav>
 
       {/* SETTINGS */}
-      <NavItem href="/settings" icon={Settings} active={isActive("/settings")}>
-        Settings
-      </NavItem>
+      <div className="px-3 py-4 border-t">
+        <NavItem
+          href="/settings"
+          icon={Settings}
+          active={isActive("/settings")}
+        >
+          Settings
+        </NavItem>
+      </div>
     </aside>
   );
 }
