@@ -2,7 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import CommercialPrintingTemplate from "../../templates/CommercialPrintingTemplate";
+import CommercialPrintingTemplate from "@/app/templates/CommercialPrintingTemplate";
 
 export default function CommercialPrintingPage() {
   const [message, setMessage] = useState("");
@@ -72,9 +72,7 @@ export default function CommercialPrintingPage() {
             💾 Guardando producto...
           </p>
         )}
-        {message && (
-          <p className="text-cyan-700 font-medium mt-4">{message}</p>
-        )}
+        {message && <p className="text-cyan-700 font-medium mt-4">{message}</p>}
       </div>
     </main>
   );

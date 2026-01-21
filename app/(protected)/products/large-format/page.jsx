@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import LargeFormatTemplate from "../../templates/LargeFormatTemplate";
+import LargeFormatTemplate from "@/app/templates/LargeFormatTemplate";
 
 export default function LargeFormatPage() {
   return (
