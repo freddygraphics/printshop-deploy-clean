@@ -11,6 +11,13 @@ import {
 } from "lucide-react";
 
 export default function DashboardPage() {
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(value || 0);
+  };
+
   const [loading, setLoading] = useState(true);
 
   const [quotes, setQuotes] = useState([]);
@@ -24,7 +31,8 @@ export default function DashboardPage() {
       try {
         const q = await fetch("/api/quotes").then((r) => r.json());
         const inv = await fetch("/api/invoices").then((r) => r.json());
-        const jb = await fetch("/api/orders").then((r) => r.json());
+        const jb = await fetch("/api/jobs").then((r) => r.json());
+        setJobs(jb);
 
         setQuotes(q);
         setInvoices(inv);
@@ -88,7 +96,7 @@ export default function DashboardPage() {
 
   const fQuotes = applyFilter(quotes);
   const fInvoices = applyFilter(invoices);
-  const fJobs = applyFilter(jobs);
+  const fJobs = jobs;
 
   // -----------------------------------
   // TOTALES SEGÚN FILTRO
@@ -97,10 +105,9 @@ export default function DashboardPage() {
 
   const invoicesTotalAmount = fInvoices.reduce(
     (acc, i) => acc + (i.total || 0),
-    0
+    0,
   );
-
-  const activeJobs = fJobs.filter((j) => j.status !== "Completed").length;
+  const activeJobs = jobs.filter((j) => j.status !== "Completed").length;
 
   return (
     <div className="w-full">
@@ -109,7 +116,9 @@ export default function DashboardPage() {
         <div className="space-y-8 animate-fadeIn">
           {/* HEADER + FILTERS */}
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Hola Freddy
+            </h1>
 
             <div className="flex items-center gap-2 bg-white border rounded-lg shadow-sm px-3 py-2">
               <Calendar className="text-gray-500" size={20} />
@@ -140,15 +149,13 @@ export default function DashboardPage() {
                 value={fQuotes.length}
                 color="blue"
                 href="/quotes"
-                filter={filter}
               />
 
               <CardStat
                 label="Quotes Total Amount"
-                value={`$${quotesTotalAmount.toFixed(2)}`}
+                value={formatCurrency(quotesTotalAmount)}
                 color="blue"
                 href="/quotes"
-                filter={filter}
               />
             </Column>
 
@@ -162,15 +169,13 @@ export default function DashboardPage() {
                 value={fInvoices.length}
                 color="green"
                 href="/invoices"
-                filter={filter}
               />
 
               <CardStat
                 label="Invoices Total Amount"
-                value={`$${invoicesTotalAmount.toFixed(2)}`}
+                value={formatCurrency(invoicesTotalAmount)}
                 color="green"
                 href="/invoices"
-                filter={filter}
               />
             </Column>
 
@@ -181,10 +186,10 @@ export default function DashboardPage() {
             >
               <CardStat
                 label="Jobs Created"
-                value={fJobs.length}
+                value={jobs.length}
                 color="orange"
                 href="/orders"
-                filter={filter}
+                filter="all"
               />
 
               <CardStat
@@ -192,7 +197,7 @@ export default function DashboardPage() {
                 value={activeJobs}
                 color="orange"
                 href="/orders"
-                filter={filter}
+                filter="all"
               />
             </Column>
           </div>
@@ -221,35 +226,29 @@ function CardStat({ label, value, color, href, filter }) {
   const router = useRouter();
 
   const colors = {
-    blue: "text-blue-600 bg-blue-50 border-blue-200",
-    green: "text-green-600 bg-green-50 border-green-200",
-    orange: "text-orange-600 bg-orange-50 border-orange-200",
+    blue: "text-grey-200 bg-blue-50 border-blue-200",
+    green: "text-grey-200 bg-green-50 border-green-200",
+    orange: "text-grey-200 bg-orange-50 border-orange-200",
   };
 
   return (
     <div
       onClick={() => router.push(`${href}?filter=${filter}`)}
-      className={`
+      className="
         rounded-xl border shadow-sm p-5 cursor-pointer
         transition-all duration-300 transform 
         hover:scale-[1.03] hover:shadow-md bg-white
         active:scale-[0.98]
-      `}
+      "
     >
       <div className="flex flex-col">
-        <span className="text-sm text-gray-500">{label}</span>
+        <span className="text-l text-gray-500">{label}</span>
 
         <span
-          className={`text-3xl font-bold mt-1 ${colors[color].split(" ")[0]}`}
+          className={`text-xl font-bold mt-1 ${colors[color].split(" ")[0]}`}
         >
           {value}
         </span>
-
-        <div
-          className={`mt-3 inline-block px-3 py-1 rounded-full text-xs ${colors[color]}`}
-        >
-          {label}
-        </div>
       </div>
     </div>
   );

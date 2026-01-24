@@ -15,7 +15,8 @@ export async function GET() {
         status: true,
         position: true,
 
-        description: true, // 👈 🔥 ESTA ES LA CLAVE
+        description: true,
+        createdAt: true, // ✅ CLAVE
 
         pickupToken: true,
         pickedUpAt: true,

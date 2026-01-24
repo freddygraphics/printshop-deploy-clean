@@ -12,6 +12,13 @@ export default function RecordPaymentModal({
   const [paymentMethod, setPaymentMethod] = useState("");
   const [paidOn, setPaidOn] = useState(new Date().toISOString().split("T")[0]);
   const [preset, setPreset] = useState("full"); // full | deposit | custom
+  const isCash = paymentMethod === "Cash";
+  const isCard = paymentMethod === "Card";
+  const isZelle = paymentMethod === "Zelle";
+
+  const cardFeePercent = 3.5; // ✅ AQUÍ ESTÁ BIEN
+
+  const showQuickAmount = isCash || isCard || isZelle;
 
   // Texto que el usuario escribe
   const [amountPaidInput, setAmountPaidInput] = useState(
@@ -63,6 +70,17 @@ export default function RecordPaymentModal({
     setAmountPaid(Number(invoice.balance));
     setAmountPaidInput(Number(invoice.balance).toFixed(2));
   }, [invoice?.balance]);
+
+  const processingFeePercent = 3.5;
+
+  const processingFee = isCard ? amountPaid * (processingFeePercent / 100) : 0;
+  // =======================
+  // TOTAL CHARGED (CLIENT PAYS)
+  // =======================
+  const totalWithFee =
+    isCard && amountPaid > 0
+      ? Number(amountPaid) + Number(processingFee)
+      : Number(amountPaid);
 
   if (invoice.balance <= 0) {
     return (
@@ -124,71 +142,11 @@ export default function RecordPaymentModal({
             </table>
           </div>
         </div>
-        {/* QUICK AMOUNT (KANAKKU STYLE) */}
-        {invoice && (
-          <div className="px-6 pb-4">
-            <p className="text-sm text-gray-600 mb-2">Quick Amount</p>
-
-            <div className="inline-flex rounded-lg border bg-white p-1 gap-1">
-              {/* FULL */}
-              <button
-                type="button"
-                onClick={() => {
-                  setPreset("full");
-                  setAmountPaid(invoice.balance);
-                  setAmountPaidInput(invoice.balance.toFixed(2));
-                }}
-                className={`px-3 py-1.5 text-sm rounded-md ${
-                  preset === "full"
-                    ? "bg-green-600 text-white"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                Full
-              </button>
-
-              {/* 50% DEPOSIT */}
-              {true && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const value =
-                      Math.round(
-                        ((invoice.balance * defaultDepositPercent) / 100) * 100,
-                      ) / 100;
-
-                    setPreset("deposit");
-                    setAmountPaid(value);
-                    setAmountPaidInput(value.toFixed(2));
-                  }}
-                  className={`px-3 py-1.5 text-sm rounded-md ${
-                    preset === "deposit"
-                      ? "bg-green-600 text-white"
-                      : "text-gray-700 hover:bg-gray-100"
-                  }`}
-                >
-                  {defaultDepositPercent}% Deposit
-                </button>
-              )}
-
-              {/* CUSTOM */}
-              <button
-                type="button"
-                onClick={() => setPreset("custom")}
-                className={`px-3 py-1.5 text-sm rounded-md ${
-                  preset === "custom"
-                    ? "bg-green-600 text-white"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                Custom
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* FORM */}
-        <div className="px-6 py-4 space-y-4">
+        {/* FORM */}
+        <div className="px-6 py-4 space-y-6">
+          {/* PAYMENT METHOD + DATE */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* PAYMENT METHOD */}
             <div>
@@ -227,102 +185,141 @@ export default function RecordPaymentModal({
                   setErrors({ ...errors, paidOn: null });
                 }}
               />
-
-              {errors.paidOn && (
-                <p className="text-xs text-red-600 mt-1">Required</p>
-              )}
             </div>
           </div>
 
-          {/* AMOUNTS */}
-          <div className="space-y-4">
-            {/* AMOUNTS + CHANGE */}
-            {paymentMethod === "Cash" && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
-                {/* LEFT COLUMN */}
-                <div className="space-y-4">
-                  {/* AMOUNT PAID */}
-                  {/* AMOUNT PAID */}
-                  <div>
-                    <label className="text-sm font-medium">Amount Paid *</label>
+          {/* QUICK AMOUNT */}
+          {/* QUICK AMOUNT */}
+          {invoice && showQuickAmount && (
+            <div>
+              <p className="text-sm text-gray-600 mb-2">Quick Amount</p>
 
-                    <div className="relative">
-                      <span className="absolute left-3 top-[11px] text-gray-500 pointer-events-none">
-                        $
-                      </span>
+              <div className="inline-flex rounded-lg border bg-white p-1 gap-1">
+                {/* FULL */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPreset("full");
+                    setAmountPaid(invoice.balance);
+                    setAmountPaidInput(invoice.balance.toFixed(2));
+                  }}
+                  className={`px-3 py-1.5 text-sm rounded-md ${
+                    preset === "full"
+                      ? "bg-green-600 text-white"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Full
+                </button>
 
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        className={`w-full h-11 border rounded-lg pl-7 pr-4 py-2 ${
-                          errors.amountPaid ? "border-red-500" : ""
-                        }`}
-                        value={amountPaidInput}
-                        onChange={(e) => {
-                          setPreset("custom");
+                {/* 50% DEPOSIT */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const value =
+                      Math.round(
+                        ((invoice.balance * defaultDepositPercent) / 100) * 100,
+                      ) / 100;
 
-                          const raw = e.target.value;
+                    setPreset("deposit");
+                    setAmountPaid(value);
+                    setAmountPaidInput(value.toFixed(2));
+                  }}
+                  className={`px-3 py-1.5 text-sm rounded-md ${
+                    preset === "deposit"
+                      ? "bg-green-600 text-white"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  {defaultDepositPercent}% Deposit
+                </button>
+              </div>
+            </div>
+          )}
 
-                          // ✅ solo números + 1 punto + 2 decimales
-                          if (!/^\d*\.?\d{0,2}$/.test(raw)) return;
+          {/* AMOUNT PAID */}
+          {showQuickAmount && (
+            <div>
+              <label className="text-sm font-medium">Amount Paid *</label>
+              <div className="relative">
+                <span className="absolute left-3 top-[11px] text-gray-500">
+                  $
+                </span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className={`w-full h-11 border rounded-lg pl-7 pr-4 py-2 ${
+                    errors.amountPaid ? "border-red-500" : ""
+                  }`}
+                  value={amountPaidInput}
+                  onChange={(e) => {
+                    setPreset("custom");
+                    const raw = e.target.value;
+                    if (!/^\d*\.?\d{0,2}$/.test(raw)) return;
+                    setAmountPaidInput(raw);
+                    setAmountPaid(parseFloat(raw || 0));
+                  }}
+                  onBlur={() => {
+                    if (amountPaidInput !== "") {
+                      setAmountPaidInput(Number(amountPaid).toFixed(2));
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          )}
 
-                          setAmountPaidInput(raw);
-                          setAmountPaid(parseFloat(raw || 0));
-                          setErrors({ ...errors, amountPaid: null });
-                        }}
-                        onBlur={() => {
-                          if (amountPaidInput !== "") {
-                            setAmountPaidInput(Number(amountPaid).toFixed(2));
-                          }
-                        }}
-                      />
-                      {errors.amountPaid && (
-                        <p className="text-xs text-red-600 mt-1">
-                          {errors.amountPaid}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+          {/* CASH + ZELLE */}
+          {isCash && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="text-sm font-medium">Amount Received</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className="w-full border rounded-lg px-4 py-2"
+                  value={amountReceivedInput}
+                  onChange={(e) => {
+                    const val = parseMoney(e.target.value);
+                    setAmountReceived(val);
+                    setAmountReceivedInput(formatMoney(val));
+                  }}
+                />
+              </div>
 
-                  {/* AMOUNT RECEIVED */}
-                  <div>
-                    <label className="text-sm font-medium">
-                      Amount Received
-                    </label>
-
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      className="w-full border rounded-lg px-4 py-2"
-                      value={amountReceivedInput}
-                      onChange={(e) => {
-                        const val = parseMoney(e.target.value);
-                        setAmountReceived(val);
-                        setAmountReceivedInput(formatMoney(val));
-                      }}
-                    />
+              {amountReceived > 0 && (
+                <div className="flex items-center justify-center">
+                  <div className="text-center">
+                    <p className="text-sm text-gray-500">Change</p>
+                    <p className="text-3xl font-bold text-green-600">
+                      ${(amountReceived - amountPaid).toFixed(2)}
+                    </p>
                   </div>
                 </div>
+              )}
+            </div>
+          )}
 
-                {/* RIGHT COLUMN – CHANGE */}
-                {paymentMethod === "Cash" && amountReceived > 0 && (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="text-center">
-                      <p className="text-sm text-gray-500">Change</p>
-                      <p className="text-4xl font-bold text-green-600">
-                        ${(amountReceived - amountPaid).toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-                )}
+          {/* CARD FEE */}
+          {isCard && (
+            <div className="bg-gray-50 border rounded-lg p-4 space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">
+                  Processing Fee ({processingFeePercent}%)
+                </span>
+                <span className="text-gray-800">
+                  +${processingFee.toFixed(2)}
+                </span>
               </div>
-            )}
 
-            {/* CASH ONLY */}
-            {paymentMethod === "Cash" && (
-              <div className="flex items-end gap-6"></div>
-            )}
-          </div>
+              <div className="flex justify-between font-semibold">
+                <span className="text-gray-700">Total Charged</span>
+                <span className="text-green-700">
+                  ${totalWithFee.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* NOTE */}
           <div>
@@ -365,10 +362,10 @@ export default function RecordPaymentModal({
                 Number(amountPaid),
                 Number(invoice.balance),
               );
-
               onSave({
                 paymentMethod,
-                amountPaid: safeAmount,
+                amount: amountPaid, // 👈 SOLO invoice amount
+                processingFee, // 👈 extra
                 paidOn,
                 note,
               });

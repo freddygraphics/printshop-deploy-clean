@@ -25,19 +25,29 @@ export async function POST(req, { params }) {
   try {
     const invoiceId = Number(params.id);
     const body = await req.json();
+    const {
+      amount,
+      amountTotal,
+      paymentMethod,
+      method,
+      processingFee = 0,
+      note,
+    } = body;
 
-    const { amount, method, note } = body;
+    const finalAmount = amount; // 👈 NO amountTotal
 
-    if (!amount || amount <= 0) {
+    const finalMethod = paymentMethod ?? method;
+
+    if (!finalAmount || finalAmount <= 0) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
     }
 
-    // 1️⃣ Crear pago
     await prisma.invoicePayment.create({
       data: {
         invoiceId,
-        amount,
-        method,
+        amount: finalAmount, // TOTAL cobrado al cliente
+        processingFee, // 🆕 guardado
+        method: finalMethod,
         note,
       },
     });

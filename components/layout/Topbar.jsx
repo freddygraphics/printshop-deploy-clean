@@ -6,6 +6,7 @@ import { useSession, signOut } from "next-auth/react";
 import { Plus, Search, Menu } from "lucide-react";
 import { ChevronDown, User, Settings, LogOut } from "lucide-react";
 import clsx from "clsx";
+import { FileText, Factory, Users } from "lucide-react";
 
 export default function Topbar({
   collapsed,
@@ -58,59 +59,69 @@ export default function Topbar({
   `}
     >
       {/* Align content with sidebar width */}
-      <div className={`flex items-center w-full px-4 gap-6`}>
-        {/* MOBILE MENU BTN */}
-        <button
-          onClick={onToggleMobile}
-          className="lg:hidden h-10 w-10 rounded-md bg-gray-100 flex items-center justify-center"
-        >
-          <Menu size={20} />
-        </button>
+      <div className="flex items-center w-full px-6 max-w-[1400px] mx-auto">
+        {/* LEFT */}
+        <div className="flex items-center gap-3">
+          {/* Mobile menu */}
+          <button
+            onClick={onToggleMobile}
+            className="lg:hidden h-10 w-10 rounded-md bg-gray-100 flex items-center justify-center"
+          >
+            <Menu size={20} />
+          </button>
 
-        {/* + BUTTON (ROLE BASED) */}
-        {role && CREATE_PERMISSIONS[role]?.length > 0 && (
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={() => setOpenNew(!openNew)}
-              className="w-11 h-11 rounded-full bg-green-500 text-white flex items-center justify-center hover:bg-green-600 shadow-md"
-            >
-              <Plus size={24} />
-            </button>
-
-            {openNew && (
-              <div className="absolute left-0 mt-3 w-52 rounded-xl border bg-white shadow-xl p-1">
-                {canCreate("quote") && (
-                  <DropdownItem href="/quotes/new" label="➕ New Quote" />
-                )}
-
-                {canCreate("invoice") && (
-                  <DropdownItem href="/invoices/new" label="💵 New Invoice" />
-                )}
-                {canCreate("job") && (
-                  <DropdownItem href="/jobs/new" label="🛠 New Job" />
-                )}
-                {canCreate("customer") && (
-                  <DropdownItem href="/clients/new" label="👤 New Customer" />
-                )}
-              </div>
-            )}
+          {/* Search */}
+          <div className="hidden md:flex items-center gap-2 bg-gray-100 rounded-md px-3 h-10 w-64">
+            <Search size={16} className="text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search…"
+              className="bg-transparent outline-none text-sm w-full"
+            />
           </div>
-        )}
+        </div>
 
-        {/* RIGHT SIDE - USER */}
-        <div className="ml-auto flex items-center">
+        {/* CENTER – QUICK ACTIONS */}
+        <div className="flex-1 flex justify-center">
+          <div className="flex items-center gap-2">
+            <Link
+              href="/invoices/new"
+              title="New Invoice"
+              className="p-2 rounded-md hover:bg-gray-100 transition"
+            >
+              <FileText className="w-5 h-5 text-gray-700" />
+            </Link>
+
+            <Link
+              href="/production"
+              title="Production"
+              className="p-2 rounded-md hover:bg-gray-100 transition"
+            >
+              <Factory className="w-5 h-5 text-gray-700" />
+            </Link>
+
+            <Link
+              href="/customers"
+              title="Customers"
+              className="p-2 rounded-md hover:bg-gray-100 transition"
+            >
+              <Users className="w-5 h-5 text-gray-700" />
+            </Link>
+          </div>
+        </div>
+
+        {/* RIGHT – USER */}
+        <div className="flex items-center">
           {session && (
             <div className="relative" ref={userRef}>
               <button
                 onClick={() => setOpenUser(!openUser)}
                 className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition"
               >
-                {/* AVATAR */}
                 <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">
                   {session.user.name?.charAt(0)}
                 </div>
 
-                {/* NAME + ROLE */}
                 <div className="hidden md:block text-left leading-tight">
                   <div className="text-sm font-medium">{session.user.name}</div>
                   <div className="text-xs text-gray-500 capitalize">
@@ -121,7 +132,6 @@ export default function Topbar({
                 <ChevronDown size={16} className="text-gray-400" />
               </button>
 
-              {/* DROPDOWN */}
               {openUser && (
                 <div className="absolute right-0 mt-2 w-52 rounded-xl border bg-white shadow-xl overflow-hidden">
                   <DropdownAction
@@ -134,9 +144,7 @@ export default function Topbar({
                     label="Settings"
                     href="/settings"
                   />
-
                   <div className="border-t my-1" />
-
                   <button
                     onClick={() => signOut({ callbackUrl: "/login" })}
                     className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-gray-100"

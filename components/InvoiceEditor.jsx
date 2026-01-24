@@ -1140,24 +1140,60 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
           <div className="bg-white border rounded-xl p-6 shadow-sm">
             <h3 className="font-semibold mb-4">Payment History</h3>
 
-            {payments.map((p) => (
-              <div
-                key={p.id}
-                className="flex justify-between py-3 border-b last:border-0 text-sm"
-              >
-                <div>
-                  <p className="font-medium">{p.method}</p>
-                  <p className="text-gray-500 text-xs">
-                    {new Date(p.paidAt).toLocaleDateString()}
-                  </p>
-                  {p.note && <p className="italic text-xs">{p.note}</p>}
-                </div>
+            <div className="space-y-3">
+              {payments.map((p) => {
+                const processingFee = p.processingFee || 0;
+                const netReceived = p.amount - processingFee;
 
-                <span className="font-semibold text-emerald-600">
-                  ${p.amount.toFixed(2)}
-                </span>
-              </div>
-            ))}
+                return (
+                  <div
+                    key={p.id}
+                    className="border rounded-lg p-4 flex justify-between items-start bg-white"
+                  >
+                    {/* LEFT */}
+                    <div>
+                      <p className="text-sm font-medium">
+                        {p.method} Payment
+                        {processingFee > 0 && (
+                          <span className="ml-2 text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded">
+                            Processing Fee
+                          </span>
+                        )}
+                      </p>
+
+                      <p className="text-xs text-gray-500">
+                        {new Date(p.paidAt).toLocaleDateString()}
+                      </p>
+
+                      {p.note && (
+                        <p className="text-xs italic text-gray-400 mt-1">
+                          {p.note}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* RIGHT */}
+                    <div className="text-right space-y-1">
+                      <p className="text-sm font-semibold text-emerald-600">
+                        Total Charged: ${p.amount.toFixed(2)}
+                      </p>
+
+                      {processingFee > 0 && (
+                        <>
+                          <p className="text-xs text-red-600">
+                            Processing Fee: -${processingFee.toFixed(2)}
+                          </p>
+
+                          <p className="text-xs font-medium text-green-700">
+                            Net Received: ${netReceived.toFixed(2)}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         ) : (
           // 👇 placeholder invisible para mantener Totals a la derecha
@@ -1376,9 +1412,10 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
-                    amount: payment.amountPaid,
+                    amount: payment.amountTotal, // ✅ LO QUE PAGA EL CLIENTE
                     method: payment.paymentMethod,
                     note: payment.note,
+                    processingFee: payment.processingFee, // 👈 prepárate para el siguiente paso
                   }),
                 },
               );

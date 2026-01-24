@@ -238,15 +238,22 @@ model JobItem {
 }
 
 model InvoicePayment {
-  id        Int      @id @default(autoincrement())
-  invoiceId Int
-  amount    Float
-  method    String
-  note      String?
-  paidAt    DateTime @default(now())
-  createdAt DateTime @default(now())
-  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  id             Int      @id @default(autoincrement())
+  invoiceId      Int
+
+  amount         Float    // TOTAL cobrado al cliente (incluye processing fee)
+  processingFee  Float    @default(0) // 🆕 fee aplicado si Card
+  method         String
+
+  note           String?
+  paidAt         DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  invoice        Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
 }
+
 
 model Settings {
   id                    Int      @id @default(autoincrement())

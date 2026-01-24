@@ -1,28 +1,52 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/db";
-import { buildInvoiceHtml } from "@/lib/invoice/buildInvoiceHtml";
+export const runtime = "nodejs";
+import puppeteer from "puppeteer-core";
+import chromium from "@sparticuz/chromium";
 
 export async function GET(req, { params }) {
-  const id = Number(params.id);
-
-  const invoice = await prisma.invoice.findUnique({
-    where: { id },
-    include: {
-      client: true,
-      invoiceItems: true,
-    },
-  });
-
-  if (!invoice) {
-    return new NextResponse("Invoice not found", { status: 404 });
+  // 🚫 BLOQUEAR LOCAL
+  if (process.env.NODE_ENV !== "production") {
+    return NextResponse.json(
+      {
+        error: "PDF generation is only available in production (Vercel).",
+      },
+      { status: 400 },
+    );
   }
 
-  const html = buildInvoiceHtml(invoice);
+  try {
+    const { id } = params;
 
-  return new NextResponse(html, {
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "no-store",
-    },
-  });
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
+    const htmlUrl = `${baseUrl}/api/invoices/${id}/html`;
+
+    const browser = await puppeteer.launch({
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+    });
+
+    const page = await browser.newPage();
+    await page.goto(htmlUrl, { waitUntil: "networkidle0" });
+
+    const pdf = await page.pdf({
+      format: "Letter",
+      printBackground: true,
+    });
+
+    await browser.close();
+
+    return new NextResponse(pdf, {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `inline; filename="invoice-${id}.pdf"`,
+      },
+    });
+  } catch (err) {
+    console.error("❌ PDF ERROR:", err);
+    return NextResponse.json(
+      { error: "PDF generation failed", details: err.message },
+      { status: 500 },
+    );
+  }
 }
