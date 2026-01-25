@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "app/api/invoices/**/pdf/route.js": {
+      "includedFiles": "node_modules/@sparticuz/chromium/**"
+    }
+  }
+}
