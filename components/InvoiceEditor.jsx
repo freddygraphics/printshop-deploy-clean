@@ -735,7 +735,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   return (
     <div className="w-full max-w-7xl mx-auto px-4 space-y-8">
       <div className="mx-auto mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-700">
+        <h1 className="text-3xl font-bold text-gray-700">
           IN #{invoiceNumber ?? ""}
         </h1>
 
@@ -748,7 +748,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
               !viewUrl ? "opacity-50 cursor-not-allowed" : ""
             }`}
           >
-            {isLocal ? "DOWNLOAD PDF" : "View PDF"}
+            {isLocal ? "Download PDF" : "View PDF"}
           </button>
 
           {/* ACTIONS MENU */}
@@ -781,26 +781,28 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* CUSTOMER */}
             <div className="space-y-4">
-              <h4 className="text-lg font-bold text-black-700">Customer</h4>
+              <h4 className="text-xl font-bold text-black-700">Customer</h4>
 
               {selectedClient ? (
                 <>
                   <div className="flex items-center gap-3">
                     <div>
-                      <p className="text-base font-medium text-black-500">
+                      <p className="text-sm font-semibold text-[#91969C]">
+                        Customer
+                      </p>
+                      <p className="text-xl font-semibold text-black-500">
                         {selectedClient.name}
                       </p>
-                      <p className="text-sm text-#9DA6AF-500">Customer</p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-3">
                     <div>
-                      <p className="text-base font-medium text-black-500">
-                        {selectedClient.company || "Primary Contact"}
-                      </p>
-                      <p className="text-sm text-#9DA6AF-400">
+                      <p className="text-sm font-semibold text-[#91969C]">
                         Primary Contact
+                      </p>
+                      <p className="text-xl font-semibold text-black-500">
+                        {selectedClient.company || "Primary Contact"}
                       </p>
                     </div>
                   </div>

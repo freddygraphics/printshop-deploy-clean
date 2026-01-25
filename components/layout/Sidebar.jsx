@@ -46,16 +46,8 @@ export default function Sidebar({ open, onClose }) {
   `}
     >
       {/* LOGO */}
-      {/* LOGO */}
-      <div className="px-4 py-6  ">
-        <Image
-          src="/logo_side.svg" // o .png
-          alt="Freddy Graphics"
-          width={240}
-          height={80}
-          className="w-full h-auto object-contain"
-          priority
-        />
+      <div className="px-4 py-6 text-xl font-semibold text-gray-900">
+        Freddy Graphics LLC
       </div>
 
       {/* MENU */}
