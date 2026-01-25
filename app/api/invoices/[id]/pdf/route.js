@@ -1,34 +1,37 @@
 import { NextResponse } from "next/server";
 
+export const runtime = "nodejs";
+
 export async function GET(req, { params }) {
   const invoiceId = params.id;
 
-  const isServerless = !!process.env.AWS_LAMBDA_FUNCTION_NAME;
-  let browser;
+  // 🔐 Flag controlado por Vercel
+  const ENABLE_PDF = process.env.ENABLE_PDF === "true";
 
-  if (isServerless) {
-    const puppeteer = (await import("puppeteer-core")).default;
-    const chromium = (await import("@sparticuz/chromium")).default;
-
-    browser = await puppeteer.launch({
-      args: chromium.args,
-      executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
+  if (!ENABLE_PDF) {
+    return new NextResponse("PDF generation disabled. Use /html preview.", {
+      status: 400,
     });
-  } else {
-    // ⚠️ LOCAL: NO intentes PDF
-    return new NextResponse(
-      "PDF generation disabled in local. Use /html preview.",
-      { status: 400 },
-    );
   }
+
+  const puppeteer = (await import("puppeteer-core")).default;
+  const chromium = (await import("@sparticuz/chromium")).default;
+
+  const browser = await puppeteer.launch({
+    args: chromium.args,
+    executablePath: await chromium.executablePath(),
+    headless: chromium.headless,
+  });
 
   const page = await browser.newPage();
 
-  await page.goto(
-    `https://${process.env.VERCEL_URL}/api/invoices/${invoiceId}/html`,
-    { waitUntil: "networkidle0" },
-  );
+  const baseUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "http://localhost:3000";
+
+  await page.goto(`${baseUrl}/api/invoices/${invoiceId}/html`, {
+    waitUntil: "networkidle0",
+  });
 
   const pdf = await page.pdf({
     format: "Letter",
