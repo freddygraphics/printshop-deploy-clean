@@ -15,6 +15,22 @@ import { getInvoiceStatus } from "@/lib/invoiceStatus";
 import DiscountModal from "@/components/modals/DiscountModal";
 
 export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
+  const [invoice, setInvoice] = useState(null);
+
+  // 🔑 IDs
+  const [invoiceIdState, setInvoiceIdState] = useState(null);
+  const [invoiceNumber, setInvoiceNumber] = useState(null); // ✅ ESTA LÍNEA FALTABA
+
+  const isLocal = process.env.NODE_ENV === "development";
+
+  const viewUrl = useMemo(() => {
+    if (!invoiceIdState) return null;
+
+    return isLocal
+      ? `/api/invoices/${invoiceIdState}/html`
+      : `/api/invoices/${invoiceIdState}/pdf`;
+  }, [invoiceIdState, isLocal]);
+
   const [taxEnabled, setTaxEnabled] = useState(true);
   const normalizeOptions = (opts) => {
     if (!opts || Array.isArray(opts)) return {};
@@ -35,7 +51,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
 
   // ✅ SOLO UN DESCUENTO ACTIVO
   const [showDiscountModal, setShowDiscountModal] = useState(false);
-  const [invoice, setInvoice] = useState(null);
+
   const [jobInfo, setJobInfo] = useState(null);
   const [checkingJob, setCheckingJob] = useState(true);
   const invoiceReadyRef = useRef(false);
@@ -93,10 +109,6 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   const [taxRate, setTaxRate] = useState(6.625);
 
   const [customerNotes, setCustomerNotes] = useState("");
-
-  const [invoiceIdState, setInvoiceIdState] = useState(null);
-
-  const [invoiceNumber, setInvoiceNumber] = useState(null);
 
   const [showCreateJobModal, setShowCreateJobModal] = useState(false);
   // ----------------------------------------
@@ -230,7 +242,14 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
     await fetch(`/api/invoices/${invoiceIdState}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ subtotal, tax, total, balance }),
+      body: JSON.stringify({
+        subtotal,
+        tax,
+        total,
+        balance,
+        taxEnabled,
+        taxRate,
+      }),
     });
   };
 
@@ -431,6 +450,17 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   // ----------------------------------------
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
   const balance = total - totalPaid;
+  // ----------------------------------------
+  // PROCESSING FEE (SUMA AL CLIENTE)
+  // ----------------------------------------
+  const totalProcessingFee = payments.reduce(
+    (sum, p) => sum + (p.processingFee || 0),
+    0,
+  );
+
+  // Total que paga el cliente (Total + Fee)
+  const totalCharged = total + totalProcessingFee;
+
   // ----------------------------------------
   // 🧠 STATUS AUTOMÁTICO (DEBE IR AQUÍ)
   // ----------------------------------------
@@ -712,13 +742,13 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         <div className="flex items-center gap-3">
           {/* DOWNLOAD PDF */}
           <button
-            disabled={!invoiceIdState}
-            onClick={() =>
-              window.open(`/api/invoices/${invoiceIdState}/pdf`, "_blank")
-            }
-            className="border px-4 py-2 rounded-lg"
+            disabled={!viewUrl}
+            onClick={() => viewUrl && window.open(viewUrl, "_blank")}
+            className={`border px-4 py-2 rounded-lg text-m font-semibold bg-white${
+              !viewUrl ? "opacity-50 cursor-not-allowed" : ""
+            }`}
           >
-            View PDF
+            {isLocal ? "DOWNLOAD PDF" : "View PDF"}
           </button>
 
           {/* ACTIONS MENU */}
@@ -735,7 +765,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
 
           <div className="flex items-center gap-4">
             <div className="text-sm">
-              <span className="text-green-600 font-medium">Saved</span>
+              <span className="text-[#F9FAFB] font-medium">Saved</span>
             </div>
 
             <button
@@ -1143,7 +1173,6 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
             <div className="space-y-3">
               {payments.map((p) => {
                 const processingFee = p.processingFee || 0;
-                const netReceived = p.amount - processingFee;
 
                 return (
                   <div
@@ -1180,12 +1209,8 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
 
                       {processingFee > 0 && (
                         <>
-                          <p className="text-xs text-red-600">
-                            Processing Fee: -${processingFee.toFixed(2)}
-                          </p>
-
-                          <p className="text-xs font-medium text-green-700">
-                            Net Received: ${netReceived.toFixed(2)}
+                          <p className="text-xs text-blue-600">
+                            Processing Fee: +${processingFee.toFixed(2)}
                           </p>
                         </>
                       )}
@@ -1255,9 +1280,15 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
 
               <p className=" text-2xl font-bold text-gray-900">Total</p>
 
-              {hasPayments && <p className="text-base font-bold">Payments</p>}
+              {totalProcessingFee > 0 && (
+                <p className="text-base">Processing Fee</p>
+              )}
+
               {hasPayments && (
-                <p className="text-base text-red-500 font-bold ">Balance</p>
+                <p className="text-base font-bold">Total Charged</p>
+              )}
+              {hasPayments && (
+                <p className="text-base text-red-500 font-bold">Balance</p>
               )}
             </div>
 
@@ -1274,7 +1305,14 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
               <p>${tax.toFixed(2)}</p>
               <p className="text-2xl font-bold">${total.toFixed(2)}</p>
 
-              {hasPayments && <p>${totalPaid.toFixed(2)}</p>}
+              {totalProcessingFee > 0 && (
+                <p className="text-base">+${totalProcessingFee.toFixed(2)}</p>
+              )}
+
+              {hasPayments && (
+                <p className="font-bold">${totalCharged.toFixed(2)}</p>
+              )}
+
               {hasPayments && (
                 <p className=" text-base font-bold text-red-500">
                   ${balance.toFixed(2)}
@@ -1404,7 +1442,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
           onClose={() => setShowRecordPaymentModal(false)}
           onSave={async (payment) => {
             try {
-              setIsRecordingPayment(true); // 🔒
+              setIsRecordingPayment(true);
 
               const res = await fetch(
                 `/api/invoices/${invoiceIdState}/payments`,
@@ -1412,17 +1450,18 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
-                    amount: payment.amountTotal, // ✅ LO QUE PAGA EL CLIENTE
+                    amount: Number(payment.amount), // ✅ FIX REAL
                     method: payment.paymentMethod,
                     note: payment.note,
-                    processingFee: payment.processingFee, // 👈 prepárate para el siguiente paso
+                    processingFee: Number(payment.processingFee || 0),
+                    paidOn: payment.paidOn, // ✅ opcional pero correcto
                   }),
                 },
               );
 
               if (!res.ok) throw new Error();
 
-              // 🔄 recargar SOLO pagos
+              // 🔄 recargar pagos
               const pRes = await fetch(
                 `/api/invoices/${invoiceIdState}/payments`,
               );
@@ -1433,7 +1472,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
             } catch (err) {
               alert("Error saving payment");
             } finally {
-              setIsRecordingPayment(false); // 🔓
+              setIsRecordingPayment(false);
             }
           }}
         />

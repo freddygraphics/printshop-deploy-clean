@@ -1,52 +1,57 @@
-import { NextResponse } from "next/server";
+// 👇 OBLIGATORIO PARA PRISMA
 export const runtime = "nodejs";
-import puppeteer from "puppeteer-core";
-import chromium from "@sparticuz/chromium";
+
+import { NextResponse } from "next/server";
+import prisma from "@/lib/db";
+import { buildInvoiceHtml } from "@/lib/invoice/buildInvoiceHtml";
 
 export async function GET(req, { params }) {
-  // 🚫 BLOQUEAR LOCAL
-  if (process.env.NODE_ENV !== "production") {
-    return NextResponse.json(
-      {
-        error: "PDF generation is only available in production (Vercel).",
-      },
-      { status: 400 },
-    );
-  }
-
   try {
-    const { id } = params;
+    if (!params?.id) {
+      return new NextResponse("Missing invoice id", { status: 400 });
+    }
 
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
-    const htmlUrl = `${baseUrl}/api/invoices/${id}/html`;
+    const id = Number(params.id);
+    if (!Number.isFinite(id)) {
+      return new NextResponse("Invalid invoice id", { status: 400 });
+    }
 
-    const browser = await puppeteer.launch({
-      args: chromium.args,
-      executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
+    const invoice = await prisma.invoice.findUnique({
+      where: { id },
+      include: {
+        client: true,
+        invoiceItems: true,
+        payments: true,
+      },
     });
 
-    const page = await browser.newPage();
-    await page.goto(htmlUrl, { waitUntil: "networkidle0" });
+    if (!invoice) {
+      return new NextResponse("Invoice not found", { status: 404 });
+    }
 
-    const pdf = await page.pdf({
-      format: "Letter",
-      printBackground: true,
+    // 👇 SI ES async, ESTO LO ARREGLA
+    const html = await buildInvoiceHtml({
+      invoiceNumber: invoice.invoiceNumber,
+      issuedAt: invoice.issuedAt,
+      dueDate: invoice.dueDate,
+      status: invoice.paymentStatus,
+      client: invoice.client,
+      items: invoice.invoiceItems,
+      subtotal: invoice.subtotal,
+      tax: invoice.tax,
+      total: invoice.total,
+      balance: invoice.balance,
+      payments: invoice.payments,
     });
 
-    await browser.close();
-
-    return new NextResponse(pdf, {
+    return new NextResponse(html, {
       headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="invoice-${id}.pdf"`,
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
       },
     });
   } catch (err) {
-    console.error("❌ PDF ERROR:", err);
-    return NextResponse.json(
-      { error: "PDF generation failed", details: err.message },
-      { status: 500 },
-    );
+    console.error("❌ HTML INVOICE ERROR:", err);
+    return new NextResponse("Internal Server Error", { status: 500 });
   }
 }

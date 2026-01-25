@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 
@@ -6,6 +8,10 @@ import prisma from "@/lib/db";
 // ============================
 export async function GET(req, { params }) {
   const invoiceId = Number(params.id);
+
+  if (!Number.isFinite(invoiceId)) {
+    return NextResponse.json([], { status: 200 });
+  }
 
   const payments = await prisma.invoicePayment.findMany({
     where: { invoiceId },
@@ -18,15 +24,22 @@ export async function GET(req, { params }) {
 // ============================
 // POST – Record Payment
 // ============================
-// ============================
-// POST – Record Payment
-// ============================
 export async function POST(req, { params }) {
   try {
     const invoiceId = Number(params.id);
+
+    if (!Number.isFinite(invoiceId)) {
+      return NextResponse.json(
+        { error: "Invalid invoice id" },
+        { status: 400 },
+      );
+    }
+
     const body = await req.json();
+    console.log("💰 PAYMENT BODY:", body);
+
     const {
-      amount,
+      amount, // 👈 customer paid (incluye fee)
       amountTotal,
       paymentMethod,
       method,
@@ -34,33 +47,14 @@ export async function POST(req, { params }) {
       note,
     } = body;
 
-    const finalAmount = amount; // 👈 NO amountTotal
+    const finalAmount = Number(amount ?? amountTotal);
+    const finalMethod = paymentMethod ?? method ?? "Unknown";
 
-    const finalMethod = paymentMethod ?? method;
-
-    if (!finalAmount || finalAmount <= 0) {
+    if (!Number.isFinite(finalAmount) || finalAmount <= 0) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
     }
 
-    await prisma.invoicePayment.create({
-      data: {
-        invoiceId,
-        amount: finalAmount, // TOTAL cobrado al cliente
-        processingFee, // 🆕 guardado
-        method: finalMethod,
-        note,
-      },
-    });
-
-    // 2️⃣ Total pagado
-    const paymentsAgg = await prisma.invoicePayment.aggregate({
-      where: { invoiceId },
-      _sum: { amount: true },
-    });
-
-    const totalPaid = paymentsAgg._sum.amount || 0;
-
-    // 3️⃣ Obtener invoice
+    // 1️⃣ Obtener invoice (ANTES de usarla)
     const invoice = await prisma.invoice.findUnique({
       where: { id: invoiceId },
     });
@@ -69,20 +63,41 @@ export async function POST(req, { params }) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    // 4️⃣ Calcular balance y status
-    const balance = invoice.total - totalPaid;
+    // 2️⃣ Guardar pago (customer paid)
+    await prisma.invoicePayment.create({
+      data: {
+        invoiceId,
+        amount: finalAmount, // total charged
+        processingFee,
+        method: finalMethod,
+        note,
+      },
+    });
 
+    // 3️⃣ Recalcular pagos
+    const payments = await prisma.invoicePayment.findMany({
+      where: { invoiceId },
+    });
+
+    const totalApplied = payments.reduce(
+      (sum, p) => sum + (p.amount - (p.processingFee || 0)),
+      0,
+    );
+
+    const balance = invoice.total - totalApplied;
+
+    // 4️⃣ Status
     let paymentStatus = "Unpaid";
     let paidAt = null;
 
     if (balance <= 0) {
       paymentStatus = "Paid";
       paidAt = new Date();
-    } else if (totalPaid > 0) {
+    } else if (totalApplied > 0) {
       paymentStatus = "Partially Paid";
     }
 
-    // 5️⃣ ACTUALIZAR INVOICE (🔥 CLAVE)
+    // 5️⃣ Update invoice
     await prisma.invoice.update({
       where: { id: invoiceId },
       data: {
@@ -94,7 +109,7 @@ export async function POST(req, { params }) {
 
     return NextResponse.json({
       success: true,
-      totalPaid,
+      totalApplied, // 👈 lo que cubre el invoice
       balance,
       paymentStatus,
     });

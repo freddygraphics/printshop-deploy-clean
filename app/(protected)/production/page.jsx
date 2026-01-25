@@ -201,7 +201,7 @@ function Column({ title, statusKey, jobs, onOpen }) {
   const { setNodeRef, isOver } = useDroppable({ id: statusKey });
 
   return (
-    <div className="w-full">
+    <div className="min-w-0">
       <div className="flex items-center gap-2 mb-2">
         <div className="font-semibold">{title}</div>
         <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 border">
@@ -212,11 +212,11 @@ function Column({ title, statusKey, jobs, onOpen }) {
       <div
         ref={setNodeRef}
         className={[
-          "w-full rounded-2xl min-h-[70vh] bg-gray-100 transition-colors",
+          "rounded-2xl bg-gray-100 h-[calc(100vh-260px)]",
           isOver ? "bg-blue-100/70" : "",
         ].join(" ")}
       >
-        <div className="w-full h-full overflow-auto flex flex-col">
+        <div className="h-full overflow-y-auto overflow-x-hidden flex flex-col min-w-0">
           <SortableContext
             items={jobs.map((j) => j.id)}
             strategy={verticalListSortingStrategy}
@@ -278,22 +278,37 @@ export default function ProductionBoardPage() {
   }, [jobs]);
 
   const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return jobs.filter((j) => {
-      if (
-        q &&
-        !String(j.jobNumber).includes(q) &&
-        !j.client?.name?.toLowerCase().includes(q)
-      )
-        return false;
+    const q = search.trim().toLowerCase();
 
+    return jobs.filter((j) => {
+      // SEARCH
+      if (q) {
+        const haystack = [
+          j.jobNumber,
+          j.invoice?.invoiceNumber,
+          j.client?.name,
+          j.assignedTo,
+          ...(j.invoice?.invoiceItems?.map((i) => i.name) || []),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        if (!haystack.includes(q)) return false;
+      }
+
+      // ASSIGNED
       if (assignedTo !== "All" && j.assignedTo !== assignedTo) return false;
+
+      // PRIORITY
       if (priority !== "All" && j.priority !== priority) return false;
-      if (quickFilter === "Overdue") return isOverdue(j.dueDate);
+
+      // QUICK FILTER
+      if (quickFilter === "Overdue" && !isOverdue(j.dueDate)) return false;
 
       return true;
     });
-  }, [jobs, search, quickFilter, assignedTo, priority]);
+  }, [jobs, search, assignedTo, priority, quickFilter]);
 
   const jobsByStatus = useMemo(() => {
     const map = {
@@ -304,13 +319,13 @@ export default function ProductionBoardPage() {
       Delivered: [],
     };
 
-    jobs.forEach((j) => {
+    filtered.forEach((j) => {
       const key = map[j.status] ? j.status : "Pending";
       map[key].push(j);
     });
 
     return map;
-  }, [jobs]);
+  }, [filtered]);
 
   function handleDragEnd({ active, over }) {
     if (!over) return;
@@ -440,10 +455,7 @@ export default function ProductionBoardPage() {
             onDragCancel={() => setActiveJob(null)}
           >
             <div className="mt-5 overflow-x-auto">
-              <div
-                className="grid grid-flow-col auto-cols-[minmax(260px,1fr)] gap-6
- pb-6 min-w-max"
-              >
+              <div className="grid grid-flow-col auto-cols-[320px] gap-6 pb-6 min-w-max">
                 {STATUSES.map((s) => (
                   <Column
                     key={s.key}

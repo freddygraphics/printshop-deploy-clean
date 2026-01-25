@@ -11,7 +11,7 @@ export async function GET(req, { params }) {
     if (isNaN(id)) {
       return NextResponse.json(
         { error: "Invalid invoice id" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -44,13 +44,19 @@ export async function GET(req, { params }) {
     console.error("❌ GET /api/invoices/[id] ERROR:", error);
     return NextResponse.json(
       { error: "Server error", details: error.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 // ----------------------------------------
 // PATCH — UPDATE INVOICE (fechas / tax)
+// ----------------------------------------
+// ----------------------------------------
+// PATCH — UPDATE INVOICE (fechas / tax / totales)
+// ----------------------------------------
+// ----------------------------------------
+// PATCH — UPDATE INVOICE (fechas / tax / totales)
 // ----------------------------------------
 export async function PATCH(req, { params }) {
   try {
@@ -60,18 +66,30 @@ export async function PATCH(req, { params }) {
     if (isNaN(id)) {
       return NextResponse.json(
         { error: "Invalid invoice id" },
-        { status: 400 }
+        { status: 400 },
       );
     }
+
+    const toNumber = (v) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : undefined;
+    };
 
     const updated = await prisma.invoice.update({
       where: { id },
       data: {
         issuedAt: body.issuedAt ? new Date(body.issuedAt) : undefined,
         dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
+
         taxEnabled:
           typeof body.taxEnabled === "boolean" ? body.taxEnabled : undefined,
-        taxRate: typeof body.taxRate === "number" ? body.taxRate : undefined,
+        taxRate: toNumber(body.taxRate),
+
+        // 🔥 EL ARREGLO
+        subtotal: toNumber(body.subtotal),
+        tax: toNumber(body.tax),
+        total: toNumber(body.total),
+        balance: toNumber(body.balance),
       },
     });
 
@@ -80,7 +98,7 @@ export async function PATCH(req, { params }) {
     console.error("❌ PATCH /api/invoices/[id] ERROR:", error);
     return NextResponse.json(
       { error: "Server error", details: error.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
