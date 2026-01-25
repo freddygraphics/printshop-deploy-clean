@@ -4,43 +4,48 @@ export const runtime = "nodejs";
 
 export async function GET(req, { params }) {
   try {
-    const ENABLE_PDF = process.env.ENABLE_PDF === "true";
-    if (!ENABLE_PDF) {
-      return new NextResponse("PDF disabled", { status: 400 });
+    const invoiceId = params.id;
+
+    const pdfServiceUrl = process.env.PDF_SERVICE_URL;
+    const secret = process.env.PDF_SECRET;
+
+    if (!pdfServiceUrl || !secret) {
+      return NextResponse.json(
+        { error: "Missing PDF_SERVICE_URL or PDF_SECRET" },
+        { status: 500 },
+      );
     }
 
-    const puppeteer = (await import("puppeteer-core")).default;
-    const chromium = (await import("@sparticuz/chromium")).default;
+    const htmlUrl = `https://app.freddygraphics.com/api/invoices/${invoiceId}/html`;
 
-    const browser = await puppeteer.launch({
-      args: chromium.args,
-      executablePath: await chromium.executablePath(),
-      headless: true,
+    const r = await fetch(`${pdfServiceUrl}/generate-pdf`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      // timeout simple (Node 18+ / 20)
+      body: JSON.stringify({ url: htmlUrl, token: secret }),
     });
 
-    const page = await browser.newPage();
+    if (!r.ok) {
+      const txt = await r.text();
+      return NextResponse.json(
+        { error: "PDF service error", status: r.status, details: txt },
+        { status: 500 },
+      );
+    }
 
-    const baseUrl = `https://${process.env.VERCEL_URL}`;
-
-    await page.goto(`${baseUrl}/api/invoices/${params.id}/html`, {
-      waitUntil: "networkidle0",
-    });
-
-    const pdf = await page.pdf({
-      format: "Letter",
-      printBackground: true,
-    });
-
-    await browser.close();
+    const pdf = await r.arrayBuffer();
 
     return new NextResponse(pdf, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename=invoice-${params.id}.pdf`,
+        "Content-Disposition": `inline; filename=invoice-${invoiceId}.pdf`,
       },
     });
   } catch (err) {
-    console.error("PDF ERROR:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error("PDF PROXY ERROR:", err);
+    return NextResponse.json(
+      { error: "PDF proxy failed", details: err.message },
+      { status: 500 },
+    );
   }
 }
