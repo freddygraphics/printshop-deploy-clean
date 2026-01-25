@@ -4,36 +4,25 @@ export const runtime = "nodejs";
 
 export async function GET(req, { params }) {
   try {
-    const invoiceId = params.id;
-
     const ENABLE_PDF = process.env.ENABLE_PDF === "true";
     if (!ENABLE_PDF) {
-      return new NextResponse("PDF generation disabled. Use /html preview.", {
-        status: 400,
-      });
+      return new NextResponse("PDF disabled", { status: 400 });
     }
 
     const puppeteer = (await import("puppeteer-core")).default;
     const chromium = (await import("@sparticuz/chromium")).default;
 
     const browser = await puppeteer.launch({
-      args: [
-        ...chromium.args,
-        "--disable-dev-shm-usage",
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-      ],
+      args: chromium.args,
       executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
+      headless: true,
     });
 
     const page = await browser.newPage();
 
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000";
+    const baseUrl = `https://${process.env.VERCEL_URL}`;
 
-    await page.goto(`${baseUrl}/api/invoices/${invoiceId}/html`, {
+    await page.goto(`${baseUrl}/api/invoices/${params.id}/html`, {
       waitUntil: "networkidle0",
     });
 
@@ -47,18 +36,11 @@ export async function GET(req, { params }) {
     return new NextResponse(pdf, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename=invoice-${invoiceId}.pdf`,
+        "Content-Disposition": `inline; filename=invoice-${params.id}.pdf`,
       },
     });
-  } catch (error) {
-    console.error("PDF ERROR:", error);
-
-    return NextResponse.json(
-      {
-        error: "PDF generation failed",
-        details: error.message,
-      },
-      { status: 500 },
-    );
+  } catch (err) {
+    console.error("PDF ERROR:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
