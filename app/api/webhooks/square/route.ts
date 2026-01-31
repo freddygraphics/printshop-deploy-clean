@@ -7,6 +7,7 @@ export const runtime = "nodejs";
 // ================================
 // 🔐 Verify Square Signature (SHA1)
 // ================================
+// 🔐 Verify Square Signature (SHA256)
 function verifySignature(
   body: string,
   signature: string,
@@ -16,7 +17,7 @@ function verifySignature(
   const payload = url + body;
 
   const hmac = crypto
-    .createHmac("sha1", secret)
+    .createHmac("sha256", secret)
     .update(payload)
     .digest("base64");
 
@@ -29,7 +30,7 @@ function verifySignature(
 export async function POST(req: Request) {
   try {
     const body = await req.text();
-    const signature = req.headers.get("x-square-hmacsha1-signature");
+    const signature = req.headers.get("x-square-hmacsha256-signature");
 
     if (!signature) {
       return NextResponse.json({ error: "Missing signature" }, { status: 400 });

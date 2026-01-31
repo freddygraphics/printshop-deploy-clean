@@ -13,19 +13,22 @@ export function middleware(req) {
     return NextResponse.next();
   }
 
-  // 🔒 SOLO proteger dominio interno
+  // 🔓 RUTAS PÚBLICAS (CLIENTES)
+  if (
+    pathname === "/login" ||
+    pathname.startsWith("/i/") ||
+    pathname.startsWith("/pay/") ||
+    pathname.startsWith("/pickup/")
+  ) {
+    return NextResponse.next();
+  }
+
+  // 🔒 SOLO proteger dashboard interno
   if (hostname === "app.freddygraphics.com") {
-    // ✅ COOKIE REAL DE NEXTAUTH
     const session =
       req.cookies.get("__Secure-next-auth.session-token") ||
       req.cookies.get("next-auth.session-token");
 
-    // permitir login
-    if (pathname === "/login") {
-      return NextResponse.next();
-    }
-
-    // bloquear todo lo demás si no hay sesión
     if (!session) {
       return NextResponse.redirect(new URL("/login", req.url));
     }
