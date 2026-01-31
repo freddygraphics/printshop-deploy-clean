@@ -381,6 +381,27 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
     loadSettings();
   }, [mode]);
 
+  // 🔄 AUTO-REFRESH INVOICE (Square payments)
+  useEffect(() => {
+    if (!invoiceIdState) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/invoices/${invoiceIdState}`);
+        const freshInvoice = await res.json();
+
+        if (Array.isArray(freshInvoice.payments)) {
+          setPayments(freshInvoice.payments);
+          setInvoice(freshInvoice);
+        }
+      } catch (err) {
+        console.error("❌ Error refreshing invoice", err);
+      }
+    }, 5000); // ⏱️ cada 5 segundos
+
+    return () => clearInterval(interval);
+  }, [invoiceIdState]);
+
   // ----------------------------------------
   // PRODUCT AUTOCOMPLETE
   // ----------------------------------------

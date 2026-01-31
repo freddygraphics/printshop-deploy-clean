@@ -19,14 +19,12 @@ export async function GET(req, { params }) {
       where: { id },
       include: {
         client: true,
-        payments: true,
-        invoiceItems: {
-          include: {
-            product: true,
-          },
+        payments: {
+          orderBy: { createdAt: "desc" },
         },
-
-        // 🔥 CLAVE DEL PROBLEMA — ESTO FALTABA
+        invoiceItems: {
+          include: { product: true },
+        },
         appliedDiscounts: true,
       },
     });

@@ -100,6 +100,16 @@ export default function RecordPaymentModal({
     // 🔥 REDIRIGE AL INVOICE CON INTENT
     window.open(`/i/${invoice.publicToken}?pi=${data.intentId}`, "_blank");
   }
+  async function getFreshPublicToken(invoiceId) {
+    const res = await fetch(`/api/invoices/${invoiceId}`);
+    const freshInvoice = await res.json();
+
+    if (!freshInvoice?.publicToken) {
+      throw new Error("Invoice still initializing");
+    }
+
+    return freshInvoice.publicToken;
+  }
 
   async function handleCopyPaymentLink() {
     if (!amountPaid || amountPaid <= 0) {
@@ -129,8 +139,37 @@ export default function RecordPaymentModal({
       return;
     }
 
-    await navigator.clipboard.writeText(data.url);
-    alert("Payment link copied");
+    async function handleCopyPaymentLink() {
+      if (!amountPaid || amountPaid <= 0) {
+        alert("Amount must be greater than $0");
+        return;
+      }
+
+      const res = await fetch("/api/payments/square/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          invoiceId: invoice.id,
+          invoiceNumber: invoice.invoiceNumber,
+          amount: totalWithFee,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.url) {
+        alert("Failed to generate payment link");
+        return;
+      }
+
+      // 🔥 CLAVE: REFRESCAR TOKEN
+      const publicToken = await getFreshPublicToken(invoice.id);
+
+      const link = `${window.location.origin}/i/${publicToken}`;
+
+      await navigator.clipboard.writeText(link);
+      alert("Payment link copied");
+    }
   }
 
   const processingFeePercent = 3.5;
@@ -443,7 +482,9 @@ Freddy Graphics`;
                   const { intentId } = await res.json();
 
                   // ✅ COPY LINK EN VEZ DE ABRIR
-                  const link = `${window.location.origin}/i/${invoice.publicToken}?pi=${intentId}`;
+                  const publicToken = await getFreshPublicToken(invoice.id);
+
+                  const link = `${window.location.origin}/i/${publicToken}?pi=${intentId}`;
                   await navigator.clipboard.writeText(link);
                   alert("Payment link copied");
                 }}

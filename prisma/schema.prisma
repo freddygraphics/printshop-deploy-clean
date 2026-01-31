@@ -151,6 +151,7 @@ model Invoice {
   applyTax   Boolean @default(true) // ✅ NUEVO
 
   squareLinkId    String? // 👈 payment link
+   squareOrderId   String? @unique 
   squarePaymentId String? // 👈 payment real
 
   paymentStatus String    @default("Unpaid")

@@ -12,7 +12,7 @@ export async function POST(req) {
     return NextResponse.json({ error: "Missing token" }, { status: 400 });
   }
 
-  // 1️⃣ Buscar invoice por token
+  // 1️⃣ Buscar invoice
   const invoice = await prisma.invoice.findUnique({
     where: { publicToken: token },
     include: {
@@ -33,7 +33,16 @@ export async function POST(req) {
 
   const intent = invoice.paymentIntents[0];
 
-  // 2️⃣ Crear checkout en Square con DATOS REALES
+  // 🔐 Limpiar order/link previo (evita mismatches)
+  await prisma.invoice.update({
+    where: { id: invoice.id },
+    data: {
+      squareLinkId: null,
+      squareOrderId: null,
+    },
+  });
+
+  // 2️⃣ Crear Payment Link en Square
   const res = await fetch(
     "https://connect.squareup.com/v2/online-checkout/payment-links",
     {
@@ -47,13 +56,10 @@ export async function POST(req) {
         idempotency_key: crypto.randomUUID(),
         order: {
           location_id: process.env.SQUARE_LOCATION_ID,
-          reference_id: `INV-${invoice.invoiceNumber}`,
+          reference_id: `INV-TOKEN-${invoice.publicToken}`,
           line_items: [
             {
-              name:
-                intent.type === "deposit"
-                  ? `Deposit for Invoice #${invoice.invoiceNumber}`
-                  : `Invoice #${invoice.invoiceNumber}`,
+              name: `Invoice #${invoice.invoiceNumber}`,
               quantity: "1",
               base_price_money: {
                 amount: Math.round(intent.totalCharged * 100),
@@ -79,5 +85,39 @@ export async function POST(req) {
     );
   }
 
-  return NextResponse.json({ url: data.payment_link.url });
+  // 🔥 CLAVE ABSOLUTA
+  const orderId = data.payment_link.order_id;
+
+  if (!orderId) {
+    console.error("❌ Square order_id missing", data);
+    return NextResponse.json(
+      { error: "Square order_id missing" },
+      { status: 500 },
+    );
+  }
+  console.log("🔎 payment_link:", data.payment_link);
+  console.log("🧾 order_id:", data.payment_link.order_id);
+
+  // 3️⃣ GUARDAR order_id EN LA INVOICE
+  await prisma.invoice.update({
+    where: { id: invoice.id },
+    data: {
+      squareLinkId: data.payment_link.id,
+      squareOrderId: orderId,
+    },
+  });
+
+  // 4️⃣ DEVOLVER LINK
+  return NextResponse.json({
+    url: data.payment_link.url,
+  });
 }
+const updated = await prisma.invoice.update({
+  where: { id: invoice.id },
+  data: {
+    squareLinkId: data.payment_link.id,
+    squareOrderId: orderId,
+  },
+});
+
+console.log("✅ Invoice updated:", updated.id, updated.squareOrderId);
