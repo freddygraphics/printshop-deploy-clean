@@ -6,8 +6,12 @@ export async function GET(req, { params }) {
     include: {
       client: true,
       invoiceItems: true,
-      payments: true,
       appliedDiscounts: true,
+      paymentIntents: {
+        where: { status: "pending" },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
     },
   });
 
@@ -15,13 +19,13 @@ export async function GET(req, { params }) {
     return Response.json({ error: "Not found" }, { status: 404 });
   }
 
+  const intent = invoice.paymentIntents[0] || null;
   const discount = invoice.appliedDiscounts?.[0] || null;
 
   return Response.json({
     invoiceNumber: invoice.invoiceNumber,
     issuedAt: invoice.issuedAt,
     dueDate: invoice.dueDate,
-    status: invoice.paymentStatus,
 
     client: {
       name: invoice.client.name,
@@ -35,16 +39,24 @@ export async function GET(req, { params }) {
       total: i.total,
     })),
 
-    // 🔐 VALORES OFICIALES (YA CALCULADOS)
     subtotal: invoice.subtotal,
     tax: invoice.tax,
     total: invoice.total,
     balance: invoice.balance,
 
     discount: discount
+      ? { name: discount.name, amount: discount.amount }
+      : null,
+
+    // 🔑 PAYMENT INTENT (LA VERDAD)
+    paymentIntent: intent
       ? {
-          name: discount.name,
-          amount: discount.amount,
+          id: intent.id, // 🔑 CLAVE
+          type: intent.type,
+          amount: intent.amount,
+          processingFee: intent.processingFee,
+          totalCharged: intent.totalCharged,
+          method: intent.method,
         }
       : null,
 

@@ -16,6 +16,13 @@ export default function RecordPaymentModal({
   const isCard = paymentMethod === "Card";
   const isZelle = paymentMethod === "Zelle";
 
+  const publicSiteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+  const invoiceLink = invoice?.publicToken
+    ? `${publicSiteUrl}/i/${invoice.publicToken}`
+    : "";
+
   const cardFeePercent = 3.5; // ✅ AQUÍ ESTÁ BIEN
 
   const showQuickAmount = isCash || isCard || isZelle;
@@ -71,9 +78,98 @@ export default function RecordPaymentModal({
     setAmountPaidInput(Number(invoice.balance).toFixed(2));
   }, [invoice?.balance]);
 
+  async function openInvoiceForPayment() {
+    const res = await fetch("/api/payment-intents", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        invoiceId: invoice.id,
+        amount: amountPaid,
+        processingFee,
+        method: "card",
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!data.intentId) {
+      alert("Failed to prepare payment");
+      return;
+    }
+
+    // 🔥 REDIRIGE AL INVOICE CON INTENT
+    window.open(`/i/${invoice.publicToken}?pi=${data.intentId}`, "_blank");
+  }
+
+  async function handleCopyPaymentLink() {
+    if (!amountPaid || amountPaid <= 0) {
+      alert("Amount must be greater than $0");
+      return;
+    }
+    console.log("➡️ Sending to Square:", {
+      invoiceId: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      amount: totalWithFee,
+    });
+
+    const res = await fetch("/api/payments/square/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        invoiceId: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        amount: totalWithFee, // 👈 FULL o 50% + FEE
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.url) {
+      alert("Failed to generate payment link");
+      return;
+    }
+
+    await navigator.clipboard.writeText(data.url);
+    alert("Payment link copied");
+  }
+
   const processingFeePercent = 3.5;
 
   const processingFee = isCard ? amountPaid * (processingFeePercent / 100) : 0;
+
+  function buildReceiptMessage() {
+    const clientName = invoice?.client?.name || "there";
+    const invNo = invoice?.invoiceNumber || "";
+    const charged = Number(totalWithFee || 0).toFixed(2);
+
+    const remaining = Math.max(
+      Number(invoice.balance || 0) - Number(amountPaid || 0),
+      0,
+    ).toFixed(2);
+
+    // Resumen simple de items (opcional)
+    const itemsSummary =
+      Array.isArray(invoice.items) && invoice.items.length
+        ? invoice.items
+            .slice(0, 3)
+            .map((it) => `${it.name} x${it.qty || 1}`)
+            .join(", ") + (invoice.items.length > 3 ? "…" : "")
+        : "Your order";
+
+    return `✅ Payment received – Invoice #${invNo}
+
+Hi ${clientName}, we received your payment of $${charged}.
+
+🖨️ ${itemsSummary}
+Balance due: $${remaining}
+
+👉 View full invoice & details:
+${invoiceLink}
+
+Thank you,
+Freddy Graphics`;
+  }
+
   // =======================
   // TOTAL CHARGED (CLIENT PAYS)
   // =======================
@@ -318,6 +414,54 @@ export default function RecordPaymentModal({
                   ${totalWithFee.toFixed(2)}
                 </span>
               </div>
+              <button
+                type="button"
+                className="btn btn-outline mt-2 w-full"
+                onClick={async () => {
+                  const totalCharged =
+                    Number(amountPaid || 0) + Number(processingFee || 0);
+
+                  const res = await fetch("/api/payment-intents", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      invoiceId: invoice.id,
+                      amount: amountPaid, // 50% o full
+                      processingFee,
+                      totalCharged,
+                      method: "card",
+                      type: preset === "deposit" ? "deposit" : "full",
+                      status: "pending",
+                    }),
+                  });
+
+                  if (!res.ok) {
+                    alert("Failed to prepare payment");
+                    return;
+                  }
+
+                  const { intentId } = await res.json();
+
+                  // ✅ COPY LINK EN VEZ DE ABRIR
+                  const link = `${window.location.origin}/i/${invoice.publicToken}?pi=${intentId}`;
+                  await navigator.clipboard.writeText(link);
+                  alert("Payment link copied");
+                }}
+              >
+                Copy Payment Link
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  const msg = buildReceiptMessage();
+                  await navigator.clipboard.writeText(msg);
+                  alert("WhatsApp/SMS message copied ✅");
+                }}
+                className="btn btn-outline mt-2 w-full"
+              >
+                Copy WhatsApp / SMS Message
+              </button>
             </div>
           )}
 

@@ -1,143 +1,83 @@
-import { NextResponse } from "next/server";
+// app/api/payments/square/checkout/route.js
 import prisma from "@/lib/db";
 import crypto from "crypto";
+import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-// 🔹 Sandbox o Producción (según tu token)
-// 🟢 SANDBOX (LOCAL / TESTING)
-// 🚀 PRODUCCIÓN
-const SQUARE_URL =
-  "https://connect.squareup.com/v2/online-checkout/payment-links";
-
 export async function POST(req) {
-  try {
-    const { token } = await req.json();
+  const { token } = await req.json();
 
-    if (!token) {
-      return NextResponse.json(
-        { error: "Missing public token" },
-        { status: 400 },
-      );
-    }
+  if (!token) {
+    return NextResponse.json({ error: "Missing token" }, { status: 400 });
+  }
 
-    // 1️⃣ Buscar invoice por TOKEN (NO por ID)
-    const invoice = await prisma.invoice.findUnique({
-      where: { publicToken: token },
-      include: {
-        invoiceItems: true,
-        payments: true,
-        appliedDiscounts: true,
+  // 1️⃣ Buscar invoice por token
+  const invoice = await prisma.invoice.findUnique({
+    where: { publicToken: token },
+    include: {
+      paymentIntents: {
+        where: { status: "pending" },
+        orderBy: { createdAt: "desc" },
+        take: 1,
       },
-    });
+    },
+  });
 
-    if (!invoice) {
-      return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
-    }
-
-    // 2️⃣ RECALCULAR BALANCE (FUENTE DE VERDAD)
-    const subtotal = invoice.invoiceItems.reduce(
-      (sum, i) => sum + Number(i.total ?? i.unitPrice * i.qty),
-      0,
+  if (!invoice || invoice.paymentIntents.length === 0) {
+    return NextResponse.json(
+      { error: "No active payment intent" },
+      { status: 400 },
     );
+  }
 
-    const discount = invoice.appliedDiscounts?.[0] || null;
+  const intent = invoice.paymentIntents[0];
 
-    let discountAmount = 0;
-    if (discount) {
-      discountAmount =
-        discount.type === "percent"
-          ? subtotal * (discount.value / 100)
-          : discount.value;
-      discountAmount = Math.min(discountAmount, subtotal);
-    }
-
-    const discountedSubtotal = subtotal - discountAmount;
-
-    const taxRate = Number(invoice.taxRate || 0);
-    const tax =
-      invoice.taxEnabled && taxRate > 0
-        ? discountedSubtotal * (taxRate / 100)
-        : 0;
-
-    const total = discountedSubtotal + tax;
-
-    const paymentsTotal = invoice.payments.reduce(
-      (sum, p) => sum + Number(p.amount || 0),
-      0,
-    );
-
-    const balance = Math.max(total - paymentsTotal, 0);
-
-    if (balance <= 0) {
-      return NextResponse.json(
-        { error: "Invoice already paid" },
-        { status: 400 },
-      );
-    }
-
-    // 3️⃣ Square config
-    const accessToken = process.env.SQUARE_ACCESS_TOKEN;
-    const locationId = process.env.SQUARE_LOCATION_ID;
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL; // 👉 pay.freddygraphics.com
-
-    if (!accessToken || !locationId || !siteUrl) {
-      return NextResponse.json(
-        { error: "Missing Square env vars" },
-        { status: 500 },
-      );
-    }
-
-    // 4️⃣ Crear checkout en Square
-    const response = await fetch(SQUARE_URL, {
+  // 2️⃣ Crear checkout en Square con DATOS REALES
+  const res = await fetch(
+    "https://connect.squareup.com/v2/online-checkout/payment-links",
+    {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${process.env.SQUARE_ACCESS_TOKEN}`,
         "Content-Type": "application/json",
         "Square-Version": "2024-01-18",
       },
       body: JSON.stringify({
         idempotency_key: crypto.randomUUID(),
         order: {
-          location_id: locationId,
-          reference_id: `INV-TOKEN-${invoice.publicToken}`,
+          location_id: process.env.SQUARE_LOCATION_ID,
+          reference_id: `INV-${invoice.invoiceNumber}`,
           line_items: [
             {
-              name: `Invoice #${invoice.invoiceNumber}`,
+              name:
+                intent.type === "deposit"
+                  ? `Deposit for Invoice #${invoice.invoiceNumber}`
+                  : `Invoice #${invoice.invoiceNumber}`,
               quantity: "1",
               base_price_money: {
-                amount: Math.round(balance * 100),
+                amount: Math.round(intent.totalCharged * 100),
                 currency: "USD",
               },
             },
           ],
         },
-
         checkout_options: {
-          redirect_url: `${siteUrl}/i/${invoice.publicToken}?paid=1`,
+          redirect_url: `${process.env.NEXT_PUBLIC_SITE_URL}/i/${token}`,
         },
       }),
-    });
+    },
+  );
 
-    const data = await response.json();
+  const data = await res.json();
 
-    if (!response.ok || !data?.payment_link?.url) {
-      console.error("❌ Square error:", data);
-      return NextResponse.json(
-        { error: "Square checkout error" },
-        { status: 500 },
-      );
-    }
-
-    // 5️⃣ DEVOLVER URL A /pay/[token]
-    return NextResponse.json({
-      checkoutUrl: data.payment_link.url,
-    });
-  } catch (err) {
-    console.error("❌ CHECKOUT ERROR:", err);
+  if (!res.ok || !data.payment_link?.url) {
+    console.error("❌ Square error:", data);
     return NextResponse.json(
-      { error: err.message || "Checkout failed" },
+      { error: "Square checkout failed" },
       { status: 500 },
     );
   }
+
+  return NextResponse.json({ url: data.payment_link.url });
 }

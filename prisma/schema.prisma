@@ -8,8 +8,6 @@ generator client {
   provider = "prisma-client-js"
 }
 
-
-
 model Client {
   id        Int       @id @default(autoincrement())
   name      String
@@ -31,23 +29,62 @@ model Client {
 }
 
 model Product {
-  id             Int           @id @default(autoincrement())
-  name           String
-  sku            String?       @unique
-  description    String?
-  category       String?
-  basePrice      Float         @default(0)
+  id          Int     @id @default(autoincrement())
+  name        String
+  sku         String? @unique
+  description String?
+  category    String?
+
+  pricingMode String @default("manual")
+  basePrice   Float  @default(0) // SOLO manual
+
   defaultOptions Json?
   customFields   Json?
-  templateType   String?
-  templateId     Int?
-  price          Float?        @default(0)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  invoiceItems   InvoiceItem[]
-  orders         Order[]
-  template       Template?     @relation(fields: [templateId], references: [id])
-  quoteItems     QuoteItem[]
+
+  templateType String?
+  templateId   Int?
+  template     Template? @relation(fields: [templateId], references: [id])
+
+  invoiceItems InvoiceItem[]
+  quoteItems   QuoteItem[]
+  orders       Order[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PrintProductionProfile {
+  id   String @id @default(cuid())
+  name String
+
+  machine   String
+  processId String
+  process   Process @relation(fields: [processId], references: [id])
+
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id])
+
+  minWidth  Float
+  maxWidth  Float
+  minHeight Float
+  maxHeight Float
+
+  allowKissCut Boolean @default(false)
+  allowDieCut  Boolean @default(false)
+
+  laminationId String?
+  lamination   Finish? @relation(fields: [laminationId], references: [id])
+
+  wastePercent Float @default(10)
+  setupCost    Float @default(0)
+
+  isActive Boolean @default(true)
+
+  invoiceItems InvoiceItem[]
+
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  quoteItems QuoteItem[]
 }
 
 model Quote {
@@ -80,80 +117,115 @@ model Counter {
 }
 
 model QuoteItem {
-  id        Int      @id @default(autoincrement())
+  id        Int  @id @default(autoincrement())
   quoteId   Int
   productId Int?
+
+  printProductionProfileId String?
+  printProductionProfile   PrintProductionProfile? @relation(fields: [printProductionProfileId], references: [id])
+
   name      String
   qty       Int
   unitPrice Float
   total     Float
   options   Json?
   notes     String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  product   Product? @relation(fields: [productId], references: [id])
-  quote     Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  product Product? @relation(fields: [productId], references: [id])
+  quote   Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
 }
 
 model Invoice {
-  id               Int               @id @default(autoincrement())
-  clientId         Int
-  quoteId          Int?
-  subtotal         Float             @default(0)
-  tax              Float             @default(0)
-   // 🆕 NUEVOS CAMPOS (NO ROMPEN NADA)
-  taxRate          Float             @default(6.625)
-  taxEnabled       Boolean           @default(true)
-  total            Float             @default(0)
-    applyTax     Boolean  @default(true) // ✅ NUEVO
-  paymentStatus    String            @default("Unpaid")
-  issuedAt         DateTime
-  dueDate          DateTime?
-  notes            String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  id         Int     @id @default(autoincrement())
+  clientId   Int
+  quoteId    Int?
+  subtotal   Float   @default(0)
+  tax        Float   @default(0)
+  // 🆕 NUEVOS CAMPOS (NO ROMPEN NADA)
+  taxRate    Float   @default(6.625)
+  taxEnabled Boolean @default(true)
+  total      Float   @default(0)
+  applyTax   Boolean @default(true) // ✅ NUEVO
 
-  userId           Int?
-  invoiceNumber    Int               @unique
- publicToken String @unique
+  squareLinkId    String? // 👈 payment link
+  squarePaymentId String? // 👈 payment real
 
+  paymentStatus String    @default("Unpaid")
+  issuedAt      DateTime
+  dueDate       DateTime?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  discountAmount   Float             @default(0) 
- 
-  paidAt           DateTime?
+  userId        Int?
+  invoiceNumber Int    @unique
+  publicToken   String @unique
 
-  balance          Float             @default(0)
-    // 🆕 PICKUP
+  discountAmount Float @default(0)
 
+  paidAt DateTime?
 
-  status           InvoiceStatus     @default(DRAFT)
-  voidReason       String?
-  voidedAt         DateTime?
-  client           Client            @relation(fields: [clientId], references: [id])
-  quote            Quote?            @relation(fields: [quoteId], references: [id])
-  user             User?             @relation(fields: [userId], references: [id])
+  balance Float @default(0)
+  // 🆕 PICKUP
+
+  status     InvoiceStatus @default(DRAFT)
+  voidReason String?
+  voidedAt   DateTime?
+  client     Client        @relation(fields: [clientId], references: [id])
+  quote      Quote?        @relation(fields: [quoteId], references: [id])
+  user       User?         @relation(fields: [userId], references: [id])
 
   appliedDiscounts InvoiceDiscount[]
   invoiceItems     InvoiceItem[]
   payments         InvoicePayment[]
   job              Job?
   orders           Order[]
+  paymentIntents   PaymentIntent[]
+}
+
+model PaymentIntent {
+  id            String   @id @default(cuid())
+  invoiceId     Int
+  amount        Float
+  processingFee Float
+  totalCharged  Float
+  method        String
+  type          String   @default("full") // 👈 FIX CLAVE
+  status        String   @default("pending")
+  createdAt     DateTime @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
 }
 
 model InvoiceItem {
-  id        Int      @id @default(autoincrement())
+  id        Int  @id @default(autoincrement())
   invoiceId Int
   productId Int?
+
+  printProductionProfileId String?
+  printProductionProfile   PrintProductionProfile? @relation(fields: [printProductionProfileId], references: [id])
+
   name      String
   qty       Int
   unitPrice Float
   total     Float
+
+  pricingMode   String @default("manual")
+  widthIn       Float?
+  heightIn      Float?
+  sqft          Float?
+  priceSnapshot Json?
+
   options   Json?
   notes     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  product   Product? @relation(fields: [productId], references: [id])
+
+  invoice Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
 }
 
 model Order {
@@ -204,7 +276,7 @@ model Job {
   jobNumber           Int       @unique
   clientId            Int
   status              JobStatus @default(Pending)
-description String?
+  description         String?
   dueDate             DateTime?
   notes               String?
   salesRepId          Int?
@@ -213,19 +285,17 @@ description String?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  invoiceId           Int       @unique
-  position            Int       @default(0)
-   // ✅ QR / PICKUP (AQUI)
-  pickupToken         String?   @unique
-  pickedUpAt          DateTime?
-  pickedUpBy          String?   // simple, luego lo mejoras a UserId si quieres
- files     JobFile[]   // ✅ ESTA LÍNEA ES LA CLAVE
-  client              Client    @relation(fields: [clientId], references: [id])
-  invoice             Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
-  items               JobItem[]
+  invoiceId   Int       @unique
+  position    Int       @default(0)
+  // ✅ QR / PICKUP (AQUI)
+  pickupToken String?   @unique
+  pickedUpAt  DateTime?
+  pickedUpBy  String? // simple, luego lo mejoras a UserId si quieres
+  files       JobFile[] // ✅ ESTA LÍNEA ES LA CLAVE
+  client      Client    @relation(fields: [clientId], references: [id])
+  invoice     Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  items       JobItem[]
 }
-
-
 
 model JobItem {
   id        Int    @id @default(autoincrement())
@@ -238,22 +308,23 @@ model JobItem {
 }
 
 model InvoicePayment {
-  id             Int      @id @default(autoincrement())
-  invoiceId      Int
+  id        Int @id @default(autoincrement())
+  invoiceId Int
 
-  amount         Float    // TOTAL cobrado al cliente (incluye processing fee)
-  processingFee  Float    @default(0) // 🆕 fee aplicado si Card
-  method         String
+  amount        Float
+  processingFee Float  @default(0)
+  method        String
 
-  note           String?
-  paidAt         DateTime @default(now())
-  createdAt      DateTime @default(now())
+  squarePaymentId String? @unique // 👈 OBLIGATORIO
 
-  invoice        Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  note      String?
+  paidAt    DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@index([invoiceId])
 }
-
 
 model Settings {
   id                    Int      @id @default(autoincrement())
@@ -315,6 +386,7 @@ enum InvoiceStatus {
   PAID
   VOID
 }
+
 enum JobStatus {
   Pending
   Design
@@ -322,6 +394,7 @@ enum JobStatus {
   Ready
   Delivered
 }
+
 model JobFile {
   id        Int      @id @default(autoincrement())
   jobId     Int
@@ -331,4 +404,57 @@ model JobFile {
   createdAt DateTime @default(now())
 
   job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+}
+
+model Material {
+  id       String @id @default(cuid())
+  name     String
+  category String
+  unitType String // roll | sheet
+
+  // Roll
+  rollWidthIn  Float?
+  rollLengthFt Float?
+
+  // Sheet
+  sheetWidthIn  Float?
+  sheetHeightIn Float?
+
+  rollCost     Float?
+  wastePercent Float?
+
+  costPerSqft Float
+  sellPerSqft Float
+
+  active Boolean @default(true)
+
+  printProductionProfiles PrintProductionProfile[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Process {
+  id          String @id @default(cuid())
+  name        String
+  category    String
+  costPerSqft Float
+  sellPerSqft Float
+
+  printProductionProfiles PrintProductionProfile[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Finish {
+  id        String @id @default(cuid())
+  name      String
+  unitType  String
+  sellPrice Float
+
+  printProductionProfiles PrintProductionProfile[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

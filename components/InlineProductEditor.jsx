@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { memo } from "react";
+import { calcSqft } from "@/lib/pricing/pricingEngine";
 
 function InlineProductEditor({ product, data, onChange, onClose }) {
   const cfg = product?.customFields || {};
@@ -10,6 +11,14 @@ function InlineProductEditor({ product, data, onChange, onClose }) {
   // ------------------------------------------
   // SAFE INITIAL VALUES
   // ------------------------------------------
+  const [finishes, setFinishes] = useState([]);
+  const [selectedFinishes, setSelectedFinishes] = useState({});
+
+  const [widthIn, setWidthIn] = useState(data.options?.widthIn || "");
+  const [heightIn, setHeightIn] = useState(data.options?.heightIn || "");
+  const [materialId, setMaterialId] = useState(data.options?.materialId || "");
+
+  const [materials, setMaterials] = useState([]);
 
   const opts = data?.options || {};
   const safe = {
@@ -31,14 +40,94 @@ function InlineProductEditor({ product, data, onChange, onClose }) {
   };
 
   const [local, setLocal] = useState(safe);
+  const sqftPerUnit = useMemo(
+    () => calcSqft(widthIn, heightIn),
+    [widthIn, heightIn],
+  );
+
+  const selectedMaterial = useMemo(
+    () => materials.find((m) => m.id === materialId),
+    [materials, materialId],
+  );
+
+  const estimatedUnitPrice = useMemo(() => {
+    if (!sqftPerUnit || !selectedMaterial) return 0;
+    return Number((sqftPerUnit * selectedMaterial.sellPerSqft).toFixed(2));
+  }, [sqftPerUnit, selectedMaterial]);
+
+  const estimatedTotal = useMemo(() => {
+    if (!estimatedUnitPrice) return 0;
+    return Number((estimatedUnitPrice * (data.qty || 1)).toFixed(2));
+  }, [estimatedUnitPrice, data.qty]);
+
+  useEffect(() => {
+    if (
+      product?.templateType !== "large-format" ||
+      data?.options?.pricingMode === "sqft"
+    )
+      return;
+
+    onChange({
+      options: {
+        ...data.options,
+        pricingMode: "sqft",
+        widthIn: Number(widthIn) || 0,
+        heightIn: Number(heightIn) || 0,
+        materialId: materialId || "",
+      },
+    });
+  }, [product]);
+
+  useEffect(() => {
+    if (!selectedMaterial || !sqftPerUnit) return;
+
+    let unit = sqftPerUnit * selectedMaterial.sellPerSqft;
+
+    Object.values(selectedFinishes).forEach((f) => {
+      if (!f.enabled) return;
+
+      if (f.unitType === "each") {
+        unit += f.qty * f.sellPrice;
+      }
+
+      if (f.unitType === "sqft") {
+        unit += sqftPerUnit * f.sellPrice;
+      }
+    });
+
+    const total = unit * (data.qty || 1);
+
+    setLocal((prev) => ({
+      ...prev,
+      unitPrice: Number(unit.toFixed(2)),
+      total: Number(total.toFixed(2)),
+    }));
+  }, [selectedMaterial, sqftPerUnit, selectedFinishes, data.qty]);
+
+  useEffect(() => {
+    fetch("/api/finishes")
+      .then((r) => r.json())
+      .then(setFinishes)
+      .catch(console.error);
+  }, []);
 
   // Reset when data changes
   // -----------------------------------------------------
   // RESET LOCAL STATE AL CAMBIAR DATA
   // -----------------------------------------------------
   useEffect(() => {
+    if (data?.options?.pricingMode !== "sqft") return;
+
+    fetch("/api/materials")
+      .then((r) => r.json())
+      .then(setMaterials)
+      .catch(console.error);
+  }, [data?.options?.pricingMode]);
+
+  useEffect(() => {
+    if (data?._expanded !== true) return;
     setLocal(safe);
-  }, [data]);
+  }, [data?._expanded]);
 
   // -----------------------------------------------------
   // 🔥 FIX: AUTO-CALCULAR AL ABRIR CONFIGURABLE
@@ -97,16 +186,16 @@ function InlineProductEditor({ product, data, onChange, onClose }) {
     const qtyPrice = Number(qtyObj?.price || 0);
 
     const finishPrice = Number(
-      cfg.finish?.find((f) => f.name === updated.finish)?.price || 0
+      cfg.finish?.find((f) => f.name === updated.finish)?.price || 0,
     );
     const designPrice = Number(
-      cfg.design?.find((d) => d.name === updated.design)?.price || 0
+      cfg.design?.find((d) => d.name === updated.design)?.price || 0,
     );
     const sidesPrice = Number(
-      cfg.sides?.find((s) => s.name === updated.sides)?.price || 0
+      cfg.sides?.find((s) => s.name === updated.sides)?.price || 0,
     );
     const cornersPrice = Number(
-      cfg.corners?.find((c) => c.name === updated.corners)?.price || 0
+      cfg.corners?.find((c) => c.name === updated.corners)?.price || 0,
     );
 
     const subtotal =
@@ -232,8 +321,8 @@ function InlineProductEditor({ product, data, onChange, onClose }) {
                   local.discountType === "percent"
                     ? "Discount %"
                     : local.discountType === "amount"
-                    ? "Discount amount"
-                    : "Add discount"
+                      ? "Discount amount"
+                      : "Add discount"
                 }
                 value={local.discountValue ?? ""}
                 onChange={(e) =>
@@ -314,6 +403,197 @@ function InlineProductEditor({ product, data, onChange, onClose }) {
                     </option>
                   ))}
                 </select>
+              </div>
+            )}
+            {product?.templateType === "large-format" && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                {/* WIDTH */}
+                <div>
+                  <label className="text-xs font-semibold text-gray-500">
+                    Width (in)
+                  </label>
+                  <input
+                    inputMode="decimal"
+                    className="mt-1 border rounded-lg px-3 py-2.5 w-full"
+                    value={widthIn}
+                    onChange={(e) => {
+                      setWidthIn(e.target.value);
+                      onChange({
+                        options: {
+                          ...data.options,
+                          pricingMode: "sqft",
+                          widthIn: Number(e.target.value),
+                          heightIn: Number(heightIn),
+                          materialId,
+                        },
+                      });
+                    }}
+                  />
+                </div>
+
+                {/* HEIGHT */}
+                <div>
+                  <label className="text-xs font-semibold text-gray-500">
+                    Height (in)
+                  </label>
+                  <input
+                    inputMode="decimal"
+                    className="mt-1 border rounded-lg px-3 py-2.5 w-full"
+                    value={heightIn}
+                    onChange={(e) => {
+                      setHeightIn(e.target.value);
+                      onChange({
+                        options: {
+                          ...data.options,
+                          pricingMode: "sqft",
+                          widthIn: Number(widthIn),
+                          heightIn: Number(e.target.value),
+                          materialId,
+                        },
+                      });
+                    }}
+                  />
+                </div>
+
+                {/* MATERIAL */}
+                <div className="col-span-2">
+                  <label className="text-xs font-semibold text-gray-500">
+                    Material
+                  </label>
+                  <select
+                    className="mt-1 border rounded-lg px-3 py-2.5 w-full"
+                    value={materialId || ""}
+                    onChange={(e) => {
+                      const id = e.target.value; // 👈 STRING
+
+                      setMaterialId(id);
+
+                      onChange({
+                        options: {
+                          ...data.options,
+                          pricingMode: "sqft",
+                          widthIn: Number(widthIn),
+                          heightIn: Number(heightIn),
+                          materialId: id, // 👈 STRING
+                        },
+                      });
+                    }}
+                  >
+                    <option value="">Select material</option>
+                    {materials.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {/* ================= FINISHES ================= */}
+                <div className="col-span-full mt-6 border-t pt-4">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                    Finishes
+                  </h4>
+
+                  <div className="space-y-2">
+                    {finishes.map((f) => {
+                      const enabled = selectedFinishes[f.id]?.enabled || false;
+                      const qty = selectedFinishes[f.id]?.qty || 1;
+
+                      return (
+                        <div
+                          key={f.id}
+                          className="flex items-center gap-3 text-sm"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={enabled}
+                            onChange={(e) => {
+                              setSelectedFinishes((prev) => ({
+                                ...prev,
+                                [f.id]: {
+                                  enabled: e.target.checked,
+                                  qty: f.unitType === "each" ? 1 : null,
+                                  sellPrice: f.sellPrice,
+                                  unitType: f.unitType,
+                                  name: f.name,
+                                },
+                              }));
+                            }}
+                          />
+
+                          <span className="flex-1">
+                            {f.name} (${f.sellPrice} / {f.unitType})
+                          </span>
+
+                          {enabled && f.unitType === "each" && (
+                            <input
+                              type="number"
+                              min="1"
+                              className="w-20 border rounded px-2 py-1"
+                              value={qty}
+                              onChange={(e) =>
+                                setSelectedFinishes((prev) => ({
+                                  ...prev,
+                                  [f.id]: {
+                                    ...prev[f.id],
+                                    qty: Number(e.target.value),
+                                  },
+                                }))
+                              }
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {product?.templateType === "large-format" && (
+                  <div className="mt-4 border rounded-xl bg-gray-50 p-4 col-span-full">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                      Estimated Pricing (Preview)
+                    </h4>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-500">SQFT / Unit</p>
+                        <p className="font-semibold">
+                          {sqftPerUnit ? sqftPerUnit.toFixed(2) : "—"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-gray-500">Total SQFT</p>
+                        <p className="font-semibold">
+                          {sqftPerUnit && data.qty
+                            ? (sqftPerUnit * data.qty).toFixed(2)
+                            : "—"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-gray-500">Est. Unit Price</p>
+                        <p className="font-semibold">
+                          {estimatedUnitPrice
+                            ? `$${estimatedUnitPrice.toFixed(2)}`
+                            : "—"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-gray-500">Est. Total</p>
+                        <p className="font-bold text-gray-900">
+                          {estimatedTotal
+                            ? `$${estimatedTotal.toFixed(2)}`
+                            : "—"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <p className="mt-2 text-xs text-gray-500">
+                      * Final price is calculated when saved.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -441,8 +721,8 @@ function InlineProductEditor({ product, data, onChange, onClose }) {
                   local.discountType === "percent"
                     ? "Discount %"
                     : local.discountType === "amount"
-                    ? "Discount amount"
-                    : "Add discount"
+                      ? "Discount amount"
+                      : "Add discount"
                 }
                 value={local.discountValue ?? ""}
                 onChange={(e) =>
@@ -474,7 +754,7 @@ function InlineProductEditor({ product, data, onChange, onClose }) {
                   qty: local.qty,
                   unitPrice: local.unitPrice,
                   total: local.total,
-
+                  finishes: selectedFinishes,
                   // SOLO SI APLICA
                   finish: local.finish,
                   design: local.design,

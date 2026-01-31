@@ -1434,13 +1434,15 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
       {showRecordPaymentModal && (
         <RecordPaymentModal
           invoice={{
+            id: invoiceIdState, // ✅ SIEMPRE existe
             invoiceNumber,
             total,
             balance,
-
+            publicToken: invoice?.publicToken, // ✅ seguro
             client: selectedClient,
+            items: items,
           }}
-          defaultDepositPercent={settings?.defaultDepositPercent || 0}
+          defaultDepositPercent={settings?.defaultDepositPercent || 50}
           onClose={() => setShowRecordPaymentModal(false)}
           onSave={async (payment) => {
             try {
@@ -1452,18 +1454,17 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
-                    amount: Number(payment.amount), // ✅ FIX REAL
+                    amount: Number(payment.amount),
                     method: payment.paymentMethod,
                     note: payment.note,
                     processingFee: Number(payment.processingFee || 0),
-                    paidOn: payment.paidOn, // ✅ opcional pero correcto
+                    paidOn: payment.paidOn,
                   }),
                 },
               );
 
               if (!res.ok) throw new Error();
 
-              // 🔄 recargar pagos
               const pRes = await fetch(
                 `/api/invoices/${invoiceIdState}/payments`,
               );

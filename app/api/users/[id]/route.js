@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 
 // 🔒 PATCH — Update user (ADMIN)
 export async function PATCH(req, { params }) {
@@ -25,7 +25,7 @@ export async function PATCH(req, { params }) {
     if (session.user.id === userId && isActive === false) {
       return NextResponse.json(
         { error: "You cannot deactivate your own account" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 

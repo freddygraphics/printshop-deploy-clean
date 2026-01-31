@@ -16,13 +16,17 @@ export async function GET(req) {
 
     const products = await prisma.product.findMany({
       where: {
-        name: { contains: q, mode: "insensitive" },
+        name: {
+          contains: q,
+          mode: "insensitive",
+        },
       },
       select: {
         id: true,
         name: true,
-        price: true,
         basePrice: true,
+        pricingMode: true,
+        templateType: true,
       },
       orderBy: { name: "asc" },
       take: 50,
