@@ -119,7 +119,11 @@ export async function POST(req: Request) {
     // =================================
     // 💰 AMOUNTS
     // =================================
-    const amount = payment.amount_money.amount / 100;
+    const rawAmount = payment.amount_money.amount / 100;
+
+    // ⚠️ Nunca permitir que el pago exceda el total del invoice
+    const amount = Math.min(rawAmount, invoice.total);
+
     const processingFee =
       (payment.processing_fee?.[0]?.amount_money?.amount || 0) / 100;
 
@@ -150,8 +154,9 @@ export async function POST(req: Request) {
       where: { id: invoice.id },
       data: {
         balance,
-        status: balance === 0 ? "PAID" : "PARTIAL",
-        paidAt: balance === 0 ? new Date() : null,
+        status: balance <= 0 ? "PAID" : "PARTIAL",
+        paymentStatus: balance <= 0 ? "Paid" : "Partial",
+        paidAt: balance <= 0 ? new Date() : null,
       },
     });
 
