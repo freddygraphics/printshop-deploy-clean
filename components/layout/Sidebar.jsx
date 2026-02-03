@@ -38,20 +38,23 @@ export default function Sidebar({ open, onClose }) {
   return (
     <aside
       className={`
-    fixed left-0 top-0 h-screen w-64 bg-white border-r z-40 hidden md:flex
+    fixed
+    left-0
+    top-16                    /* 👈 BAJA debajo del Topbar */
+    w-64
+    h-[calc(100vh-64px)]      /* 👈 ALTURA real */
+    bg-white
+    border-r
+    z-40
+    hidden md:flex
     flex-col
     transform transition-transform duration-300
     ${open ? "translate-x-0" : "-translate-x-full"}
     md:translate-x-0
   `}
     >
-      {/* LOGO */}
-      <div className="px-4 py-6 text-xl font-semibold text-gray-900">
-        Freddy Graphics LLC
-      </div>
-
       {/* MENU */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-3 py-4 space-y-2 mt-10 overflow-y-auto">
         <NavItem
           href="/dashboard"
           icon={LayoutDashboard}

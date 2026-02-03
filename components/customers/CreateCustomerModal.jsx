@@ -21,7 +21,6 @@ export default function CreateCustomerModal({ onClose, onCreated }) {
     setForm((prev) => ({ ...prev, [field]: value }));
 
   const handleCreate = async () => {
-    // ✅ VALIDACIÓN OBLIGATORIA (OPCIÓN A)
     if (!form.name.trim()) {
       alert("Customer name is required");
       return;
@@ -37,7 +36,6 @@ export default function CreateCustomerModal({ onClose, onCreated }) {
           name: form.name,
           company: form.company || null,
           email: form.email || null,
-
           phone: form.phone || null,
           address: form.address || null,
           city: form.city || null,
@@ -47,14 +45,17 @@ export default function CreateCustomerModal({ onClose, onCreated }) {
         }),
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        alert(err.error || "Error creating customer");
+      const customer = await res.json();
+
+      if (!res.ok || !customer?.id) {
+        alert(customer?.error || "Error creating customer");
         return;
       }
 
-      onCreated(); // 🔄 refresca lista
+      // 🔥 ESTA ES LA LÍNEA CLAVE
+      onCreated(customer);
     } catch (err) {
+      console.error(err);
       alert("Server error");
     } finally {
       setLoading(false);

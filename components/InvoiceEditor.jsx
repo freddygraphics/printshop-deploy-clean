@@ -5,6 +5,7 @@ import InlineProductEditor from "@/components/InlineProductEditor";
 import CustomerSearchModal from "@/components/CustomerSearchModal";
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { XCircle } from "lucide-react";
+import CreateCustomerModal from "@/components/customers/CreateCustomerModal";
 
 import AssignTeamMemberModal from "@/components/AssignTeamMemberModal";
 import CreateJobModal from "@/components/CreateJobModal";
@@ -72,6 +73,8 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   // ----------------------------------------
   const [selectedClient, setSelectedClient] = useState(null);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [showCreateCustomerModal, setShowCreateCustomerModal] = useState(false);
+
   const [showRecordPaymentModal, setShowRecordPaymentModal] = useState(false);
   // ----------------------------------------
   // SETTINGS (GLOBAL DEFAULTS)
@@ -1172,26 +1175,25 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                 })
               )}
             </div>
-
-            {/* CUSTOMER NOTES */}
-            <div>
-              <label className="text-sm font-semibold">Customer Notes</label>
-              <textarea
-                className="mt-1 border rounded-lg px-4 py-2.5 w-full min-h-[160px]"
-                placeholder="Notes visible on the PDF…"
-                value={customerNotes}
-                onChange={(e) => setCustomerNotes(e.target.value)}
-              />
-            </div>
           </div>
         </div>
       </div>
 
-      <div className="mt-10 grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+      <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        {/* CUSTOMER NOTES */}
+        <div>
+          <label className="text-sm font-semibold">Customer Notes</label>
+          <textarea
+            className="mt-1 border rounded-lg px-4 py-2.5 w-full min-h-[160px]"
+            placeholder="Notes visible on the PDF…"
+            value={customerNotes}
+            onChange={(e) => setCustomerNotes(e.target.value)}
+          />
+        </div>
         {/* LEFT — PAYMENT HISTORY (solo si hay pagos) */}
         {hasPayments ? (
-          <div className="bg-white border rounded-xl p-6 shadow-sm">
-            <h3 className="font-semibold mb-4">Payment History</h3>
+          <div>
+            <label className="text-sm font-semibold">Payment History</label>
 
             <div className="space-y-3">
               {payments.map((p) => {
@@ -1200,7 +1202,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                 return (
                   <div
                     key={p.id}
-                    className="border rounded-lg p-4 flex justify-between items-start bg-white"
+                    className="mt-1 border p-4 flex justify-between items-start bg-white"
                   >
                     {/* LEFT */}
                     <div>
@@ -1252,7 +1254,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         <div className="flex justify-end">
           <div className="grid grid-cols-2 gap-x-6 text-base min-w-[270px]">
             {/* LABELS */}
-            <div className="text-xl font-medium space-y-2 text-left text-gray-700">
+            <div className="text-xl font-medium space-y-1 text-left text-gray-700">
               <p>Subtotal</p>
 
               {discountLines.map((d) => (
@@ -1316,7 +1318,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
             </div>
 
             {/* VALUES */}
-            <div className="space-y-3 text-right">
+            <div className="mt-1 space-y-1 text-right">
               <p>${subtotal.toFixed(2)}</p>
 
               {discountLines.map((d) => (
@@ -1353,7 +1355,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
             setSelectedClient(customer);
             setShowCustomerModal(false);
 
-            // 🔥 SOLO CREAR SI ES NUEVO
+            // 🔥 tu lógica actual se queda IGUAL
             if (mode === "edit" || invoiceIdState) return;
 
             try {
@@ -1377,81 +1379,86 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
 
               const data = await res.json();
 
-              if (!res.ok || data?.error) {
-                console.error("❌ Create invoice error:", data);
-                alert("Error creating invoice");
-                return;
-              }
-
-              // ✅ GUARDAR ESTADO DEL INVOICE
               setInvoiceIdState(data.id);
               setInvoiceNumber(data.invoiceNumber);
-
-              // 🔐 CLAVE ABSOLUTA
               invoiceReadyRef.current = true;
 
               window.history.replaceState(null, "", `/invoices/${data.id}`);
             } catch (err) {
-              console.error("❌ Error creating invoice:", err);
               alert("Error creating invoice");
             }
           }}
           onClose={() => setShowCustomerModal(false)}
+          onAddCustomer={() => {
+            setShowCustomerModal(false); // cerrar search
+            setShowCreateCustomerModal(true); // 🔥 ABRIR CREATE
+          }}
         />
       )}
-      {showAssignModal && (
-        <AssignTeamMemberModal
-          title={`Assign ${activeRole}`}
-          users={[
-            { id: 1, name: "Freddy", role: "Sales" },
-            { id: 2, name: "Juan", role: "Production" },
-            { id: 3, name: "Maria", role: "Manager" },
-          ]}
-          selectedUser={team[activeRole]}
-          onSelect={(user) =>
-            setTeam((prev) => ({ ...prev, [activeRole]: user }))
-          }
-          onClose={() => setShowAssignModal(false)}
-        />
-      )}
-      {showCreateJobModal && (
-        <CreateJobModal
-          invoice={{ invoiceNumber, invoiceId: invoiceIdState }}
-          items={items}
-          team={team}
-          onCreate={async () => {
-            if (!invoiceIdState) {
-              alert("Invoice must be saved before creating a Job");
+      {showCreateCustomerModal && (
+        <CreateCustomerModal
+          onClose={() => setShowCreateCustomerModal(false)}
+          onCreated={async (customer) => {
+            // 1️⃣ UI
+            setSelectedClient(customer);
+            setShowCreateCustomerModal(false);
+
+            // 2️⃣ SI EL INVOICE YA EXISTE → ASIGNAR CLIENTE
+            if (invoiceIdState) {
+              try {
+                await fetch(`/api/invoices/${invoiceIdState}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    clientId: customer.id,
+                  }),
+                });
+              } catch (err) {
+                console.error("❌ Error assigning customer to invoice", err);
+                alert("Error assigning customer to invoice");
+              }
               return;
             }
 
+            // 3️⃣ SI EL INVOICE NO EXISTE → CREARLO
             try {
-              const res = await fetch("/api/jobs", {
+              const res = await fetch("/api/invoices", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  invoiceId: invoiceIdState,
+                  clientId: customer.id,
+                  issuedAt,
+                  dueDate: expiryDate || null,
+                  subtotal: 0,
+                  tax: 0,
+                  total: 0,
+                  balance: 0,
+                  taxEnabled: true,
+                  taxRate: settings?.defaultTaxRate ?? 0,
+                  notes: customerNotes || "",
+                  items: [],
                 }),
               });
 
-              if (res.status === 409) {
-                alert("This Quote already has a Job");
-                return;
+              const data = await res.json();
+
+              if (!res.ok || data?.error) {
+                throw new Error("Create invoice failed");
               }
 
-              if (!res.ok) throw new Error("Failed to create Job");
+              setInvoiceIdState(data.id);
+              setInvoiceNumber(data.invoiceNumber);
+              invoiceReadyRef.current = true;
 
-              await res.json();
-              setShowCreateJobModal(false);
-              window.location.href = "/production";
+              window.history.replaceState(null, "", `/invoices/${data.id}`);
             } catch (err) {
-              console.error("❌ Create Job error:", err);
-              alert("Error creating Job");
+              console.error("❌ Error creating invoice", err);
+              alert("Error creating invoice");
             }
           }}
-          onClose={() => setShowCreateJobModal(false)}
         />
       )}
+
       {showRecordPaymentModal && (
         <RecordPaymentModal
           invoice={{

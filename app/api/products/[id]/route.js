@@ -32,8 +32,7 @@ export async function PUT(req, { params }) {
       data: {
         name: body.name,
         description: body.description ?? "",
-        price: body.price ?? 0,
-        basePrice: body.basePrice ?? 0,
+        basePrice: body.basePrice ?? 0, // ✅ ÚNICO precio base
         templateId: body.templateId ?? null,
         customFields: body.customFields || {},
         defaultOptions: body.defaultOptions || {},

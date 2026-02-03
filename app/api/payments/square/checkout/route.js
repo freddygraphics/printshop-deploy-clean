@@ -61,7 +61,7 @@ export async function POST(req) {
             ],
           },
           checkout_options: {
-            redirect_url: `${process.env.NEXT_PUBLIC_SITE_URL}/i/${token}`,
+            redirect_url: `${process.env.NEXT_PUBLIC_SITE_URL}/payment-success?invoice=${invoice.invoiceNumber}`,
           },
         }),
       },

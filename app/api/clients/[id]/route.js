@@ -1,8 +1,8 @@
-// /app/api/clients/[id]/route.js
+// /app/api/clients/[id]/route.ts
 import { NextResponse } from "next/server";
 import prisma from "../../../../lib/db";
 
-// 📌 GET — Cliente + quotes + orders + invoices + notes
+// 📌 GET — Cliente + quotes + orders + invoices (con pagos validados) + notes
 export async function GET(req, { params }) {
   const id = parseInt(params.id);
 
@@ -14,7 +14,7 @@ export async function GET(req, { params }) {
     if (!client) {
       return NextResponse.json(
         { error: "Cliente no encontrado" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -28,9 +28,41 @@ export async function GET(req, { params }) {
       orderBy: { createdAt: "desc" },
     });
 
-    const invoices = await prisma.invoice.findMany({
+    // 🔥 INVOICES CON PAGOS (CLAVE)
+    const rawInvoices = await prisma.invoice.findMany({
       where: { clientId: id },
       orderBy: { createdAt: "desc" },
+      include: {
+        payments: true, // 👈 ESTO ES LO QUE FALTABA
+      },
+    });
+
+    // 🔥 NORMALIZACIÓN CONTABLE (PRO)
+    const invoices = rawInvoices.map((inv) => {
+      const total = Number(inv.total || 0);
+
+      const paid = inv.payments.reduce(
+        (sum, p) => sum + Number(p.amount || 0),
+        0,
+      );
+
+      const balance = Number((total - paid).toFixed(2));
+
+      let status = "Issued";
+      if (total === 0) status = "Draft";
+      else if (paid === 0) status = "Issued";
+      else if (paid > 0 && balance > 0) status = "Partially Paid";
+      else if (balance <= 0) status = "Paid";
+
+      return {
+        id: inv.id,
+        invoiceNumber: inv.invoiceNumber,
+        total,
+        paid,
+        balance,
+        status,
+        createdAt: inv.createdAt,
+      };
     });
 
     const notes = await prisma.note.findMany({
@@ -42,50 +74,14 @@ export async function GET(req, { params }) {
       client,
       quotes,
       orders,
-      invoices,
+      invoices, // ✅ YA NORMALIZADAS
       notes,
     });
   } catch (error) {
     console.error("❌ Error en GET /clients/[id]:", error);
     return NextResponse.json(
       { error: "Error interno al obtener cliente" },
-      { status: 500 }
-    );
-  }
-}
-
-// ✏️ PUT — actualizar cliente
-export async function PUT(req, { params }) {
-  const id = parseInt(params.id);
-  const data = await req.json();
-
-  try {
-    const updated = await prisma.client.update({
-      where: { id },
-      data,
-    });
-    return NextResponse.json(updated);
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json(
-      { error: "Error al actualizar cliente" },
-      { status: 500 }
-    );
-  }
-}
-
-// ❌ DELETE — eliminar cliente
-export async function DELETE(req, { params }) {
-  const id = parseInt(params.id);
-
-  try {
-    await prisma.client.delete({ where: { id } });
-    return NextResponse.json({ message: "Cliente eliminado" });
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json(
-      { error: "Error al eliminar cliente" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

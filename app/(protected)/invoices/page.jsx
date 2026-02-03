@@ -35,6 +35,7 @@ export default function InvoicesPage() {
 
     loadInvoices();
   }, []);
+
   function Option({ value, label }) {
     return (
       <Listbox.Option
@@ -71,7 +72,7 @@ export default function InvoicesPage() {
     const now = new Date();
 
     return list.filter((i) => {
-      const date = new Date(i.createdAt);
+      const date = new Date(i.issuedAt || i.createdAt);
 
       if (filter === "today") return isToday(date);
 
@@ -117,24 +118,18 @@ export default function InvoicesPage() {
       i.client?.company?.toLowerCase().includes(q)
     );
   });
+  const cardSource = searchedInvoices; // 👈 lo que se ve en la tabla
 
-  // --------------------------
-  // SUMMARY CARDS (KANAKKU) - TOTALS $
-  // --------------------------
-
-  // TOTAL DE TODAS LAS INVOICES
-  const totalInvoices = invoices.reduce(
+  const totalInvoices = cardSource.reduce(
     (sum, i) => sum + Number(i.invoiceTotal || 0),
     0,
   );
 
-  // TOTAL PAGADO
-  const paidInvoices = invoices
+  const paidInvoices = cardSource
     .filter((i) => getInvoiceStatus(i) === "Paid")
     .reduce((sum, i) => sum + Number(i.invoiceTotal || 0), 0);
 
-  // TOTAL PENDIENTE (sent + partial)
-  const pendingInvoices = invoices
+  const pendingInvoices = cardSource
     .filter(
       (i) =>
         getInvoiceStatus(i) === "Issued" ||
@@ -142,18 +137,14 @@ export default function InvoicesPage() {
     )
     .reduce((sum, i) => sum + Number(i.balance || 0), 0);
 
-  // TOTAL VENCIDO
-  const overdueInvoices = invoices
+  const overdueInvoices = cardSource
     .filter((i) => getInvoiceStatus(i) === "Overdue")
     .reduce((sum, i) => sum + Number(i.balance || 0), 0);
 
-  if (loading) {
-    return (
-      <div className="flex justify-center pt-20">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-      </div>
-    );
-  }
+  // --------------------------
+  // SUMMARY CARDS (KANAKKU) - TOTALS $
+  // --------------------------
+
   // --------------------------
   // LAST 3 PREVIOUS MONTHS (EXCLUDING CURRENT)
   // --------------------------
@@ -180,22 +171,18 @@ export default function InvoicesPage() {
           <SummaryCard
             title="Total Invoices"
             value={formatCurrency(totalInvoices)}
-            color="bg-white-50 text-blue-700"
           />
           <SummaryCard
             title="Paid Invoices"
             value={formatCurrency(paidInvoices)}
-            color="bg-white-50 text-blue-700"
           />
           <SummaryCard
             title="Pending Invoices"
             value={formatCurrency(pendingInvoices)}
-            color="bg-white-50 text-blue-700"
           />
           <SummaryCard
             title="Overdue Invoices"
             value={formatCurrency(overdueInvoices)}
-            color="bg-white-50 text-blue-700"
           />
         </div>
         {/* HEADER */}

@@ -11,19 +11,39 @@ import crypto from "crypto";
 // ----------------------------------------
 export async function GET() {
   try {
+    const now = new Date();
+
+    const startOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      1,
+      0,
+      0,
+      0,
+    );
+
+    const endOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+    );
     const invoices = await prisma.invoice.findMany({
       where: {
         paymentStatus: {
           not: "VOID",
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { issuedAt: "desc" },
       include: {
         client: true,
         payments: true,
         invoiceItems: true,
       },
     });
+
     const result = invoices.map((inv) => {
       // 1️⃣ SUBTOTAL
       const subtotal = inv.invoiceItems.reduce(
