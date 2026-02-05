@@ -2,6 +2,7 @@
   "name": "printshop_full_starter",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "postinstall": "prisma generate",
@@ -9,6 +10,9 @@
     "start": "next start",
     "lint": "next lint",
     "import:clients": "node prisma/importClients.js"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -54,13 +58,10 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@tailwindcss/typography": "^0.5.19",
+    "@tailtailwindcss/typography": "^0.5.19",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.18",
     "typescript": "5.9.3"
-  },
-  "prisma": {
-    "seed": "node prisma/seed.js"
   }
 }

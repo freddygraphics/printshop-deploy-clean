@@ -32,11 +32,10 @@ export default function DashboardPage() {
         const q = await fetch("/api/quotes").then((r) => r.json());
         const inv = await fetch("/api/invoices").then((r) => r.json());
         const jb = await fetch("/api/jobs").then((r) => r.json());
-        setJobs(jb);
 
         setQuotes(q);
         setInvoices(inv);
-        setJobs(jb);
+        setJobs(jb.jobs || []);
 
         setLoading(false);
       } catch (err) {
@@ -107,7 +106,9 @@ export default function DashboardPage() {
     (acc, i) => acc + (i.total || 0),
     0,
   );
-  const activeJobs = jobs.filter((j) => j.status !== "Completed").length;
+  const activeJobs = (jobs || []).filter(
+    (j) => j.status !== "Completed",
+  ).length;
 
   return (
     <div className="w-full">

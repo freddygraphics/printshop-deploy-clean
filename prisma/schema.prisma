@@ -262,14 +262,16 @@ model Note {
 }
 
 model Template {
-  id        Int       @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   name      String
   type      String?
   fields    Json?
   options   Json?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   products  Product[]
+
+ 
 }
 
 model Job {
@@ -343,6 +345,7 @@ model Settings {
   createdAt             DateTime @default(now())
   discountRules         Json     @default("[]")
   paymentFees           Json     @default("[]")
+
 }
 
 model Discount {
