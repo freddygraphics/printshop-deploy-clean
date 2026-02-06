@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import prisma from "../../../../lib/db"; // ✔ ruta correcta
+export const dynamic = "force-dynamic";
 
+import prisma from "../../../../lib/db"; // ✔ ruta correcta
 
 // -------------------------------------
 // GET /api/quotes/[id]
@@ -10,10 +11,7 @@ export async function GET(req, { params }) {
     const id = Number(params.id);
 
     if (isNaN(id)) {
-      return NextResponse.json(
-        { error: "Invalid ID" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
     }
 
     const quote = await prisma.quote.findUnique({
@@ -25,10 +23,7 @@ export async function GET(req, { params }) {
     });
 
     if (!quote) {
-      return NextResponse.json(
-        { error: "Quote not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Quote not found" }, { status: 404 });
     }
 
     return NextResponse.json(quote);
@@ -36,7 +31,7 @@ export async function GET(req, { params }) {
     console.error("❌ ERROR LOADING QUOTE:", error);
     return NextResponse.json(
       { error: "Server error", details: error.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -46,7 +41,6 @@ export async function GET(req, { params }) {
 // Actualiza: cliente, items, subtotal, tax, total, status, notes
 // -------------------------------------
 export async function PUT(req, { params }) {
-
   try {
     const id = Number(params.id);
     if (isNaN(id)) {
@@ -62,7 +56,7 @@ export async function PUT(req, { params }) {
       tax,
       total,
       status,
-      
+
       customerNotes,
     } = body;
 
@@ -73,46 +67,44 @@ export async function PUT(req, { params }) {
 
     // 🔥 2) CREAR ITEMS NUEVOS (COMPLETOS)
     if (!Array.isArray(items) || items.length === 0) {
-  return NextResponse.json(
-    { error: "Quote must have at least one item" },
-    { status: 400 }
-  );
-}
+      return NextResponse.json(
+        { error: "Quote must have at least one item" },
+        { status: 400 },
+      );
+    }
 
     if (items.length > 0) {
-await prisma.quoteItem.createMany({
-  data: items.map((i, index) => ({
-    quoteId: id,
-    productId: i.productId ?? null,
+      await prisma.quoteItem.createMany({
+        data: items.map((i, index) => ({
+          quoteId: id,
+          productId: i.productId ?? null,
 
-    name:
-      (typeof i.name === "string" && i.name.trim()) ||
-      (typeof i.description === "string" && i.description.trim()) ||
-      `Manual Item ${index + 1}`,
+          name:
+            (typeof i.name === "string" && i.name.trim()) ||
+            (typeof i.description === "string" && i.description.trim()) ||
+            `Manual Item ${index + 1}`,
 
-    qty: Number(i.qty) > 0 ? Number(i.qty) : 1,
-    unitPrice: Number(i.unitPrice) > 0 ? Number(i.unitPrice) : 0,
-    total:
-      Number(i.total) > 0
-        ? Number(i.total)
-        : (Number(i.qty) || 1) * (Number(i.unitPrice) || 0),
+          qty: Number(i.qty) > 0 ? Number(i.qty) : 1,
+          unitPrice: Number(i.unitPrice) > 0 ? Number(i.unitPrice) : 0,
+          total:
+            Number(i.total) > 0
+              ? Number(i.total)
+              : (Number(i.qty) || 1) * (Number(i.unitPrice) || 0),
 
-    options: i.options || {},
-    notes: i.notes || null,
-  })),
-});
-
-
+          options: i.options || {},
+          notes: i.notes || null,
+        })),
+      });
     }
     const dataToUpdate = {};
 
-if (typeof clientId === "number") dataToUpdate.clientId = clientId;
-if (typeof subtotal === "number") dataToUpdate.subtotal = subtotal;
-if (typeof tax === "number") dataToUpdate.tax = tax;
-if (typeof total === "number") dataToUpdate.total = total;
-if (typeof status === "string") dataToUpdate.status = status;
-if (typeof customerNotes === "string") dataToUpdate.customerNotes = customerNotes;
-
+    if (typeof clientId === "number") dataToUpdate.clientId = clientId;
+    if (typeof subtotal === "number") dataToUpdate.subtotal = subtotal;
+    if (typeof tax === "number") dataToUpdate.tax = tax;
+    if (typeof total === "number") dataToUpdate.total = total;
+    if (typeof status === "string") dataToUpdate.status = status;
+    if (typeof customerNotes === "string")
+      dataToUpdate.customerNotes = customerNotes;
 
     // 🔥 3) ACTUALIZAR EL QUOTE
     const updatedQuote = await prisma.quote.update({
@@ -123,7 +115,7 @@ if (typeof customerNotes === "string") dataToUpdate.customerNotes = customerNote
         tax,
         total,
         status,
-      
+
         customerNotes,
       },
       include: {
@@ -137,7 +129,7 @@ if (typeof customerNotes === "string") dataToUpdate.customerNotes = customerNote
     console.error("❌ ERROR UPDATING QUOTE:", error);
     return NextResponse.json(
       { error: "Server error", details: error.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -150,10 +142,7 @@ export async function DELETE(req, { params }) {
     const id = Number(params.id);
 
     if (isNaN(id)) {
-      return NextResponse.json(
-        { error: "Invalid ID" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
     }
 
     // 1️⃣ Borrar items del quote
@@ -179,11 +168,6 @@ export async function DELETE(req, { params }) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("❌ ERROR VOIDING QUOTE:", error);
-    return NextResponse.json(
-      { error: "Error voiding quote" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Error voiding quote" }, { status: 500 });
   }
 }
-
-
