@@ -1,4 +1,5 @@
 "use client";
+export const dynamic = "force-dynamic";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -19,7 +20,7 @@ export default function NewProductPage() {
   });
 
   function toggleOption(key) {
-    setOptions(prev => ({ ...prev, [key]: !prev[key] }));
+    setOptions((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
   async function saveProduct() {
@@ -31,7 +32,7 @@ export default function NewProductPage() {
         sku,
         description,
         basePrice,
-        defaultOptions: options
+        defaultOptions: options,
       }),
     });
 
@@ -43,35 +44,44 @@ export default function NewProductPage() {
       <h1 className="text-2xl font-semibold mb-4">Crear Producto</h1>
 
       <label>Nombre</label>
-      <input className="border p-2 w-full mb-3"
+      <input
+        className="border p-2 w-full mb-3"
         value={name}
-        onChange={e => setName(e.target.value)}
+        onChange={(e) => setName(e.target.value)}
       />
 
       <label>SKU</label>
-      <input className="border p-2 w-full mb-3"
+      <input
+        className="border p-2 w-full mb-3"
         value={sku}
-        onChange={e => setSku(e.target.value)}
+        onChange={(e) => setSku(e.target.value)}
       />
 
       <label>Precio Base</label>
-      <input type="number" className="border p-2 w-full mb-3"
+      <input
+        type="number"
+        className="border p-2 w-full mb-3"
         value={basePrice}
-        onChange={e => setBasePrice(parseFloat(e.target.value))}
+        onChange={(e) => setBasePrice(parseFloat(e.target.value))}
       />
 
       <label>Descripción</label>
-      <textarea className="border p-2 w-full mb-4"
+      <textarea
+        className="border p-2 w-full mb-4"
         value={description}
-        onChange={e => setDescription(e.target.value)}
+        onChange={(e) => setDescription(e.target.value)}
       />
 
       <h2 className="text-lg font-semibold">Opciones por defecto</h2>
 
       <div className="mt-2 space-y-2">
-        {Object.keys(options).map(key => (
+        {Object.keys(options).map((key) => (
           <label key={key} className="flex items-center gap-2">
-            <input type="checkbox" checked={options[key]} onChange={() => toggleOption(key)} />
+            <input
+              type="checkbox"
+              checked={options[key]}
+              onChange={() => toggleOption(key)}
+            />
             {key}
           </label>
         ))}
