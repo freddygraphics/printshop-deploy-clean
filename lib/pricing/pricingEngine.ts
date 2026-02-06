@@ -1,4 +1,5 @@
 // src/lib/pricing/pricingEngine.ts
+export const dynamic = "force-dynamic";
 import prisma from "@/lib/db";
 
 /* ======================================================

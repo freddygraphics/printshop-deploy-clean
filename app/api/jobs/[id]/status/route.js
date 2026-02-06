@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+export const dynamic = "force-dynamic";
+
 import prisma from "@/lib/db";
 
 export async function PUT(req, { params }) {
@@ -9,7 +11,7 @@ export async function PUT(req, { params }) {
     if (!status) {
       return NextResponse.json(
         { error: "Status is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -23,7 +25,7 @@ export async function PUT(req, { params }) {
     console.error("❌ UPDATE JOB STATUS ERROR:", error);
     return NextResponse.json(
       { error: "Failed to update job status" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

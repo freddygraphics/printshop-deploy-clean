@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+export const dynamic = "force-dynamic";
+
 import prisma from "@/lib/db";
 
 export async function PATCH(req, { params }) {
@@ -15,7 +17,7 @@ export async function PATCH(req, { params }) {
   if (invoice.status === "VOID") {
     return NextResponse.json(
       { error: "Invoice already voided" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 

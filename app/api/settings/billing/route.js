@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+export const dynamic = "force-dynamic";
 import prisma from "@/lib/db";
 import crypto from "crypto";
 
@@ -34,7 +35,7 @@ export async function GET() {
   } catch {
     return NextResponse.json(
       { error: "Failed to load settings" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -67,7 +68,7 @@ export async function PUT(req) {
     console.error(err);
     return NextResponse.json(
       { error: "Failed to save settings" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

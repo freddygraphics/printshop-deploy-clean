@@ -1,5 +1,5 @@
 export const runtime = "nodejs";
-
+export const dynamic = "force-dynamic";
 import prisma from "@/lib/db";
 import PayWithCardButton from "@/components/payments/PayWithCardButton";
 

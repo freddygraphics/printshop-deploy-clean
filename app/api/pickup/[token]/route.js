@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+export const dynamic = "force-dynamic";
 import prisma from "@/lib/db";
 
 export async function GET(req, { params }) {
@@ -20,19 +21,19 @@ export async function GET(req, { params }) {
   if (!job) {
     return NextResponse.json(
       { error: "Invalid pickup token" },
-      { status: 404 }
+      { status: 404 },
     );
   }
 
   // 🧮 Calcular balance real
   const subtotal = job.invoice.invoiceItems.reduce(
     (sum, i) => sum + Number(i.total ?? i.unitPrice * i.qty),
-    0
+    0,
   );
 
   const paymentsTotal = job.invoice.payments.reduce(
     (sum, p) => sum + Number(p.amount),
-    0
+    0,
   );
 
   const balance = subtotal - paymentsTotal;
@@ -64,19 +65,19 @@ export async function POST(req, { params }) {
   if (!job) {
     return NextResponse.json(
       { error: "Invalid pickup token" },
-      { status: 404 }
+      { status: 404 },
     );
   }
 
   // 🧮 RECALCULAR BALANCE (IGUAL QUE EN GET)
   const subtotal = job.invoice.invoiceItems.reduce(
     (sum, i) => sum + Number(i.total ?? i.unitPrice * i.qty),
-    0
+    0,
   );
 
   const paymentsTotal = job.invoice.payments.reduce(
     (sum, p) => sum + Number(p.amount),
-    0
+    0,
   );
 
   const balance = subtotal - paymentsTotal;
@@ -85,7 +86,7 @@ export async function POST(req, { params }) {
   if (balance > 0) {
     return NextResponse.json(
       { error: "Invoice has pending balance" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 

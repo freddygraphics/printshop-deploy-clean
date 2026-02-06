@@ -1,4 +1,6 @@
 // app/api/payments/square/checkout/route.js
+export const dynamic = "force-dynamic";
+
 import prisma from "@/lib/db";
 import crypto from "crypto";
 import { NextResponse } from "next/server";

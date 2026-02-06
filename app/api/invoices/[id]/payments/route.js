@@ -1,6 +1,8 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
+export const dynamic = "force-dynamic";
+
 import prisma from "@/lib/db";
 
 // ============================

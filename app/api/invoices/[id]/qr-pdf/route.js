@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+export const dynamic = "force-dynamic";
+
 import prisma from "@/lib/db";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import QRCode from "qrcode";
@@ -28,7 +30,7 @@ export async function GET(req, { params }) {
     // 🔳 Generar QR
     const qrDataUrl = await QRCode.toDataURL(
       `${process.env.NEXT_PUBLIC_APP_URL}/scan?token=${invoice.qrToken}`,
-      { margin: 0, width: 90 }
+      { margin: 0, width: 90 },
     );
 
     const qrImageBytes = Buffer.from(qrDataUrl.split(",")[1], "base64");

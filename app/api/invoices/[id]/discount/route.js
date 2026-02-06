@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server"; // ✅ ESTA LÍNEA FALTABA
+export const dynamic = "force-dynamic";
+
 import prisma from "@/lib/db";
 
 export async function PATCH(req, { params }) {
@@ -34,7 +36,7 @@ export async function PATCH(req, { params }) {
     console.error("❌ DISCOUNT SAVE ERROR:", err);
     return NextResponse.json(
       { error: "Failed to save discount" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

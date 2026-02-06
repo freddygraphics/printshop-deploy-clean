@@ -1,10 +1,7 @@
-import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+export const dynamic = "force-dynamic";
+
 import prisma from "@/lib/db";
-
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-
-import crypto from "crypto";
 
 // ----------------------------------------
 // GET — LIST ALL INVOICES
@@ -89,9 +86,9 @@ export async function GET() {
 // ----------------------------------------
 export async function POST(req) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
 
-    if (!session || !["admin", "sales"].includes(session.user.role)) {
+    if (!session || !["admin", "sales"].includes(role)) {
       return NextResponse.json(
         { error: "You do not have permission to create invoices" },
         { status: 403 },

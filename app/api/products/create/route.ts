@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth"; // ✅ NextAuth v5
 import { can } from "@/lib/permissions";
+export const dynamic = "force-dynamic";
 import prisma from "@/lib/db";
 
-export async function POST(req) {
-  const session = await getServerSession(authOptions);
+export async function POST(req: Request) {
+  const session = await auth();
 
-  if (!session || !can(session.user.role, "products")) {
+  if (!session || !can((session.user as any).role, "products")) {
     return NextResponse.json(
       { error: "You do not have permission to create products" },
       { status: 403 },
@@ -19,8 +19,7 @@ export async function POST(req) {
   const product = await prisma.product.create({
     data: {
       name: body.name,
-      price: body.price,
-      basePrice: body.basePrice ?? null,
+      basePrice: body.basePrice ?? 0, // ✅ CLAVE
       description: body.description ?? "",
       templateType: body.templateType ?? null,
       customFields: body.customFields ?? null,

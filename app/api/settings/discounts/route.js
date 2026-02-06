@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+export const dynamic = "force-dynamic";
 import prisma from "@/lib/db";
 
 export async function GET() {
@@ -12,7 +13,7 @@ export async function GET() {
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to load discounts", details: error.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

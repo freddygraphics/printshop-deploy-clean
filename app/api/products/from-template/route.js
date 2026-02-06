@@ -1,9 +1,8 @@
 // app/api/products/from-template/route.js
-
-import prisma from "@/lib/db";   // 🔥 IMPORTANTE: usar el prisma correcto
+export const dynamic = "force-dynamic";
+import prisma from "@/lib/db"; // 🔥 IMPORTANTE: usar el prisma correcto
 console.log("🔥 API INITIALIZED /api/products/from-template");
 console.log("🔥 DATABASE URL (API):", process.env.DATABASE_URL);
-
 
 export async function POST(req) {
   console.log("🔥 POST /api/products/from-template");
@@ -33,7 +32,7 @@ export async function POST(req) {
       templateType,
       customFields,
       defaultOptions,
-      templateId
+      templateId,
     } = body;
 
     console.log("➡ name:", name);
@@ -42,10 +41,7 @@ export async function POST(req) {
     console.log("➡ defaultOptions:", defaultOptions);
 
     if (!name) {
-      return Response.json(
-        { error: "Falta el campo name" },
-        { status: 400 }
-      );
+      return Response.json({ error: "Falta el campo name" }, { status: 400 });
     }
 
     // -----------------------------------------
@@ -69,7 +65,6 @@ export async function POST(req) {
     console.log("✅ PRODUCTO CREADO:", product);
 
     return Response.json(product);
-
   } catch (err) {
     console.error("❌ ERROR API /products/from-template:", err);
     return Response.json({ error: String(err) }, { status: 500 });

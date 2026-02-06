@@ -51,7 +51,7 @@ export async function PUT(req, { params }) {
 // -------------------------------------------------------
 
 export async function PATCH(req, { params }) {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
 
   if (!session || !can(session.user.role, "products")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
@@ -68,7 +68,7 @@ export async function PATCH(req, { params }) {
 }
 
 export async function DELETE(req, { params }) {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
 
   if (!session || !can(session.user.role, "products")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });

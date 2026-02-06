@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+export const dynamic = "force-dynamic";
+
 import prisma from "@/lib/db";
 
 export async function POST(req, { params }) {
@@ -8,7 +10,7 @@ export async function POST(req, { params }) {
     if (isNaN(invoiceId)) {
       return NextResponse.json(
         { error: "Invalid invoice id" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -24,7 +26,7 @@ export async function POST(req, { params }) {
     if (Number(invoice.balance ?? 0) > 0) {
       return NextResponse.json(
         { error: "Invoice not fully paid" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -32,7 +34,7 @@ export async function POST(req, { params }) {
     if (invoice.pickedUpAt) {
       return NextResponse.json(
         { error: "Invoice already picked up" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 

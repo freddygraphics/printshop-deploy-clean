@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+export const dynamic = "force-dynamic";
+
 import prisma from "@/lib/db";
 
 export async function POST(req) {
@@ -24,7 +26,7 @@ export async function POST(req) {
           status: job.status,
           position: job.position,
         },
-      })
+      }),
     );
 
     await prisma.$transaction(queries);
@@ -34,7 +36,7 @@ export async function POST(req) {
     console.error("❌ JOB REORDER ERROR:", error);
     return NextResponse.json(
       { error: "Failed to reorder jobs" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
