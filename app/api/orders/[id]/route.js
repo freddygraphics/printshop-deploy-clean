@@ -1,5 +1,7 @@
 // /app/api/orders/[id]/route.js
 import { NextResponse } from "next/server";
+export const dynamic = "force-dynamic";
+
 import prisma from "../../../../lib/db";
 
 // 📋 GET - obtener una orden por ID
@@ -30,7 +32,10 @@ export async function PUT(req, { params }) {
     return NextResponse.json(updated);
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: "Error al actualizar orden" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Error al actualizar orden" },
+      { status: 500 },
+    );
   }
 }
 
@@ -43,6 +48,9 @@ export async function DELETE(req, { params }) {
     return NextResponse.json({ message: "Orden eliminada" });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: "Error al eliminar orden" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Error al eliminar orden" },
+      { status: 500 },
+    );
   }
 }

@@ -1,5 +1,7 @@
 // /app/api/orders/status/[status]/route.js
 import { NextResponse } from "next/server";
+export const dynamic = "force-dynamic";
+
 import prisma from "../../../../../lib/db";
 
 // 📋 GET - listar órdenes por estado
@@ -20,6 +22,9 @@ export async function GET(req, { params }) {
     return NextResponse.json(orders);
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: "Error al filtrar órdenes" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Error al filtrar órdenes" },
+      { status: 500 },
+    );
   }
 }
