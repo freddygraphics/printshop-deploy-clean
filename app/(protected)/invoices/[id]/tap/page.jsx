@@ -1,4 +1,5 @@
 "use client";
+export const dynamic = "force-dynamic";
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -18,7 +19,9 @@ export default function TapToPayPage({ params }) {
       }
 
       const cents = Math.round(data.total * 100);
-      const notes = encodeURIComponent(`Invoice ${data.id} – Freddy Graphics LLC`);
+      const notes = encodeURIComponent(
+        `Invoice ${data.id} – Freddy Graphics LLC`,
+      );
 
       const deepLink = `square-commerce://payment/create?amount=${cents}&currency=USD&notes=${notes}`;
 
@@ -36,9 +39,7 @@ export default function TapToPayPage({ params }) {
 
   return (
     <div className="h-screen flex items-center justify-center">
-      <p className="text-lg text-gray-700">
-        Opening Square POS…
-      </p>
+      <p className="text-lg text-gray-700">Opening Square POS…</p>
     </div>
   );
 }
