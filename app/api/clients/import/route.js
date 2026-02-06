@@ -1,3 +1,6 @@
+"use client";
+
+export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import * as XLSX from "xlsx";
@@ -10,7 +13,10 @@ export async function POST(req) {
     const file = formData.get("file");
 
     if (!file) {
-      return NextResponse.json({ error: "No se envió archivo" }, { status: 400 });
+      return NextResponse.json(
+        { error: "No se envió archivo" },
+        { status: 400 },
+      );
     }
 
     // Leer Excel
@@ -55,11 +61,10 @@ export async function POST(req) {
       errors,
       total: rows.length,
     });
-
   } catch (error) {
     return NextResponse.json(
       { error: "Error procesando archivo" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

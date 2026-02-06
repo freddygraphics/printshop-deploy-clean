@@ -1,6 +1,8 @@
+"use client";
+
+export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-export const dynamic = "force-dynamic";
 
 import prisma from "@/lib/db";
 import { auth } from "@/lib/auth";

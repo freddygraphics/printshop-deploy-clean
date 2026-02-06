@@ -1,4 +1,6 @@
 // /app/api/quotes/[id]/pdf/route.js
+"use client";
+
 export const dynamic = "force-dynamic";
 
 import { PrismaClient } from "@prisma/client";

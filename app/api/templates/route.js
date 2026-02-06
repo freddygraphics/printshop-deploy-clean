@@ -1,3 +1,6 @@
+"use client";
+
+export const dynamic = "force-dynamic";
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
@@ -31,7 +34,10 @@ export async function POST(req) {
     const { name, category, description } = body;
 
     if (!name) {
-      return Response.json({ error: "El campo 'name' es requerido" }, { status: 400 });
+      return Response.json(
+        { error: "El campo 'name' es requerido" },
+        { status: 400 },
+      );
     }
 
     const newTemplate = await prisma.template.create({
