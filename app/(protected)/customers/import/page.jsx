@@ -1,4 +1,5 @@
 "use client";
+export const dynamic = "force-dynamic";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -57,7 +58,6 @@ export default function ImportCustomers() {
 
   return (
     <div className="p-8 max-w-5xl mx-auto bg-white shadow-lg rounded-xl">
-
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <Link
