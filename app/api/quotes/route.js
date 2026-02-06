@@ -1,4 +1,6 @@
 // /app/api/quotes/route.js
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 

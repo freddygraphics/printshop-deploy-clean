@@ -1,4 +1,6 @@
 // /app/api/quotes/[id]/pdf/route.js
+export const dynamic = "force-dynamic";
+
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 import playwright from "playwright";
@@ -319,9 +321,7 @@ export async function GET(req, { params }) {
             </div>
             <div style="width:45%;">
               <div class="small-label">CONTACT INFO</div>
-              <div class="small-value">${
-                quote.client?.name || ""
-              }</div>
+              <div class="small-value">${quote.client?.name || ""}</div>
               ${
                 quote.client?.phone
                   ? `<div class="small-value">${quote.client.phone}</div>`
@@ -360,10 +360,10 @@ export async function GET(req, { params }) {
                           <tr>
                             <td class="idx">${i + 1}</td>
                             <td><span style="font-weight:bold;">${item.name}</span>${
-                          item.notes
-                            ? `<div style="font-size:7.5pt; color:#555;">${item.notes}</div>`
-                            : ""
-                        }</td>
+                              item.notes
+                                ? `<div style="font-size:7.5pt; color:#555;">${item.notes}</div>`
+                                : ""
+                            }</td>
                             <td class="qty">${qty}</td>
                             <td class="up">$${up.toFixed(2)}</td>
                             <td class="total">$${rowTotal.toFixed(2)}</td>
@@ -446,12 +446,11 @@ export async function GET(req, { params }) {
       </html>
     `);
 
- const pdf = await page.pdf({
-  format: "Letter",
-  margin: { top: "0px", bottom: "0px", left: "0px", right: "0px" },
-  printBackground: true,
-});
-
+    const pdf = await page.pdf({
+      format: "Letter",
+      margin: { top: "0px", bottom: "0px", left: "0px", right: "0px" },
+      printBackground: true,
+    });
 
     await browser.close();
 
@@ -465,7 +464,7 @@ export async function GET(req, { params }) {
     console.error("❌ PDF generation error:", error);
     return NextResponse.json(
       { error: "PDF generation failed", details: error.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
