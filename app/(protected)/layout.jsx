@@ -1,15 +1,19 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-
-import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import MainShell from "@/components/layout/MainShell";
 
-export default async function ProtectedLayout({ children }) {
-  const session = await auth();
+export default function ProtectedLayout({ children }) {
+  const router = useRouter();
+  const [ready, setReady] = useState(false);
 
-  if (!session) redirect("/login");
+  useEffect(() => {
+    // aquí luego puedes validar sesión vía API si quieres
+    setReady(true);
+  }, []);
+
+  if (!ready) return null;
 
   return <MainShell>{children}</MainShell>;
 }

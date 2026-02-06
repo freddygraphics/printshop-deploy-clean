@@ -1,5 +1,7 @@
-import { NextResponse } from "next/server"; // ✅ ESTA LÍNEA FALTABA
+"use client";
+
 export const dynamic = "force-dynamic";
+import { NextResponse } from "next/server"; // ✅ ESTA LÍNEA FALTABA
 
 import prisma from "@/lib/db";
 
