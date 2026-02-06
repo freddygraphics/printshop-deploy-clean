@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import prisma from "../lib/db.js";
 import crypto from "crypto";
 

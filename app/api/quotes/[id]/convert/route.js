@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+export const dynamic = "force-dynamic";
+
 import prisma from "../../../../../lib/db";
 
 export async function POST(req, { params }) {
@@ -26,7 +28,7 @@ export async function POST(req, { params }) {
     if (existingInvoice) {
       return NextResponse.json(
         { error: "Invoice already exists for this quote" },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -81,9 +83,6 @@ export async function POST(req, { params }) {
     return NextResponse.json(invoice);
   } catch (error) {
     console.error("❌ Convert Quote → Invoice error:", error);
-    return NextResponse.json(
-      { error: "Server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
