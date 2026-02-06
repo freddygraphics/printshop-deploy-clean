@@ -1,4 +1,5 @@
 // /app/api/invoices/[id]/open-pos/route.js
+"use client";
 export const dynamic = "force-dynamic";
 
 import { PrismaClient } from "@prisma/client";

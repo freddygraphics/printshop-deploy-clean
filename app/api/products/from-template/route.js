@@ -1,4 +1,5 @@
 // app/api/products/from-template/route.js
+"use client";
 export const dynamic = "force-dynamic";
 import prisma from "@/lib/db"; // 🔥 IMPORTANTE: usar el prisma correcto
 console.log("🔥 API INITIALIZED /api/products/from-template");

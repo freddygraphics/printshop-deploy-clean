@@ -1,4 +1,5 @@
 // app/api/payments/square/checkout/route.js
+"use client";
 export const dynamic = "force-dynamic";
 
 import prisma from "@/lib/db";
