@@ -1,5 +1,7 @@
 // /app/api/clients/[id]/notes/route.js
 import { NextResponse } from "next/server";
+export const dynamic = "force-dynamic";
+
 import prisma from "../../../../../lib/db";
 
 export async function GET(req, { params }) {
@@ -15,7 +17,7 @@ export async function GET(req, { params }) {
     console.error("❌ Error al obtener notas:", error);
     return NextResponse.json(
       { error: "Error al obtener notas" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -28,7 +30,7 @@ export async function POST(req, { params }) {
   if (!content || !content.trim()) {
     return NextResponse.json(
       { error: "El contenido de la nota es requerido" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -45,9 +47,6 @@ export async function POST(req, { params }) {
     return NextResponse.json(note, { status: 201 });
   } catch (error) {
     console.error("❌ Error al crear nota:", error);
-    return NextResponse.json(
-      { error: "Error al crear nota" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Error al crear nota" }, { status: 500 });
   }
 }
