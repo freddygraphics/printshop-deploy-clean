@@ -1,5 +1,12 @@
 import { PrismaClient } from "@prisma/client";
 
+const DATABASE_URL = process.env.DATABASE_URL;
+
+if (!DATABASE_URL) {
+  console.error("❌ DATABASE_URL IS UNDEFINED AT RUNTIME");
+  throw new Error("DATABASE_URL is not defined");
+}
+
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
@@ -9,7 +16,7 @@ export const prisma =
   new PrismaClient({
     datasources: {
       db: {
-        url: process.env.DATABASE_URL_POOLED,
+        url: DATABASE_URL,
       },
     },
   });

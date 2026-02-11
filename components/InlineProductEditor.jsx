@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { memo } from "react";
-import { calcSqft } from "@/lib/pricing/pricingEngine";
 
 function InlineProductEditor({ product, data, onChange, onClose }) {
   const cfg = product?.customFields || {};
@@ -40,25 +39,6 @@ function InlineProductEditor({ product, data, onChange, onClose }) {
   };
 
   const [local, setLocal] = useState(safe);
-  const sqftPerUnit = useMemo(
-    () => calcSqft(widthIn, heightIn),
-    [widthIn, heightIn],
-  );
-
-  const selectedMaterial = useMemo(
-    () => materials.find((m) => m.id === materialId),
-    [materials, materialId],
-  );
-
-  const estimatedUnitPrice = useMemo(() => {
-    if (!sqftPerUnit || !selectedMaterial) return 0;
-    return Number((sqftPerUnit * selectedMaterial.sellPerSqft).toFixed(2));
-  }, [sqftPerUnit, selectedMaterial]);
-
-  const estimatedTotal = useMemo(() => {
-    if (!estimatedUnitPrice) return 0;
-    return Number((estimatedUnitPrice * (data.qty || 1)).toFixed(2));
-  }, [estimatedUnitPrice, data.qty]);
 
   useEffect(() => {
     if (
@@ -78,31 +58,56 @@ function InlineProductEditor({ product, data, onChange, onClose }) {
     });
   }, [product]);
 
+  const recalcSqftFromServer = async ({
+    widthIn,
+    heightIn,
+    quantity,
+    materialId,
+  }) => {
+    if (!widthIn || !heightIn || !materialId) return;
+
+    try {
+      const res = await fetch("/api/pricing/sqft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          printProductionProfileId: materialId,
+          widthIn: Number(widthIn),
+          heightIn: Number(heightIn),
+          quantity: Number(quantity || 1),
+        }),
+      });
+
+      const pricing = await res.json();
+
+      if (!res.ok || pricing.error) return;
+
+      // 🔥 ESTE ES EL PRECIO REAL
+      onChange({
+        unitPrice: pricing.unitPrice,
+        total: pricing.subtotal,
+        _expanded: true, // mantiene abierto mientras edita
+      });
+    } catch (err) {
+      console.error("❌ Pricing error", err);
+    }
+  };
   useEffect(() => {
-    if (!selectedMaterial || !sqftPerUnit) return;
+    if (
+      product?.templateType !== "large-format" ||
+      !widthIn ||
+      !heightIn ||
+      !materialId
+    )
+      return;
 
-    let unit = sqftPerUnit * selectedMaterial.sellPerSqft;
-
-    Object.values(selectedFinishes).forEach((f) => {
-      if (!f.enabled) return;
-
-      if (f.unitType === "each") {
-        unit += f.qty * f.sellPrice;
-      }
-
-      if (f.unitType === "sqft") {
-        unit += sqftPerUnit * f.sellPrice;
-      }
+    recalcSqftFromServer({
+      widthIn,
+      heightIn,
+      quantity: data.qty,
+      materialId,
     });
-
-    const total = unit * (data.qty || 1);
-
-    setLocal((prev) => ({
-      ...prev,
-      unitPrice: Number(unit.toFixed(2)),
-      total: Number(total.toFixed(2)),
-    }));
-  }, [selectedMaterial, sqftPerUnit, selectedFinishes, data.qty]);
+  }, [widthIn, heightIn, materialId, data.qty]);
 
   useEffect(() => {
     fetch("/api/finishes")

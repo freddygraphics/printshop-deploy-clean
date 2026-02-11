@@ -1,5 +1,7 @@
-import { NextResponse } from "next/server";
+"use client";
+
 export const dynamic = "force-dynamic";
+import { NextResponse } from "next/server";
 
 import prisma from "@/lib/db";
 import { calcSqft } from "@/lib/pricing/pricingEngine";

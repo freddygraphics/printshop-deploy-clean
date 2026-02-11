@@ -11,6 +11,16 @@ export default function BillingSettingsPage() {
       const res = await fetch("/api/settings/billing");
       const data = await res.json();
 
+      if (!data) {
+        setSettings({
+          taxEnabled: false,
+          defaultTaxRate: 0.06625,
+          discountRules: [],
+          paymentFees: [],
+        });
+        return;
+      }
+
       setSettings({
         ...data,
         discountRules: data.discountRules ?? [],

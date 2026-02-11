@@ -1,7 +1,9 @@
-import { auth } from "@/lib/auth";
-export const dynamic = "force-dynamic";
-
+import { NextResponse } from "next/server";
+import crypto from "crypto";
 import prisma from "@/lib/db";
+import { auth } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
 
 // ----------------------------------------
 // GET — LIST ALL INVOICES
@@ -87,6 +89,7 @@ export async function GET() {
 export async function POST(req) {
   try {
     const session = await auth();
+    const role = session?.user?.role;
 
     if (!session || !["admin", "sales"].includes(role)) {
       return NextResponse.json(
@@ -134,8 +137,8 @@ export async function POST(req) {
         subtotal,
         tax,
         total,
-        applyTax: true,
-        paymentStatus: "Unpaid",
+        taxEnabled: true,
+        paymentStatus: "UNPAID",
         notes,
 
         // 👇 AQUÍ ES DONDE VA
@@ -147,7 +150,11 @@ export async function POST(req) {
       },
     });
 
-    return NextResponse.json(invoice);
+    return NextResponse.json({
+      id: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      publicToken: invoice.publicToken,
+    });
   } catch (error) {
     console.error("❌ Error creating invoice:", error);
     return NextResponse.json(

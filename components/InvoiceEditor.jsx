@@ -257,7 +257,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   };
 
   useEffect(() => {
-    if (mode !== "edit" || !invoiceId) return;
+    if (mode !== "edit" || invoiceId == null) return;
 
     const loadAll = async () => {
       try {
@@ -503,13 +503,16 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   // INVOICE STATUS (AUTOMÁTICO)
   // ----------------------------------------
 
-  const status = getInvoiceStatus({
-    invoiceTotal: total,
-    paymentsTotal: totalPaid,
-    balance,
-    dueDate: expiryDate,
-    status: invoice?.status,
-  });
+  const status =
+    mode === "new"
+      ? "Draft"
+      : getInvoiceStatus({
+          invoiceTotal: total,
+          paymentsTotal: totalPaid,
+          balance,
+          dueDate: expiryDate,
+          status: invoice?.status,
+        });
 
   useEffect(() => {
     if (!settings) return;
@@ -696,6 +699,10 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
       return () =>
         document.removeEventListener("mousedown", handleClickOutside);
     }, [open]);
+    // 🛡️ NEW MODE GUARD
+    if (mode === "new" && !invoiceReadyRef.current) {
+      // seguimos renderizando, NO retornamos null
+    }
 
     return (
       <div className="relative" ref={menuRef}>
@@ -760,7 +767,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
     <div className="w-full max-w-7xl mx-auto px-4 space-y-8">
       <div className="mx-auto mb-4 flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-700">
-          IN #{invoiceNumber ?? ""}
+          {mode === "new" ? "New Invoice" : `IN #${invoiceNumber ?? ""}`}
         </h1>
 
         <div className="flex items-center gap-3">
@@ -1381,8 +1388,13 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
 
               setInvoiceIdState(data.id);
               setInvoiceNumber(data.invoiceNumber);
+
+              // 🔥 CONFIRMAMOS INVOICE COMPLETO
+              setInvoice(data);
+
               invoiceReadyRef.current = true;
 
+              // 🔥 CAMBIO DE MODO REAL
               window.history.replaceState(null, "", `/invoices/${data.id}`);
             } catch (err) {
               alert("Error creating invoice");
@@ -1445,7 +1457,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
               if (!res.ok || data?.error) {
                 throw new Error("Create invoice failed");
               }
-
+              setInvoice(data);
               setInvoiceIdState(data.id);
               setInvoiceNumber(data.invoiceNumber);
               invoiceReadyRef.current = true;
@@ -1578,6 +1590,34 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
           setShowDiscountModal(false);
         }}
       />
+      {showCreateJobModal && (
+        <CreateJobModal
+          invoice={invoice}
+          items={items}
+          onClose={() => setShowCreateJobModal(false)}
+          onCreate={async () => {
+            try {
+              const res = await fetch(
+                `/api/invoices/${invoiceIdState}/create-job`,
+                { method: "POST" },
+              );
+
+              if (!res.ok) throw new Error();
+
+              const data = await res.json();
+
+              setShowCreateJobModal(false);
+
+              // refrescar estado de job
+              setJobInfo({ exists: true, job: data });
+
+              router.push("/production");
+            } catch (err) {
+              alert("Error creating job");
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

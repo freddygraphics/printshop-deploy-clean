@@ -1,36 +1,29 @@
-// src/lib/pricing/pricingEngine.ts
-export const dynamic = "force-dynamic";
 import prisma from "@/lib/db";
 
-/* ======================================================
-   TIPOS
-====================================================== */
-
+// ===============================
+// TYPES
+// ===============================
 export type PricingMode = "manual" | "sqft";
 
 export type PriceBreakdownLine = {
   label: string;
-  qty: number; // sqft por unidad
-  rate: number; // $/sqft
+  qty: number;
+  rate: number;
   amount: number;
 };
 
 export type PriceBreakdown = {
   mode: PricingMode;
-
-  unitQty: number; // cantidad de items
-  unitSqft: number; // sqft por unidad
-
-  unitPrice: number; // precio por UNA unidad
-  subtotal: number; // unitPrice × unitQty
-
+  unitQty: number;
+  unitSqft: number;
+  unitPrice: number;
+  subtotal: number;
   lines: PriceBreakdownLine[];
 };
 
-/* ======================================================
-   HELPERS
-====================================================== */
-
+// ===============================
+// HELPERS
+// ===============================
 function round2(n: number) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
@@ -39,106 +32,23 @@ export function calcSqft(widthIn: number, heightIn: number) {
   return (Number(widthIn) * Number(heightIn)) / 144;
 }
 
-/* ======================================================
-   ENGINE — SQFT (USA PrintProductionProfile REAL)
-====================================================== */
-
-export async function priceFromPrintProfileSqft(args: {
-  printProductionProfileId: string;
-  widthIn: number;
-  heightIn: number;
-  quantity?: number;
-}) {
-  const unitQty = Math.max(1, Number(args.quantity ?? 1));
-
-  // 🔑 CARGA PERFIL REAL (EL DE TU SCHEMA)
-  const profile = await prisma.printProductionProfile.findUnique({
-    where: { id: args.printProductionProfileId },
-    include: {
-      material: true,
-      process: true,
-    },
-  });
-
-  if (!profile) {
-    throw new Error("PrintProductionProfile no encontrado");
-  }
-
-  // 📐 SQFT POR UNIDAD
-  const unitSqft = calcSqft(args.widthIn, args.heightIn);
-
-  // 🧱 MATERIAL
-  const materialAmount = unitSqft * profile.material.sellPerSqft;
-
-  // ⚙️ PROCESO
-  const processAmount = unitSqft * profile.process.sellPerSqft;
-
-  // 🧮 COSTO BASE POR UNIDAD
-  let unitPrice = materialAmount + processAmount + (profile.setupCost ?? 0);
-
-  // ♻️ WASTE %
-  if (profile.wastePercent && profile.wastePercent > 0) {
-    unitPrice = unitPrice * (1 + profile.wastePercent / 100);
-  }
-
-  unitPrice = round2(unitPrice);
-
-  const subtotal = round2(unitPrice * unitQty);
-
-  /* ===========================
-     BREAKDOWN
-  ============================ */
-
-  const lines: PriceBreakdownLine[] = [
-    {
-      label: `Material: ${profile.material.name}`,
-      qty: round2(unitSqft),
-      rate: profile.material.sellPerSqft,
-      amount: round2(materialAmount),
-    },
-    {
-      label: `Process: ${profile.process.name}`,
-      qty: round2(unitSqft),
-      rate: profile.process.sellPerSqft,
-      amount: round2(processAmount),
-    },
-  ];
-
-  return {
-    mode: "sqft" as const,
-
-    unitQty,
-    unitSqft: round2(unitSqft),
-
-    unitPrice,
-    subtotal,
-
-    lines,
-  };
-}
-
-/* ======================================================
-   ENGINE — MANUAL
-====================================================== */
-
+// ===============================
+// MANUAL PRICING
+// ===============================
 export function priceManual(args: {
   basePrice: number;
   quantity?: number;
 }): PriceBreakdown {
   const unitQty = Math.max(1, Number(args.quantity ?? 1));
-
   const unitPrice = round2(args.basePrice);
   const subtotal = round2(unitPrice * unitQty);
 
   return {
     mode: "manual",
-
     unitQty,
     unitSqft: 0,
-
     unitPrice,
     subtotal,
-
     lines: [
       {
         label: "Manual price",
@@ -146,6 +56,75 @@ export function priceManual(args: {
         rate: unitPrice,
         amount: subtotal,
       },
+    ],
+  };
+}
+
+// ===============================
+// SQFT PRICING (🔥 ESTA FALTABA BIEN ARMADA)
+// ===============================
+export async function priceFromPrintProfileSqft(args: {
+  printProductionProfileId: string;
+  widthIn: number;
+  heightIn: number;
+  quantity: number;
+}): Promise<PriceBreakdown> {
+  const { printProductionProfileId, widthIn, heightIn, quantity } = args;
+
+  const profile = await prisma.printProductionProfile.findUnique({
+    where: { id: printProductionProfileId },
+    include: {
+      material: true,
+      process: true,
+      lamination: true,
+    },
+  });
+
+  if (!profile) {
+    throw new Error("PrintProductionProfile not found");
+  }
+
+  const unitQty = Math.max(1, Number(quantity ?? 1));
+  const unitSqft = calcSqft(widthIn, heightIn);
+
+  const materialSell = profile.material.sellPerSqft;
+  const processSell = profile.process.sellPerSqft;
+  const laminationSell = profile.lamination?.sellPrice ?? 0;
+
+  const baseRate = materialSell + processSell;
+
+  const unitPrice = round2(unitSqft * baseRate + laminationSell);
+  const subtotal = round2(unitPrice * unitQty);
+
+  return {
+    mode: "sqft",
+    unitQty,
+    unitSqft,
+    unitPrice,
+    subtotal,
+    lines: [
+      {
+        label: profile.material.name,
+        qty: unitQty,
+        rate: materialSell,
+        amount: round2(unitSqft * materialSell * unitQty),
+      },
+      {
+        label: profile.process.name,
+        qty: unitQty,
+        rate: processSell,
+        amount: round2(unitSqft * processSell * unitQty),
+      },
+      ...(laminationSell > 0
+        ? [
+            {
+              label: profile.lamination?.name || "Lamination",
+              qty: unitQty,
+              rate: laminationSell,
+              amount: round2(laminationSell * unitQty),
+            },
+          ]
+        : []),
     ],
   };
 }

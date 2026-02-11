@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 
-export default function CreateCustomerModal({ onClose, onCreated }) {
+export default function CreateCustomerModal({ open, onClose, onCreated }) {
+  if (!open) return null;
+
   const [form, setForm] = useState({
     name: "",
     company: "",
@@ -54,6 +56,7 @@ export default function CreateCustomerModal({ onClose, onCreated }) {
 
       // 🔥 ESTA ES LA LÍNEA CLAVE
       onCreated(customer);
+      onClose(); // 👈 CIERRA EL MODAL
     } catch (err) {
       console.error(err);
       alert("Server error");

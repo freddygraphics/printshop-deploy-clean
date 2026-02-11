@@ -1,6 +1,9 @@
+"use client";
+
+export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-export const dynamic = "force-dynamic";
+
 import prisma from "@/lib/db";
 
 export const runtime = "nodejs";
