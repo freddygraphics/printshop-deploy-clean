@@ -1,6 +1,5 @@
-"use client";
+﻿export const dynamic = "force-dynamic";
 
-export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 
 import prisma from "@/lib/db";
@@ -21,7 +20,7 @@ export async function GET() {
       defaultTaxRate: billing?.defaultTaxRate ?? 0,
       defaultDepositPercent: billing?.defaultDepositPercent ?? 0,
 
-      // ✅ aquí unificamos descuentos dentro del mismo settings
+      // âœ… aquÃ­ unificamos descuentos dentro del mismo settings
       discountRules: discounts.map((d) => ({
         name: d.name,
         type: d.type,
@@ -37,3 +36,4 @@ export async function GET() {
     );
   }
 }
+

@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 import prisma from "@/lib/db";
 
 // ----------------------------------------
-// GET — GET SINGLE INVOICE (CORREGIDO)
+// GET â€” GET SINGLE INVOICE (CORREGIDO)
 // ----------------------------------------
 export async function GET(req, { params }) {
   try {
@@ -35,13 +35,13 @@ export async function GET(req, { params }) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    // ⚠️ NO recalculamos descuentos aquí
-    // ⚠️ NO tocamos appliedDiscounts
-    // ⚠️ Devolvemos EXACTAMENTE lo que Prisma trae
+    // âš ï¸ NO recalculamos descuentos aquÃ­
+    // âš ï¸ NO tocamos appliedDiscounts
+    // âš ï¸ Devolvemos EXACTAMENTE lo que Prisma trae
 
     return NextResponse.json(invoice);
   } catch (error) {
-    console.error("❌ GET /api/invoices/[id] ERROR:", error);
+    console.error("âŒ GET /api/invoices/[id] ERROR:", error);
     return NextResponse.json(
       { error: "Server error", details: error.message },
       { status: 500 },
@@ -50,13 +50,13 @@ export async function GET(req, { params }) {
 }
 
 // ----------------------------------------
-// PATCH — UPDATE INVOICE (fechas / tax)
+// PATCH â€” UPDATE INVOICE (fechas / tax)
 // ----------------------------------------
 // ----------------------------------------
-// PATCH — UPDATE INVOICE (fechas / tax / totales)
+// PATCH â€” UPDATE INVOICE (fechas / tax / totales)
 // ----------------------------------------
 // ----------------------------------------
-// PATCH — UPDATE INVOICE (fechas / tax / totales)
+// PATCH â€” UPDATE INVOICE (fechas / tax / totales)
 // ----------------------------------------
 export async function PATCH(req, { params }) {
   try {
@@ -85,7 +85,7 @@ export async function PATCH(req, { params }) {
           typeof body.taxEnabled === "boolean" ? body.taxEnabled : undefined,
         taxRate: toNumber(body.taxRate),
 
-        // 🔥 EL ARREGLO
+        // ðŸ”¥ EL ARREGLO
         subtotal: toNumber(body.subtotal),
         tax: toNumber(body.tax),
         total: toNumber(body.total),
@@ -95,10 +95,11 @@ export async function PATCH(req, { params }) {
 
     return NextResponse.json(updated);
   } catch (error) {
-    console.error("❌ PATCH /api/invoices/[id] ERROR:", error);
+    console.error("âŒ PATCH /api/invoices/[id] ERROR:", error);
     return NextResponse.json(
       { error: "Server error", details: error.message },
       { status: 500 },
     );
   }
 }
+

@@ -1,6 +1,5 @@
-"use client";
+﻿export const dynamic = "force-dynamic";
 
-export const dynamic = "force-dynamic";
 export async function GET() {
   return Response.json({
     id: "commercial-printing",
@@ -35,3 +34,4 @@ export async function GET() {
     },
   });
 }
+

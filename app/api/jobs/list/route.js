@@ -1,3 +1,5 @@
+﻿export const dynamic = "force-dynamic";
+
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 
@@ -14,10 +16,11 @@ export async function GET() {
 
     return NextResponse.json(jobs);
   } catch (error) {
-    console.error("❌ GET /api/jobs/list ERROR:", error);
+    console.error("âŒ GET /api/jobs/list ERROR:", error);
     return NextResponse.json(
       { error: "Failed to load jobs" },
       { status: 500 }
     );
   }
 }
+

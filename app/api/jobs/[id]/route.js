@@ -1,3 +1,6 @@
+﻿export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 
@@ -37,12 +40,12 @@ export async function PATCH(req, { params }) {
 
   const data = {};
 
-  // ✅ actualizar status si viene
+  // âœ… actualizar status si viene
   if (typeof body.status === "string") {
     data.status = body.status;
   }
 
-  // ✅ actualizar description si viene
+  // âœ… actualizar description si viene
   if (typeof body.description === "string") {
     data.description = body.description;
   }
@@ -61,3 +64,5 @@ export async function PATCH(req, { params }) {
 
   return NextResponse.json(job);
 }
+
+

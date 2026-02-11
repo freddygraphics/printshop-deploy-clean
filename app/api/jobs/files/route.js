@@ -1,6 +1,4 @@
-"use client";
-
-export const dynamic = "force-dynamic";
+﻿export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 
 import prisma from "@/lib/db";
@@ -48,7 +46,7 @@ export async function POST(req) {
           jobId,
           name: file.name,
           type: file.type,
-          url: upload.secure_url, // 🔥 URL REAL
+          url: upload.secure_url, // ðŸ”¥ URL REAL
         },
       });
 
@@ -61,3 +59,4 @@ export async function POST(req) {
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
 }
+

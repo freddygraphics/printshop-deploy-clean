@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 import prisma from "@/lib/db";
@@ -21,7 +21,8 @@ export async function GET(req, { params }) {
       job: job || null,
     });
   } catch (error) {
-    console.error("❌ JOB EXISTS ERROR:", error);
+    console.error("âŒ JOB EXISTS ERROR:", error);
     return NextResponse.json({ exists: false }, { status: 500 });
   }
 }
+

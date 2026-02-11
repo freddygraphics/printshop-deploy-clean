@@ -1,28 +1,29 @@
+﻿export const dynamic = "force-dynamic";
+
 // app/api/products/from-template/route.js
-"use client";
-export const dynamic = "force-dynamic";
-import prisma from "@/lib/db"; // 🔥 IMPORTANTE: usar el prisma correcto
-console.log("🔥 API INITIALIZED /api/products/from-template");
-console.log("🔥 DATABASE URL (API):", process.env.DATABASE_URL);
+
+import prisma from "@/lib/db"; // ðŸ”¥ IMPORTANTE: usar el prisma correcto
+console.log("ðŸ”¥ API INITIALIZED /api/products/from-template");
+console.log("ðŸ”¥ DATABASE URL (API):", process.env.DATABASE_URL);
 
 export async function POST(req) {
-  console.log("🔥 POST /api/products/from-template");
-  console.log("🔥 DATABASE:", process.env.DATABASE_URL);
+  console.log("ðŸ”¥ POST /api/products/from-template");
+  console.log("ðŸ”¥ DATABASE:", process.env.DATABASE_URL);
 
   try {
     const raw = await req.text();
-    console.log("📥 RAW BODY:", raw);
+    console.log("ðŸ“¥ RAW BODY:", raw);
 
     if (!raw) {
-      return Response.json({ error: "Cuerpo vacío" }, { status: 400 });
+      return Response.json({ error: "Cuerpo vacÃ­o" }, { status: 400 });
     }
 
     let body;
     try {
       body = JSON.parse(raw);
     } catch (e) {
-      console.error("❌ JSON inválido:", e);
-      return Response.json({ error: "JSON inválido", raw }, { status: 400 });
+      console.error("âŒ JSON invÃ¡lido:", e);
+      return Response.json({ error: "JSON invÃ¡lido", raw }, { status: 400 });
     }
 
     const {
@@ -36,10 +37,10 @@ export async function POST(req) {
       templateId,
     } = body;
 
-    console.log("➡ name:", name);
-    console.log("➡ templateType:", templateType);
-    console.log("➡ customFields:", customFields);
-    console.log("➡ defaultOptions:", defaultOptions);
+    console.log("âž¡ name:", name);
+    console.log("âž¡ templateType:", templateType);
+    console.log("âž¡ customFields:", customFields);
+    console.log("âž¡ defaultOptions:", defaultOptions);
 
     if (!name) {
       return Response.json({ error: "Falta el campo name" }, { status: 400 });
@@ -63,11 +64,12 @@ export async function POST(req) {
       },
     });
 
-    console.log("✅ PRODUCTO CREADO:", product);
+    console.log("âœ… PRODUCTO CREADO:", product);
 
     return Response.json(product);
   } catch (err) {
-    console.error("❌ ERROR API /products/from-template:", err);
+    console.error("âŒ ERROR API /products/from-template:", err);
     return Response.json({ error: String(err) }, { status: 500 });
   }
 }
+

@@ -1,11 +1,11 @@
-export const dynamic = "force-dynamic";
+﻿export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import crypto from "crypto";
 
 // ============================
-// GET — LIST JOBS (Production Board)
+// GET â€” LIST JOBS (Production Board)
 // ============================
 export async function GET() {
   try {
@@ -18,7 +18,7 @@ export async function GET() {
         position: true,
 
         description: true,
-        createdAt: true, // ✅ CLAVE
+        createdAt: true, // âœ… CLAVE
 
         pickupToken: true,
         pickedUpAt: true,
@@ -50,7 +50,7 @@ export async function GET() {
 
     return NextResponse.json(jobs);
   } catch (error) {
-    console.error("❌ GET JOBS ERROR:", error);
+    console.error("âŒ GET JOBS ERROR:", error);
     return NextResponse.json(
       { error: "Failed to fetch jobs" },
       { status: 500 },
@@ -59,7 +59,7 @@ export async function GET() {
 }
 
 // ============================
-// POST — CREATE JOB FROM INVOICE
+// POST â€” CREATE JOB FROM INVOICE
 // ============================
 export async function POST(req) {
   try {
@@ -107,17 +107,18 @@ export async function POST(req) {
         status: "Pending",
         position: 0,
 
-        // ✅ QR / PICKUP
+        // âœ… QR / PICKUP
         pickupToken,
       },
     });
 
     return NextResponse.json(job, { status: 201 });
   } catch (error) {
-    console.error("❌ CREATE JOB ERROR:", error);
+    console.error("âŒ CREATE JOB ERROR:", error);
     return NextResponse.json(
       { error: "Failed to create job" },
       { status: 500 },
     );
   }
 }
+

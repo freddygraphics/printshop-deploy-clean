@@ -1,16 +1,16 @@
-export const dynamic = "force-dynamic";
+﻿export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import crypto from "crypto";
 
-// 🔒 normalizador de descuentos
+// ðŸ”’ normalizador de descuentos
 function normalizeDiscountRules(rules = []) {
   const seen = new Set();
 
   return rules
     .map((d) => {
-      const id = d.id && typeof d.id === "string" ? d.id : crypto.randomUUID(); // 👈 ID ÚNICO REAL
+      const id = d.id && typeof d.id === "string" ? d.id : crypto.randomUUID(); // ðŸ‘ˆ ID ÃšNICO REAL
 
       return {
         id,
@@ -52,7 +52,7 @@ export async function PUT(req) {
       defaultTaxRate: body.defaultTaxRate,
       defaultDepositPercent: body.defaultDepositPercent,
 
-      // ✅ ARREGLO CLAVE
+      // âœ… ARREGLO CLAVE
       discountRules: normalizeDiscountRules(body.discountRules),
       paymentFees: body.paymentFees ?? [],
     };
@@ -73,3 +73,4 @@ export async function PUT(req) {
     );
   }
 }
+

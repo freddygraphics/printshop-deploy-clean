@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 import prisma from "@/lib/db";
@@ -22,7 +22,7 @@ export async function POST(req, { params }) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    // 🔒 Solo si está completamente pagada
+    // ðŸ”’ Solo si estÃ¡ completamente pagada
     if (Number(invoice.balance ?? 0) > 0) {
       return NextResponse.json(
         { error: "Invoice not fully paid" },
@@ -30,7 +30,7 @@ export async function POST(req, { params }) {
       );
     }
 
-    // 🚫 Evitar doble pickup
+    // ðŸš« Evitar doble pickup
     if (invoice.pickedUpAt) {
       return NextResponse.json(
         { error: "Invoice already picked up" },
@@ -47,7 +47,8 @@ export async function POST(req, { params }) {
 
     return NextResponse.json(updated);
   } catch (error) {
-    console.error("❌ PICKUP ERROR:", error);
+    console.error("âŒ PICKUP ERROR:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

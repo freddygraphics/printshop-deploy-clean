@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 import prisma from "@/lib/db";
@@ -32,10 +32,11 @@ export async function POST(req, { params }) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("❌ payment-intent error:", err);
+    console.error("âŒ payment-intent error:", err);
     return NextResponse.json(
       { error: "Failed to save payment intent" },
       { status: 500 },
     );
   }
 }
+

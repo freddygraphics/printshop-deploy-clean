@@ -1,7 +1,4 @@
-// /app/api/clients/[id]/notes/route.js
-"use client";
-
-export const dynamic = "force-dynamic";
+﻿// /app/api/clients/[id]/notes/route.jsexport const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 
 import prisma from "../../../../../lib/db";
@@ -16,7 +13,7 @@ export async function GET(req, { params }) {
     });
     return NextResponse.json(notes);
   } catch (error) {
-    console.error("❌ Error al obtener notas:", error);
+    console.error("âŒ Error al obtener notas:", error);
     return NextResponse.json(
       { error: "Error al obtener notas" },
       { status: 500 },
@@ -48,7 +45,8 @@ export async function POST(req, { params }) {
 
     return NextResponse.json(note, { status: 201 });
   } catch (error) {
-    console.error("❌ Error al crear nota:", error);
+    console.error("âŒ Error al crear nota:", error);
     return NextResponse.json({ error: "Error al crear nota" }, { status: 500 });
   }
 }
+

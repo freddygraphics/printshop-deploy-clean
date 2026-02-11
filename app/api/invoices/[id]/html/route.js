@@ -1,4 +1,4 @@
-// 👇 OBLIGATORIO PARA PRISMA
+﻿// ðŸ‘‡ OBLIGATORIO PARA PRISMA
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
@@ -31,7 +31,7 @@ export async function GET(req, { params }) {
       return new NextResponse("Invoice not found", { status: 404 });
     }
 
-    // 👇 SI ES async, ESTO LO ARREGLA
+    // ðŸ‘‡ SI ES async, ESTO LO ARREGLA
     const html = await buildInvoiceHtml({
       invoiceNumber: invoice.invoiceNumber,
       issuedAt: invoice.issuedAt,
@@ -53,7 +53,8 @@ export async function GET(req, { params }) {
       },
     });
   } catch (err) {
-    console.error("❌ HTML INVOICE ERROR:", err);
+    console.error("âŒ HTML INVOICE ERROR:", err);
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }
+

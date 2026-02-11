@@ -1,11 +1,9 @@
-// /app/api/orders/status/[status]/route.js
-"use client";
-export const dynamic = "force-dynamic";
+﻿// /app/api/orders/status/[status]/route.jsexport const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 
 import prisma from "../../../../../lib/db";
 
-// 📋 GET - listar órdenes por estado
+// ðŸ“‹ GET - listar Ã³rdenes por estado
 export async function GET(req, { params }) {
   const status = decodeURIComponent(params.status);
 
@@ -17,15 +15,16 @@ export async function GET(req, { params }) {
     });
 
     if (orders.length === 0) {
-      return NextResponse.json({ message: "No hay órdenes con este estado" });
+      return NextResponse.json({ message: "No hay Ã³rdenes con este estado" });
     }
 
     return NextResponse.json(orders);
   } catch (error) {
     console.error(error);
     return NextResponse.json(
-      { error: "Error al filtrar órdenes" },
+      { error: "Error al filtrar Ã³rdenes" },
       { status: 500 },
     );
   }
 }
+

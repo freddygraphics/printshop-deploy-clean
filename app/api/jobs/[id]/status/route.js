@@ -1,6 +1,4 @@
-"use client";
-
-export const dynamic = "force-dynamic";
+﻿export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 
 import prisma from "@/lib/db";
@@ -24,10 +22,11 @@ export async function PUT(req, { params }) {
 
     return NextResponse.json(job);
   } catch (error) {
-    console.error("❌ UPDATE JOB STATUS ERROR:", error);
+    console.error("âŒ UPDATE JOB STATUS ERROR:", error);
     return NextResponse.json(
       { error: "Failed to update job status" },
       { status: 500 },
     );
   }
 }
+

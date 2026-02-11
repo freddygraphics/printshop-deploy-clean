@@ -1,9 +1,7 @@
-"use client";
-
-export const dynamic = "force-dynamic";
+﻿export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 
-import prisma from "../../../../lib/db"; // ✔ ruta correcta
+import prisma from "../../../../lib/db"; // âœ” ruta correcta
 
 // -------------------------------------
 // GET /api/quotes/[id]
@@ -30,7 +28,7 @@ export async function GET(req, { params }) {
 
     return NextResponse.json(quote);
   } catch (error) {
-    console.error("❌ ERROR LOADING QUOTE:", error);
+    console.error("âŒ ERROR LOADING QUOTE:", error);
     return NextResponse.json(
       { error: "Server error", details: error.message },
       { status: 500 },
@@ -62,12 +60,12 @@ export async function PUT(req, { params }) {
       customerNotes,
     } = body;
 
-    // 🔥 1) BORRAR ITEMS ANTERIORES
+    // ðŸ”¥ 1) BORRAR ITEMS ANTERIORES
     await prisma.quoteItem.deleteMany({
       where: { quoteId: id },
     });
 
-    // 🔥 2) CREAR ITEMS NUEVOS (COMPLETOS)
+    // ðŸ”¥ 2) CREAR ITEMS NUEVOS (COMPLETOS)
     if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
         { error: "Quote must have at least one item" },
@@ -108,7 +106,7 @@ export async function PUT(req, { params }) {
     if (typeof customerNotes === "string")
       dataToUpdate.customerNotes = customerNotes;
 
-    // 🔥 3) ACTUALIZAR EL QUOTE
+    // ðŸ”¥ 3) ACTUALIZAR EL QUOTE
     const updatedQuote = await prisma.quote.update({
       where: { id },
       data: {
@@ -128,7 +126,7 @@ export async function PUT(req, { params }) {
 
     return NextResponse.json(updatedQuote);
   } catch (error) {
-    console.error("❌ ERROR UPDATING QUOTE:", error);
+    console.error("âŒ ERROR UPDATING QUOTE:", error);
     return NextResponse.json(
       { error: "Server error", details: error.message },
       { status: 500 },
@@ -147,29 +145,30 @@ export async function DELETE(req, { params }) {
       return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
     }
 
-    // 1️⃣ Borrar items del quote
+    // 1ï¸âƒ£ Borrar items del quote
     await prisma.quoteItem.deleteMany({
       where: { quoteId: id },
     });
 
-    // 2️⃣ Borrar jobs asociados (si existen)
+    // 2ï¸âƒ£ Borrar jobs asociados (si existen)
     await prisma.job.deleteMany({
       where: { quoteId: id },
     });
 
-    // 3️⃣ Borrar invoices asociadas (si existen)
+    // 3ï¸âƒ£ Borrar invoices asociadas (si existen)
     await prisma.invoice.deleteMany({
       where: { quoteId: id },
     });
 
-    // 4️⃣ Borrar el quote
+    // 4ï¸âƒ£ Borrar el quote
     await prisma.quote.delete({
       where: { id },
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("❌ ERROR VOIDING QUOTE:", error);
+    console.error("âŒ ERROR VOIDING QUOTE:", error);
     return NextResponse.json({ error: "Error voiding quote" }, { status: 500 });
   }
 }
+

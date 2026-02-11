@@ -1,12 +1,12 @@
+﻿export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import prisma from "@/lib/db";
 import { auth } from "@/lib/auth";
 
-export const dynamic = "force-dynamic";
-
 // ----------------------------------------
-// GET — LIST ALL INVOICES
+// GET â€” LIST ALL INVOICES
 // ----------------------------------------
 export async function GET() {
   try {
@@ -44,23 +44,23 @@ export async function GET() {
     });
 
     const result = invoices.map((inv) => {
-      // 1️⃣ SUBTOTAL
+      // 1ï¸âƒ£ SUBTOTAL
       const subtotal = inv.invoiceItems.reduce(
         (sum, item) =>
           sum + Number(item.total ?? item.unitPrice * item.qty ?? 0),
         0,
       );
 
-      // 2️⃣ TAX (USA LA MISMA BANDERA QUE EL EDITOR)
+      // 2ï¸âƒ£ TAX (USA LA MISMA BANDERA QUE EL EDITOR)
       const taxRate = Number(inv.taxRate || 0);
 
       const tax =
         inv.taxEnabled && taxRate > 0 ? subtotal * (taxRate / 100) : 0;
 
-      // 3️⃣ TOTAL
+      // 3ï¸âƒ£ TOTAL
       const invoiceTotal = subtotal + tax;
 
-      // 4️⃣ PAYMENTS
+      // 4ï¸âƒ£ PAYMENTS
       const paymentsTotal = inv.payments.reduce(
         (sum, p) => sum + Number(p.amount || 0),
         0,
@@ -78,13 +78,13 @@ export async function GET() {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error("❌ Error loading invoices:", error);
+    console.error("âŒ Error loading invoices:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
 
 // ----------------------------------------
-// POST — CREATE NEW INVOICE + QR TOKEN
+// POST â€” CREATE NEW INVOICE + QR TOKEN
 // ----------------------------------------
 export async function POST(req) {
   try {
@@ -117,17 +117,17 @@ export async function POST(req) {
       );
     }
 
-    // 🔢 Invoice Number
+    // ðŸ”¢ Invoice Number
     const counter = await prisma.counter.upsert({
       where: { name: "invoice" },
       update: { value: { increment: 1 } },
       create: { name: "invoice", value: 99 },
     });
 
-    // 🔐 GENERAR TOKEN AQUÍ (CORRECTO)
+    // ðŸ” GENERAR TOKEN AQUÃ (CORRECTO)
     const publicToken = crypto.randomBytes(8).toString("hex");
 
-    // ✅ Crear invoice
+    // âœ… Crear invoice
     const invoice = await prisma.invoice.create({
       data: {
         clientId,
@@ -141,7 +141,7 @@ export async function POST(req) {
         paymentStatus: "UNPAID",
         notes,
 
-        // 👇 AQUÍ ES DONDE VA
+        // ðŸ‘‡ AQUÃ ES DONDE VA
         publicToken,
       },
       include: {
@@ -156,10 +156,11 @@ export async function POST(req) {
       publicToken: invoice.publicToken,
     });
   } catch (error) {
-    console.error("❌ Error creating invoice:", error);
+    console.error("âŒ Error creating invoice:", error);
     return NextResponse.json(
       { error: "Server error", details: error.message },
       { status: 500 },
     );
   }
 }
+

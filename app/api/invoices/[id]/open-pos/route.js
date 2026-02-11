@@ -1,6 +1,4 @@
-// /app/api/invoices/[id]/open-pos/route.js
-"use client";
-export const dynamic = "force-dynamic";
+﻿// /app/api/invoices/[id]/open-pos/route.jsexport const dynamic = "force-dynamic";
 
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
@@ -26,3 +24,4 @@ export async function GET(req, { params }) {
     return new Response("Server error", { status: 500 });
   }
 }
+

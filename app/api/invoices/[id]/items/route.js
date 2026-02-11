@@ -1,4 +1,4 @@
-export const dynamic = "force-dynamic";
+﻿export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 
 import prisma from "@/lib/db";
@@ -14,17 +14,17 @@ export async function PUT(req, { params }) {
   const items = body.items || [];
 
   try {
-    // 🔥 1. BORRAR ITEMS EXISTENTES
+    // ðŸ”¥ 1. BORRAR ITEMS EXISTENTES
     await prisma.invoiceItem.deleteMany({
       where: { invoiceId },
     });
 
-    // 🔥 2. RECREAR ITEMS (UNO POR UNO)
+    // ðŸ”¥ 2. RECREAR ITEMS (UNO POR UNO)
     for (const i of items) {
       const pricingMode = i.options?.pricingMode;
 
       // ============================
-      // 🟢 ITEM MANUAL / LEGACY
+      // ðŸŸ¢ ITEM MANUAL / LEGACY
       // ============================
       if (pricingMode !== "sqft") {
         await prisma.invoiceItem.create({
@@ -43,7 +43,7 @@ export async function PUT(req, { params }) {
       }
 
       // ============================
-      // 🔵 ITEM SQFT (CONFIGURABLE)
+      // ðŸ”µ ITEM SQFT (CONFIGURABLE)
       // ============================
       const material = await prisma.material.findUnique({
         where: { id: i.options.materialId },
@@ -67,11 +67,11 @@ export async function PUT(req, { params }) {
           name: i.name,
           qty: Number(i.qty),
 
-          // ✅ PRECIO CORRECTO
+          // âœ… PRECIO CORRECTO
           unitPrice: breakdown.subtotal / Number(i.qty),
           total: breakdown.subtotal,
 
-          // 🔥 SNAPSHOT REAL (NO SE VUELVE A CALCULAR)
+          // ðŸ”¥ SNAPSHOT REAL (NO SE VUELVE A CALCULAR)
           options: {
             ...i.options,
             pricingSnapshot: breakdown,
@@ -82,10 +82,11 @@ export async function PUT(req, { params }) {
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error("❌ SAVE ITEMS ERROR:", err);
+    console.error("âŒ SAVE ITEMS ERROR:", err);
     return NextResponse.json(
       { error: "Failed to save items" },
       { status: 500 },
     );
   }
 }
+

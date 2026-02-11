@@ -1,12 +1,9 @@
-// /app/api/clients/[id]/route.ts
-"use client";
-
-export const dynamic = "force-dynamic";
+﻿// /app/api/clients/[id]/route.tsexport const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 
 import prisma from "../../../../lib/db";
 
-// 📌 GET — Cliente + quotes + orders + invoices (con pagos validados) + notes
+// ðŸ“Œ GET â€” Cliente + quotes + orders + invoices (con pagos validados) + notes
 export async function GET(req, { params }) {
   const id = parseInt(params.id);
 
@@ -32,16 +29,16 @@ export async function GET(req, { params }) {
       orderBy: { createdAt: "desc" },
     });
 
-    // 🔥 INVOICES CON PAGOS (CLAVE)
+    // ðŸ”¥ INVOICES CON PAGOS (CLAVE)
     const rawInvoices = await prisma.invoice.findMany({
       where: { clientId: id },
       orderBy: { createdAt: "desc" },
       include: {
-        payments: true, // 👈 ESTO ES LO QUE FALTABA
+        payments: true, // ðŸ‘ˆ ESTO ES LO QUE FALTABA
       },
     });
 
-    // 🔥 NORMALIZACIÓN CONTABLE (PRO)
+    // ðŸ”¥ NORMALIZACIÃ“N CONTABLE (PRO)
     const invoices = rawInvoices.map((inv) => {
       const total = Number(inv.total || 0);
 
@@ -78,14 +75,15 @@ export async function GET(req, { params }) {
       client,
       quotes,
       orders,
-      invoices, // ✅ YA NORMALIZADAS
+      invoices, // âœ… YA NORMALIZADAS
       notes,
     });
   } catch (error) {
-    console.error("❌ Error en GET /clients/[id]:", error);
+    console.error("âŒ Error en GET /clients/[id]:", error);
     return NextResponse.json(
       { error: "Error interno al obtener cliente" },
       { status: 500 },
     );
   }
 }
+

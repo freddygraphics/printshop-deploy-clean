@@ -1,13 +1,12 @@
-"use client";
+﻿export const dynamic = "force-dynamic";
 
-export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 
 import prisma from "@/lib/db";
 import { auth } from "@/lib/auth";
 
-// 🔒 GET — Listar usuarios (ADMIN)
+// ðŸ”’ GET â€” Listar usuarios (ADMIN)
 export async function GET(req) {
   const session = await auth();
 
@@ -30,7 +29,7 @@ export async function GET(req) {
   return NextResponse.json(users);
 }
 
-// 🔒 POST — Crear usuario (ADMIN)
+// ðŸ”’ POST â€” Crear usuario (ADMIN)
 export async function POST(req) {
   try {
     const session = await auth();
@@ -77,7 +76,8 @@ export async function POST(req) {
       role: user.role,
     });
   } catch (error) {
-    console.error("❌ Create user error:", error);
+    console.error("âŒ Create user error:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
+

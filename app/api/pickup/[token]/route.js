@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 import prisma from "@/lib/db";
 
@@ -25,7 +25,7 @@ export async function GET(req, { params }) {
     );
   }
 
-  // 🧮 Calcular balance real
+  // ðŸ§® Calcular balance real
   const subtotal = job.invoice.invoiceItems.reduce(
     (sum, i) => sum + Number(i.total ?? i.unitPrice * i.qty),
     0,
@@ -45,7 +45,7 @@ export async function GET(req, { params }) {
 }
 
 // ------------------------------------------------
-// POST — MARK JOB AS DELIVERED
+// POST â€” MARK JOB AS DELIVERED
 // ------------------------------------------------
 export async function POST(req, { params }) {
   const { token } = params;
@@ -69,7 +69,7 @@ export async function POST(req, { params }) {
     );
   }
 
-  // 🧮 RECALCULAR BALANCE (IGUAL QUE EN GET)
+  // ðŸ§® RECALCULAR BALANCE (IGUAL QUE EN GET)
   const subtotal = job.invoice.invoiceItems.reduce(
     (sum, i) => sum + Number(i.total ?? i.unitPrice * i.qty),
     0,
@@ -82,7 +82,7 @@ export async function POST(req, { params }) {
 
   const balance = subtotal - paymentsTotal;
 
-  // ❌ BLOQUEAR SI HAY BALANCE
+  // âŒ BLOQUEAR SI HAY BALANCE
   if (balance > 0) {
     return NextResponse.json(
       { error: "Invoice has pending balance" },
@@ -90,7 +90,7 @@ export async function POST(req, { params }) {
     );
   }
 
-  // ✅ MARCAR COMO DELIVERED
+  // âœ… MARCAR COMO DELIVERED
   const updated = await prisma.job.update({
     where: { id: job.id },
     data: {
@@ -101,3 +101,4 @@ export async function POST(req, { params }) {
 
   return NextResponse.json(updated);
 }
+

@@ -1,6 +1,4 @@
-"use client";
-
-export const dynamic = "force-dynamic";
+﻿export const dynamic = "force-dynamic";
 
 import prisma from "@/lib/db";
 import { NextResponse } from "next/server";
@@ -40,7 +38,7 @@ export async function GET(req) {
 
     return NextResponse.json(clients);
   } catch (err) {
-    console.error("❌ Error searching customers:", err);
+    console.error("âŒ Error searching customers:", err);
     return NextResponse.json([], { status: 500 });
   }
 }

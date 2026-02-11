@@ -1,3 +1,6 @@
+﻿export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function PATCH(req, { params }) {
   const id = Number(params.itemId);
   const body = await req.json();
@@ -9,7 +12,7 @@ export async function PATCH(req, { params }) {
       qty: body.qty,
       unitPrice: body.unitPrice,
       total: body.total,
-      options: body.options, // 👈 AQUÍ SE GUARDAN LOS CONFIGURABLES
+      options: body.options, // ðŸ‘ˆ AQUÃ SE GUARDAN LOS CONFIGURABLES
     },
   });
 
@@ -22,3 +25,5 @@ export async function DELETE(req, { params }) {
   });
   return NextResponse.json({ ok: true });
 }
+
+

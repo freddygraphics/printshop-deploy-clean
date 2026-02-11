@@ -1,3 +1,5 @@
+﻿export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 
@@ -9,10 +11,11 @@ export async function GET() {
 
     return NextResponse.json(quotes);
   } catch (error) {
-    console.error("❌ /api/quotes:", error);
+    console.error("âŒ /api/quotes:", error);
     return NextResponse.json(
       { error: "Server error", details: String(error) },
       { status: 500 },
     );
   }
 }
+

@@ -1,11 +1,9 @@
-// /app/api/orders/[id]/route.js
-"use client";
-export const dynamic = "force-dynamic";
+﻿// /app/api/orders/[id]/route.jsexport const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 
 import prisma from "../../../../lib/db";
 
-// 📋 GET - obtener una orden por ID
+// ðŸ“‹ GET - obtener una orden por ID
 export async function GET(req, { params }) {
   const id = parseInt(params.id);
   const order = await prisma.order.findUnique({
@@ -20,7 +18,7 @@ export async function GET(req, { params }) {
   return NextResponse.json(order);
 }
 
-// ✏️ PUT - actualizar orden
+// âœï¸ PUT - actualizar orden
 export async function PUT(req, { params }) {
   const id = parseInt(params.id);
   const data = await req.json();
@@ -40,7 +38,7 @@ export async function PUT(req, { params }) {
   }
 }
 
-// ❌ DELETE - eliminar orden
+// âŒ DELETE - eliminar orden
 export async function DELETE(req, { params }) {
   const id = parseInt(params.id);
 
@@ -55,3 +53,4 @@ export async function DELETE(req, { params }) {
     );
   }
 }
+

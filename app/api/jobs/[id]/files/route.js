@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 import prisma from "@/lib/db";
@@ -40,3 +40,4 @@ export async function POST(req, { params }) {
 
   return NextResponse.json(saved);
 }
+

@@ -1,4 +1,4 @@
-export const dynamic = "force-dynamic";
+﻿export const dynamic = "force-dynamic";
 
 import prisma from "@/lib/db";
 import { NextResponse } from "next/server";
@@ -11,7 +11,7 @@ export async function POST(req) {
     amount,
     processingFee = 0,
     method = "card",
-    type = "full", // 👈 full | deposit
+    type = "full", // ðŸ‘ˆ full | deposit
   } = body;
 
   if (!invoiceId || !amount || amount <= 0) {
@@ -27,8 +27,8 @@ export async function POST(req) {
       processingFee,
       totalCharged,
       method,
-      type, // ✅ CLAVE (deposit | full)
-      status: "pending", // ✅ CLAVE
+      type, // âœ… CLAVE (deposit | full)
+      status: "pending", // âœ… CLAVE
     },
   });
 
@@ -36,3 +36,4 @@ export async function POST(req) {
     intentId: intent.id,
   });
 }
+

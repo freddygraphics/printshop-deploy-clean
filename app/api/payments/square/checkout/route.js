@@ -1,7 +1,6 @@
-// app/api/payments/square/checkout/route.js
-"use client";
-export const dynamic = "force-dynamic";
+﻿export const dynamic = "force-dynamic";
 
+// app/api/payments/square/checkout/route.js
 import prisma from "@/lib/db";
 import crypto from "crypto";
 import { NextResponse } from "next/server";
@@ -16,7 +15,7 @@ export async function POST(req) {
       return NextResponse.json({ error: "Missing token" }, { status: 400 });
     }
 
-    // 1️⃣ Buscar invoice
+    // 1ï¸âƒ£ Buscar invoice
     const invoice = await prisma.invoice.findUnique({
       where: { publicToken: token },
       include: {
@@ -37,7 +36,7 @@ export async function POST(req) {
 
     const intent = invoice.paymentIntents[0];
 
-    // 2️⃣ Crear Payment Link en Square
+    // 2ï¸âƒ£ Crear Payment Link en Square
     const res = await fetch(
       "https://connect.squareup.com/v2/online-checkout/payment-links",
       {
@@ -73,24 +72,24 @@ export async function POST(req) {
     const data = await res.json();
 
     if (!res.ok || !data.payment_link?.url) {
-      console.error("❌ Square error:", data);
+      console.error("âŒ Square error:", data);
       return NextResponse.json(
         { error: "Square checkout failed" },
         { status: 500 },
       );
     }
 
-    // 3️⃣ EXTRAER order_id
+    // 3ï¸âƒ£ EXTRAER order_id
     const orderId = data.payment_link.order_id;
     if (!orderId) {
-      console.error("❌ Square order_id missing", data);
+      console.error("âŒ Square order_id missing", data);
       return NextResponse.json(
         { error: "Square order_id missing" },
         { status: 500 },
       );
     }
 
-    // 4️⃣ GUARDAR EN INVOICE (🔥 AQUÍ SÍ EXISTE invoice)
+    // 4ï¸âƒ£ GUARDAR EN INVOICE (ðŸ”¥ AQUÃ SÃ EXISTE invoice)
     await prisma.invoice.update({
       where: { id: invoice.id },
       data: {
@@ -99,15 +98,16 @@ export async function POST(req) {
       },
     });
 
-    // 5️⃣ DEVOLVER LINK
+    // 5ï¸âƒ£ DEVOLVER LINK
     return NextResponse.json({
       url: data.payment_link.url,
     });
   } catch (err) {
-    console.error("❌ Square checkout error:", err);
+    console.error("âŒ Square checkout error:", err);
     return NextResponse.json(
       { error: "Square checkout failed" },
       { status: 500 },
     );
   }
 }
+

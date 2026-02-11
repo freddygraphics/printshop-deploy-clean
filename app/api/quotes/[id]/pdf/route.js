@@ -1,7 +1,4 @@
-// /app/api/quotes/[id]/pdf/route.js
-"use client";
-
-export const dynamic = "force-dynamic";
+﻿// /app/api/quotes/[id]/pdf/route.jsexport const dynamic = "force-dynamic";
 
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
@@ -15,7 +12,7 @@ export async function GET(req, { params }) {
   try {
     const id = Number(params.id);
 
-    // 🧩 Cargar quote con cliente e ítems
+    // ðŸ§© Cargar quote con cliente e Ã­tems
     const quote = await prisma.quote.findUnique({
       where: { id },
       include: { client: true, items: true },
@@ -27,7 +24,7 @@ export async function GET(req, { params }) {
 
     const items = quote.items || [];
 
-    // 🧩 Fechas
+    // ðŸ§© Fechas
     const quoteDate = quote.quoteDate
       ? new Date(quote.quoteDate).toLocaleDateString()
       : "";
@@ -36,19 +33,19 @@ export async function GET(req, { params }) {
       ? new Date(quote.validUntil).toLocaleDateString()
       : "";
 
-    // 🧩 Downpayment 50%
+    // ðŸ§© Downpayment 50%
     const deposit = Number(quote.total || 0) * 0.5;
 
-    // 🧩 Logo en base64
+    // ðŸ§© Logo en base64
     const logoPath = path.join(process.cwd(), "public/freddy-logo.png");
     let logoBase64 = "";
     try {
       logoBase64 = fs.readFileSync(logoPath).toString("base64");
     } catch (e) {
-      console.warn("⚠️ Logo no encontrado en public/freddy-logo.png");
+      console.warn("âš ï¸ Logo no encontrado en public/freddy-logo.png");
     }
 
-    // 🧩 Lanzar Playwright
+    // ðŸ§© Lanzar Playwright
     const browser = await playwright.chromium.launch();
     const page = await browser.newPage();
 
@@ -395,7 +392,7 @@ export async function GET(req, { params }) {
             </div>
             <div style="margin-top:6pt;">
               <span class="notes-title">Need to make changes?</span><br />
-              No problem – but please realize, changes to quantity or specifications will affect your price.
+              No problem â€“ but please realize, changes to quantity or specifications will affect your price.
               We will provide you with an updated quote based on the changes.
             </div>
           </div>
@@ -463,10 +460,11 @@ export async function GET(req, { params }) {
       },
     });
   } catch (error) {
-    console.error("❌ PDF generation error:", error);
+    console.error("âŒ PDF generation error:", error);
     return NextResponse.json(
       { error: "PDF generation failed", details: error.message },
       { status: 500 },
     );
   }
 }
+

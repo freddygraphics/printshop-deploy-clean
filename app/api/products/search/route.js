@@ -1,4 +1,4 @@
-export const dynamic = "force-dynamic";
+﻿export const dynamic = "force-dynamic";
 
 import prisma from "@/lib/db";
 
@@ -37,7 +37,8 @@ export async function GET(req) {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("❌ Error searching products:", error);
+    console.error("âŒ Error searching products:", error);
     return new Response(JSON.stringify([]), { status: 500 });
   }
 }
+

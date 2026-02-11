@@ -1,4 +1,4 @@
-export const dynamic = "force-dynamic";
+﻿export const dynamic = "force-dynamic";
 
 import prisma from "../../../../lib/db";
 
@@ -16,13 +16,13 @@ export async function GET(req, { params }) {
 
     return Response.json(product);
   } catch (error) {
-    console.error("❌ Error GET product:", error);
+    console.error("âŒ Error GET product:", error);
     return Response.json({ error: "Server error" }, { status: 500 });
   }
 }
 
 // -------------------------------------------------------
-// PUT → Editar producto
+// PUT â†’ Editar producto
 // -------------------------------------------------------
 export async function PUT(req, { params }) {
   try {
@@ -34,7 +34,7 @@ export async function PUT(req, { params }) {
       data: {
         name: body.name,
         description: body.description ?? "",
-        basePrice: body.basePrice ?? 0, // ✅ ÚNICO precio base
+        basePrice: body.basePrice ?? 0, // âœ… ÃšNICO precio base
         templateId: body.templateId ?? null,
         customFields: body.customFields || {},
         defaultOptions: body.defaultOptions || {},
@@ -43,13 +43,13 @@ export async function PUT(req, { params }) {
 
     return Response.json(updated);
   } catch (error) {
-    console.error("❌ Error PUT product:", error);
+    console.error("âŒ Error PUT product:", error);
     return Response.json({ error: "Error updating product" }, { status: 500 });
   }
 }
 
 // -------------------------------------------------------
-// DELETE → opcional
+// DELETE â†’ opcional
 // -------------------------------------------------------
 
 export async function PATCH(req, { params }) {
@@ -82,3 +82,4 @@ export async function DELETE(req, { params }) {
 
   return NextResponse.json({ success: true });
 }
+

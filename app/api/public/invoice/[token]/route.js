@@ -1,6 +1,4 @@
-"use client";
-
-export const dynamic = "force-dynamic";
+﻿export const dynamic = "force-dynamic";
 import prisma from "@/lib/db";
 
 export async function GET(req, { params }) {
@@ -51,10 +49,10 @@ export async function GET(req, { params }) {
       ? { name: discount.name, amount: discount.amount }
       : null,
 
-    // 🔑 PAYMENT INTENT (LA VERDAD)
+    // ðŸ”‘ PAYMENT INTENT (LA VERDAD)
     paymentIntent: intent
       ? {
-          id: intent.id, // 🔑 CLAVE
+          id: intent.id, // ðŸ”‘ CLAVE
           type: intent.type,
           amount: intent.amount,
           processingFee: intent.processingFee,
@@ -66,3 +64,4 @@ export async function GET(req, { params }) {
     publicToken: invoice.publicToken,
   });
 }
+

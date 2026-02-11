@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 import prisma from "@/lib/db";
 
 export async function PATCH(req, { params }) {
-  const invoiceId = Number(params.id); // 🔥 importante
+  const invoiceId = Number(params.id); // ðŸ”¥ importante
 
   const invoice = await prisma.invoice.findUnique({
     where: { id: invoiceId },
@@ -31,3 +31,4 @@ export async function PATCH(req, { params }) {
 
   return NextResponse.json({ success: true });
 }
+

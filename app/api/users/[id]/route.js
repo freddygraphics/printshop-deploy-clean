@@ -1,17 +1,15 @@
-"use client";
-
-export const dynamic = "force-dynamic";
+﻿export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 
 import prisma from "@/lib/db";
 import { auth } from "@/lib/auth";
 
-// 🔒 PATCH — Update user (ADMIN)
+// ðŸ”’ PATCH â€” Update user (ADMIN)
 export async function PATCH(req, { params }) {
   try {
     const session = await auth();
 
-    // 🔐 Solo admin
+    // ðŸ” Solo admin
     if (!session || session.user.role !== "admin") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
@@ -19,12 +17,12 @@ export async function PATCH(req, { params }) {
     const userId = Number(params.id);
     const { role, isActive } = await req.json();
 
-    // 🛑 Validación básica
+    // ðŸ›‘ ValidaciÃ³n bÃ¡sica
     if (!userId) {
       return NextResponse.json({ error: "Invalid user id" }, { status: 400 });
     }
 
-    // ❌ Evitar que el admin se desactive a sí mismo
+    // âŒ Evitar que el admin se desactive a sÃ­ mismo
     if (session.user.id === userId && isActive === false) {
       return NextResponse.json(
         { error: "You cannot deactivate your own account" },
@@ -32,7 +30,7 @@ export async function PATCH(req, { params }) {
       );
     }
 
-    // 🛠 Construir data dinámica
+    // ðŸ›  Construir data dinÃ¡mica
     const data = {};
     if (role) data.role = role;
     if (typeof isActive === "boolean") data.isActive = isActive;
@@ -51,7 +49,8 @@ export async function PATCH(req, { params }) {
 
     return NextResponse.json(updatedUser);
   } catch (error) {
-    console.error("❌ Update user error:", error);
+    console.error("âŒ Update user error:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
+

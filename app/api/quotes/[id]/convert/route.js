@@ -1,6 +1,4 @@
-"use client";
-
-export const dynamic = "force-dynamic";
+﻿export const dynamic = "force-dynamic";
 
 import prisma from "../../../../../lib/db";
 
@@ -11,7 +9,7 @@ export async function POST(req, { params }) {
       return NextResponse.json({ error: "Invalid quote ID" }, { status: 400 });
     }
 
-    // 1️⃣ Cargar quote + items
+    // 1ï¸âƒ£ Cargar quote + items
     const quote = await prisma.quote.findUnique({
       where: { id: quoteId },
       include: { items: true },
@@ -21,7 +19,7 @@ export async function POST(req, { params }) {
       return NextResponse.json({ error: "Quote not found" }, { status: 404 });
     }
 
-    // 2️⃣ Evitar duplicados
+    // 2ï¸âƒ£ Evitar duplicados
     const existingInvoice = await prisma.invoice.findFirst({
       where: { quoteId },
     });
@@ -33,7 +31,7 @@ export async function POST(req, { params }) {
       );
     }
 
-    // 3️⃣ Obtener invoiceNumber
+    // 3ï¸âƒ£ Obtener invoiceNumber
     const counter = await prisma.counter.upsert({
       where: { name: "invoice" },
       update: { value: { increment: 1 } },
@@ -42,7 +40,7 @@ export async function POST(req, { params }) {
 
     const invoiceNumber = `IN-${counter.value}`;
 
-    // 4️⃣ Crear Invoice
+    // 4ï¸âƒ£ Crear Invoice
     const invoice = await prisma.invoice.create({
       data: {
         invoiceNumber,
@@ -75,7 +73,7 @@ export async function POST(req, { params }) {
       },
     });
 
-    // 5️⃣ Marcar quote como convertido
+    // 5ï¸âƒ£ Marcar quote como convertido
     await prisma.quote.update({
       where: { id: quote.id },
       data: { status: "Converted to Invoice" },
@@ -83,7 +81,8 @@ export async function POST(req, { params }) {
 
     return NextResponse.json(invoice);
   } catch (error) {
-    console.error("❌ Convert Quote → Invoice error:", error);
+    console.error("âŒ Convert Quote â†’ Invoice error:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
+

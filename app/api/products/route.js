@@ -1,5 +1,7 @@
+﻿export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
-export const dynamic = "force-dynamic";
+
 import prisma from "@/lib/db";
 
 export async function GET() {
@@ -10,9 +12,9 @@ export async function GET() {
         id: true,
         name: true,
         description: true,
-        basePrice: true, // ✅
+        basePrice: true, // âœ…
         templateType: true,
-        pricingMode: true, // 🔥 importante para banners
+        pricingMode: true, // ðŸ”¥ importante para banners
         customFields: true,
         defaultOptions: true,
       },
@@ -20,10 +22,11 @@ export async function GET() {
 
     return NextResponse.json(products);
   } catch (err) {
-    console.error("🔥 ERROR GET /api/products:", err);
+    console.error("ðŸ”¥ ERROR GET /api/products:", err);
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 },
     );
   }
 }
+

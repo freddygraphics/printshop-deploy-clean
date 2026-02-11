@@ -1,6 +1,4 @@
-"use client";
-
-export const dynamic = "force-dynamic";
+﻿export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 
 import prisma from "@/lib/db";
@@ -22,16 +20,17 @@ export async function DELETE(req, { params }) {
     return NextResponse.json({ error: "File not found" }, { status: 404 });
   }
 
-  // 📂 borrar archivo físico
+  // ðŸ“‚ borrar archivo fÃ­sico
   const filePath = path.join(process.cwd(), "public", file.url);
   if (fs.existsSync(filePath)) {
     fs.unlinkSync(filePath);
   }
 
-  // 🗑️ borrar registro
+  // ðŸ—‘ï¸ borrar registro
   await prisma.jobFile.delete({
     where: { id: fileId },
   });
 
   return NextResponse.json({ success: true });
 }
+

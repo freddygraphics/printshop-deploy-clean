@@ -1,6 +1,4 @@
-"use client";
-
-export const dynamic = "force-dynamic";
+﻿export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 
@@ -12,7 +10,7 @@ export async function GET() {
 
     return NextResponse.json({ count });
   } catch (error) {
-    console.error("❌ Error loading invoice count:", error);
+    console.error("âŒ Error loading invoice count:", error);
     return NextResponse.json(
       { error: "Server error", details: error.message },
       { status: 500 },

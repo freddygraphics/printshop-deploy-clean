@@ -1,11 +1,10 @@
-"use client";
+﻿export const dynamic = "force-dynamic";
 
-export const dynamic = "force-dynamic";
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 //
-// 🔹 OBTENER TODAS LAS PLANTILLAS
+// ðŸ”¹ OBTENER TODAS LAS PLANTILLAS
 //
 export async function GET() {
   try {
@@ -15,19 +14,22 @@ export async function GET() {
 
     return Response.json(templates);
   } catch (err) {
-    console.error("❌ Error al obtener templates:", err);
+    console.error("âŒ Error al obtener templates:", err);
     return Response.json({ error: err.message }, { status: 500 });
   }
 }
 
 //
-// 🔹 CREAR UNA NUEVA PLANTILLA
+// ðŸ”¹ CREAR UNA NUEVA PLANTILLA
 //
 export async function POST(req) {
   try {
     const text = await req.text();
     if (!text) {
-      return Response.json({ error: "El cuerpo está vacío" }, { status: 400 });
+      return Response.json(
+        { error: "El cuerpo estÃ¡ vacÃ­o" },
+        { status: 400 },
+      );
     }
 
     const body = JSON.parse(text);
@@ -48,10 +50,11 @@ export async function POST(req) {
       },
     });
 
-    console.log("✅ Template creado:", newTemplate);
+    console.log("âœ… Template creado:", newTemplate);
     return Response.json(newTemplate);
   } catch (err) {
-    console.error("❌ Error al crear template:", err);
+    console.error("âŒ Error al crear template:", err);
     return Response.json({ error: err.message }, { status: 500 });
   }
 }
+

@@ -1,4 +1,4 @@
-export const runtime = "nodejs";
+﻿export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 import prisma from "@/lib/db";
 
 // ============================
-// GET – Payment History
+// GET â€“ Payment History
 // ============================
 export async function GET(req, { params }) {
   const invoiceId = Number(params.id);
@@ -24,7 +24,7 @@ export async function GET(req, { params }) {
 }
 
 // ============================
-// POST – Record Payment
+// POST â€“ Record Payment
 // ============================
 export async function POST(req, { params }) {
   try {
@@ -38,10 +38,10 @@ export async function POST(req, { params }) {
     }
 
     const body = await req.json();
-    console.log("💰 PAYMENT BODY:", body);
+    console.log("ðŸ’° PAYMENT BODY:", body);
 
     const {
-      amount, // 👈 customer paid (incluye fee)
+      amount, // ðŸ‘ˆ customer paid (incluye fee)
       amountTotal,
       paymentMethod,
       method,
@@ -56,7 +56,7 @@ export async function POST(req, { params }) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
     }
 
-    // 1️⃣ Obtener invoice (ANTES de usarla)
+    // 1ï¸âƒ£ Obtener invoice (ANTES de usarla)
     const invoice = await prisma.invoice.findUnique({
       where: { id: invoiceId },
     });
@@ -65,7 +65,7 @@ export async function POST(req, { params }) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    // 2️⃣ Guardar pago (customer paid)
+    // 2ï¸âƒ£ Guardar pago (customer paid)
     await prisma.invoicePayment.create({
       data: {
         invoiceId,
@@ -76,7 +76,7 @@ export async function POST(req, { params }) {
       },
     });
 
-    // 3️⃣ Recalcular pagos
+    // 3ï¸âƒ£ Recalcular pagos
     const payments = await prisma.invoicePayment.findMany({
       where: { invoiceId },
     });
@@ -88,7 +88,7 @@ export async function POST(req, { params }) {
 
     const balance = invoice.total - totalApplied;
 
-    // 4️⃣ Status
+    // 4ï¸âƒ£ Status
     let paymentStatus = "Unpaid";
     let paidAt = null;
 
@@ -99,7 +99,7 @@ export async function POST(req, { params }) {
       paymentStatus = "Partially Paid";
     }
 
-    // 5️⃣ Update invoice
+    // 5ï¸âƒ£ Update invoice
     await prisma.invoice.update({
       where: { id: invoiceId },
       data: {
@@ -111,12 +111,13 @@ export async function POST(req, { params }) {
 
     return NextResponse.json({
       success: true,
-      totalApplied, // 👈 lo que cubre el invoice
+      totalApplied, // ðŸ‘ˆ lo que cubre el invoice
       balance,
       paymentStatus,
     });
   } catch (error) {
-    console.error("❌ Payment error:", error);
+    console.error("âŒ Payment error:", error);
     return NextResponse.json({ error: "Payment failed" }, { status: 500 });
   }
 }
+

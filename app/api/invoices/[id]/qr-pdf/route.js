@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 import prisma from "@/lib/db";
@@ -18,7 +18,7 @@ export async function GET(req, { params }) {
       return NextResponse.json({ error: "Invalid invoice" }, { status: 404 });
     }
 
-    // 📏 Tamaño exacto 3w x 1.5h pulgadas
+    // ðŸ“ TamaÃ±o exacto 3w x 1.5h pulgadas
     const width = 216; // 3"
     const height = 108; // 1.5"
 
@@ -27,7 +27,7 @@ export async function GET(req, { params }) {
 
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-    // 🔳 Generar QR
+    // ðŸ”³ Generar QR
     const qrDataUrl = await QRCode.toDataURL(
       `${process.env.NEXT_PUBLIC_APP_URL}/scan?token=${invoice.qrToken}`,
       { margin: 0, width: 90 },
@@ -36,7 +36,7 @@ export async function GET(req, { params }) {
     const qrImageBytes = Buffer.from(qrDataUrl.split(",")[1], "base64");
     const qrImage = await pdfDoc.embedPng(qrImageBytes);
 
-    // 📐 Posiciones
+    // ðŸ“ Posiciones
     const qrSize = 72; // 1"
     const qrX = 10;
     const qrY = height - qrSize - 10;
@@ -48,7 +48,7 @@ export async function GET(req, { params }) {
       height: qrSize,
     });
 
-    // 🧾 Texto
+    // ðŸ§¾ Texto
     page.drawText(`Invoice #${invoice.invoiceNumber}`, {
       x: qrX + qrSize + 8,
       y: height - 22,
@@ -86,3 +86,4 @@ export async function GET(req, { params }) {
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
+
