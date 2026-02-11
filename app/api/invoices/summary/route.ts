@@ -1,8 +1,7 @@
 // app/api/invoices/summary/route.ts
-"use client";
 export const dynamic = "force-dynamic";
-import { NextResponse } from "next/server";
 
+import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { getInvoiceStatus } from "@/lib/invoiceStatus";
 
