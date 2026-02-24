@@ -10,3 +10,8 @@ export default function RootLayout({ children }) {
     </html>
   );
 }
+export const metadata = {
+  title: {
+    default: "Dashboard - Freddy Graphics",
+  },
+};

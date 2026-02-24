@@ -345,6 +345,7 @@ model JobFile {
   name      String
   url       String
   type      String
+  isDefault Boolean @default(false)
   createdAt DateTime @default(now())
   job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
 }
@@ -400,6 +401,7 @@ enum InvoiceStatus {
 enum JobStatus {
   Pending
   Design
+  Proofing
   Production
   Ready
   Delivered

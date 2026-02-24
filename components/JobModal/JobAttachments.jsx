@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { MoreVertical, Trash2, Download } from "lucide-react";
 import JobFileUpload from "@/components/JobFileUpload";
 
@@ -11,7 +11,20 @@ export default function JobAttachments({
   onUploaded,
 }) {
   const [openMenu, setOpenMenu] = useState(null);
+  const menuRef = useRef(null);
 
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setOpenMenu(null);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
   return (
     <div className="mt-4">
       {/* HEADER */}
@@ -62,7 +75,15 @@ export default function JobAttachments({
 
                 {/* INFO */}
                 <div className="text-sm">
-                  <div className="font-medium">{file.name}</div>
+                  <div className="flex items-center gap-2 font-medium">
+                    {file.name}
+
+                    {file.isDefault && (
+                      <span className="px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded-full">
+                        DEFAULT
+                      </span>
+                    )}
+                  </div>
                   <div className="text-xs text-gray-400">
                     Añadido {new Date(file.createdAt).toLocaleString()}
                   </div>
@@ -70,7 +91,10 @@ export default function JobAttachments({
               </div>
 
               {/* RIGHT */}
-              <div className="relative">
+              <div
+                className="relative"
+                ref={openMenu === file.id ? menuRef : null}
+              >
                 <button
                   onClick={() =>
                     setOpenMenu(openMenu === file.id ? null : file.id)
@@ -92,10 +116,47 @@ export default function JobAttachments({
                     </a>
 
                     <button
-                      onClick={() => onDelete(file.id)}
-                      className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-gray-100 w-full"
+                      onClick={async () => {
+                        const res = await fetch(
+                          `/api/job-files/${file.id}/default`,
+                          {
+                            method: "PUT",
+                          },
+                        );
+
+                        if (!res.ok) return;
+
+                        // 🔥 actualizar estado local
+                        const updatedFiles = files
+                          .map((f) =>
+                            f.id === file.id
+                              ? { ...f, isDefault: true }
+                              : { ...f, isDefault: false },
+                          )
+                          .sort((a, b) => (b.isDefault ? 1 : -1));
+
+                        onUploaded?.(updatedFiles);
+                        setOpenMenu(null);
+                      }}
+                      className="block w-full text-left px-4 py-2 hover:bg-gray-100"
                     >
-                      <Trash2 size={14} /> Eliminar
+                      Make Default
+                    </button>
+
+                    <button
+                      onClick={async () => {
+                        const res = await fetch(`/api/job-files/${file.id}`, {
+                          method: "DELETE",
+                        });
+
+                        if (!res.ok) return;
+
+                        onDelete?.(file.id); // 👈 clave
+                        setOpenMenu(null);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
+                    >
+                      Delete
                     </button>
                   </div>
                 )}

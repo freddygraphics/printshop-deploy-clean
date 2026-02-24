@@ -1191,7 +1191,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         <div>
           <label className="text-sm font-semibold">Customer Notes</label>
           <textarea
-            className="mt-1 border rounded-lg px-4 py-2.5 w-full min-h-[160px]"
+            className="mt-1 border rounded-lg px-4 py-2.5 w-full min-h-[80px]"
             placeholder="Notes visible on the PDF…"
             value={customerNotes}
             onChange={(e) => setCustomerNotes(e.target.value)}
@@ -1216,8 +1216,8 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                       <p className="text-sm font-medium">
                         {p.method} Payment
                         {processingFee > 0 && (
-                          <span className="ml-2 text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded">
-                            Processing Fee
+                          <span className="ml-2 text-xs   px-2 py-0.5 rounded">
+                            Fee +${processingFee.toFixed(2)}
                           </span>
                         )}
                       </p>
@@ -1235,17 +1235,9 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
 
                     {/* RIGHT */}
                     <div className="text-right space-y-1">
-                      <p className="text-sm font-semibold text-emerald-600">
+                      <p className="text-sm font-semibold">
                         Total Charged: ${p.amount.toFixed(2)}
                       </p>
-
-                      {processingFee > 0 && (
-                        <>
-                          <p className="text-xs text-blue-600">
-                            Processing Fee: +${processingFee.toFixed(2)}
-                          </p>
-                        </>
-                      )}
                     </div>
                   </div>
                 );
@@ -1261,7 +1253,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         <div className="flex justify-end">
           <div className="grid grid-cols-2 gap-x-6 text-base min-w-[270px]">
             {/* LABELS */}
-            <div className="text-xl font-medium space-y-1 text-left text-gray-700">
+            <div className="text-l font-semibold space-y-1 text-left text-gray-700">
               <p>Subtotal</p>
 
               {discountLines.map((d) => (
@@ -1313,19 +1305,15 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
               <p className=" text-2xl font-bold text-gray-900">Total</p>
 
               {totalProcessingFee > 0 && (
-                <p className="text-base">Processing Fee</p>
+                <p className="font-semibold">Processing Fee</p>
               )}
 
-              {hasPayments && (
-                <p className="text-base font-bold">Total Charged</p>
-              )}
-              {hasPayments && (
-                <p className="text-base text-red-500 font-bold">Balance</p>
-              )}
+              {hasPayments && <p className="text-base ">Total Charged</p>}
+              {hasPayments && <p className="text-base font-bold">Balance</p>}
             </div>
 
             {/* VALUES */}
-            <div className="mt-1 space-y-1 text-right">
+            <div className="mt-1 font-semibold space-y-1 text-right">
               <p>${subtotal.toFixed(2)}</p>
 
               {discountLines.map((d) => (
@@ -1338,17 +1326,17 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
               <p className="text-2xl font-bold">${total.toFixed(2)}</p>
 
               {totalProcessingFee > 0 && (
-                <p className="text-base">+${totalProcessingFee.toFixed(2)}</p>
-              )}
-
-              {hasPayments && (
-                <p className="font-bold">${totalCharged.toFixed(2)}</p>
-              )}
-
-              {hasPayments && (
-                <p className=" text-base font-bold text-red-500">
-                  ${balance.toFixed(2)}
+                <p className="font-semibold">
+                  +${totalProcessingFee.toFixed(2)}
                 </p>
+              )}
+
+              {hasPayments && (
+                <p className="font-semibold">${totalCharged.toFixed(2)}</p>
+              )}
+
+              {hasPayments && (
+                <p className=" text-base font-bold ">${balance.toFixed(2)}</p>
               )}
             </div>
           </div>

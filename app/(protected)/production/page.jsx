@@ -44,6 +44,7 @@ const COLUMN_BG = {
 const STATUSES = [
   { key: "Pending", label: "Pending" },
   { key: "Design", label: "Design" },
+  { key: "Proofing", label: "Proofing" },
   { key: "Production", label: "Production" },
   { key: "Ready", label: "Ready" },
   { key: "Delivered", label: "Delivered" },
@@ -58,6 +59,7 @@ const PRIORITY_BADGE = {
 const STATUS_ACCENT = {
   Pending: "border-t-gray-300",
   Design: "border-t-blue-500",
+  Proofing: "border-t-purple-500",
   Production: "border-t-amber-500",
   Ready: "border-t-emerald-500",
   Delivered: "border-t-slate-500",
@@ -112,7 +114,9 @@ function SortableJobCard({ job, onOpen, isOverlay = false }) {
     isDragging,
   } = useSortable({ id: job.id });
 
-  const imageFile = job.files?.find((f) => f.type?.startsWith("image/"));
+  const imageFile =
+    job.files?.find((f) => f.isDefault) ||
+    job.files?.find((f) => f.type?.startsWith("image/"));
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -314,6 +318,7 @@ export default function ProductionBoardPage() {
     const map = {
       Pending: [],
       Design: [],
+      Proofing: [],
       Production: [],
       Ready: [],
       Delivered: [],
@@ -364,7 +369,7 @@ export default function ProductionBoardPage() {
 
   return (
     <div className="min-h-screen bg-[#F5F7F9]">
-      <div className="max-w-[2500px] mx-auto px-6 py-6">
+      <div className="w-full px-6 py-6">
         {/* HEADER */}
         <div className="flex items-start justify-between">
           <div>
@@ -455,7 +460,7 @@ export default function ProductionBoardPage() {
             onDragCancel={() => setActiveJob(null)}
           >
             <div className="mt-5 overflow-x-auto">
-              <div className="grid grid-flow-col auto-cols-[320px] gap-6 pb-6 min-w-max">
+              <div className="grid grid-cols-6 gap-6 pb-6">
                 {STATUSES.map((s) => (
                   <Column
                     key={s.key}

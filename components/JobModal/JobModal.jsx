@@ -2,13 +2,13 @@
 
 import { useEffect, useState, useRef } from "react";
 import { X } from "lucide-react";
-import JobQRCode from "@/components/JobQRCode";
+
 import JobTabs from "./JobTabs";
 import Link from "next/link";
 import JobDescriptionEditor from "./JobDescriptionEditor";
 import JobFileUpload from "@/components/JobFileUpload";
 import JobAttachments from "./JobAttachments";
-
+import Barcode from "react-barcode";
 const STATUS_STYLE = {
   Pending: "bg-gray-100 text-gray-700",
   Design: "bg-blue-100 text-blue-700",
@@ -19,6 +19,26 @@ const STATUS_STYLE = {
 
 export default function JobModal({ job, onClose }) {
   const [files, setFiles] = useState([]);
+
+  async function approveProof() {
+    try {
+      const res = await fetch(`/api/jobs/${job.id}/status`, {
+        method: "PUT", // 👈 IMPORTANTE
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "Production" }),
+      });
+
+      if (!res.ok) throw new Error("Failed to update status");
+
+      onClose(); // refresca board
+    } catch (err) {
+      console.error("❌ Approve proof failed:", err);
+    }
+  }
+
+  const sortedFiles = [...files].sort((a, b) =>
+    a.isDefault === b.isDefault ? 0 : a.isDefault ? -1 : 1,
+  );
   const items = job.invoice?.invoiceItems || [];
   const [activeTab, setActiveTab] = useState("details");
   const [description, setDescription] = useState("");
@@ -60,7 +80,8 @@ export default function JobModal({ job, onClose }) {
       lastSaved.current = value;
     }, 1200); // ⏱ debounce PRO
   }
-
+  const previewFile =
+    sortedFiles.find((f) => f.isDefault) || sortedFiles[0] || null;
   return (
     <>
       {/* Overlay */}
@@ -120,6 +141,11 @@ export default function JobModal({ job, onClose }) {
                     {job.assignedTo || "Unassigned"}
                   </div>
                 </div>
+
+                <div>
+                  <div className="text-m text-gray-400">Status</div>
+                  <div className="font-medium">{job.status}</div>
+                </div>
               </div>
 
               <div className="mt-4 px-6 pb-6">
@@ -163,12 +189,12 @@ export default function JobModal({ job, onClose }) {
               <div className="px-6 pb-6">
                 <JobAttachments
                   jobId={job.id}
-                  files={files}
+                  files={sortedFiles}
                   onDelete={(fileId) => {
                     setFiles((prev) => prev.filter((f) => f.id !== fileId));
                   }}
                   onUploaded={(newFiles) => {
-                    setFiles((prev) => [...newFiles, ...prev]);
+                    setFiles(newFiles);
                   }}
                 />
               </div>
@@ -176,17 +202,54 @@ export default function JobModal({ job, onClose }) {
 
             {/* RIGHT */}
             <div className="col-span-4 bg-gray-50 p-6 flex flex-col gap-8">
-              <div>
-                <div className="flex justify-center">
-                  <JobQRCode job={job} />
-                </div>
-              </div>
+              <div></div>
 
               <div className="px-6 py-5 grid grid-cols-1 gap-6">
                 <div>
-                  <div className="uppercase bg-green-600 text-white px-3 py-1.5 rounded-md text-xl flex items-center justify-center">
-                    {job.status}
-                  </div>
+                  {previewFile ? (
+                    <div className="w-full overflow-hidden ">
+                      <img
+                        src={previewFile.url}
+                        alt="Proof preview"
+                        className="w-full h-64 object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full h-64 flex items-center justify-center rounded-xl text-gray-400 text-sm rounded-xl border">
+                      No proof uploaded
+                    </div>
+                  )}
+                  {job.status === "Proofing" && (
+                    <button
+                      onClick={approveProof}
+                      className="mt-4 w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-xl transition"
+                    >
+                      Approve Proof
+                    </button>
+                  )}
+
+                  {job.status === "Ready" && job.invoice?.invoiceNumber && (
+                    <div className="mt-6 flex flex-col items-center gap-3">
+                      <div className="text-sm font-medium text-gray-600">
+                        Pickup Barcode
+                      </div>
+
+                      <Barcode
+                        value={`INV-${job.invoice.invoiceNumber}`}
+                        format="CODE128"
+                        width={2}
+                        height={70}
+                        displayValue={true}
+                      />
+
+                      <button
+                        onClick={() => window.print()}
+                        className="mt-2 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm"
+                      >
+                        Print Barcode
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

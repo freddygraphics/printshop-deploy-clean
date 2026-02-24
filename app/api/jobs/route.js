@@ -16,10 +16,8 @@ export async function GET() {
         jobNumber: true,
         status: true,
         position: true,
-
         description: true,
-        createdAt: true, // âœ… CLAVE
-
+        createdAt: true,
         pickupToken: true,
         pickedUpAt: true,
 
@@ -28,11 +26,13 @@ export async function GET() {
         },
 
         files: {
+          orderBy: { createdAt: "desc" },
           select: {
             id: true,
             name: true,
             url: true,
             type: true,
+            isDefault: true,
           },
         },
 
@@ -50,7 +50,7 @@ export async function GET() {
 
     return NextResponse.json(jobs);
   } catch (error) {
-    console.error("âŒ GET JOBS ERROR:", error);
+    console.error("❌ GET JOBS ERROR:", error);
     return NextResponse.json(
       { error: "Failed to fetch jobs" },
       { status: 500 },
@@ -121,4 +121,3 @@ export async function POST(req) {
     );
   }
 }
-
