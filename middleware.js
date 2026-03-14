@@ -4,7 +4,6 @@ export function middleware(req) {
   const hostname = req.headers.get("host");
   const { pathname } = req.nextUrl;
 
-  // 🔓 Permitir assets y APIs
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
@@ -13,7 +12,6 @@ export function middleware(req) {
     return NextResponse.next();
   }
 
-  // 🔓 Rutas públicas
   if (
     pathname === "/login" ||
     pathname.startsWith("/i/") ||
@@ -23,9 +21,10 @@ export function middleware(req) {
     return NextResponse.next();
   }
 
-  // 🔒 Dashboard interno
   if (hostname?.includes("app.freddygraphics.com")) {
     const sessionToken =
+      req.cookies.get("__Secure-authjs.session-token")?.value ||
+      req.cookies.get("authjs.session-token")?.value ||
       req.cookies.get("__Secure-next-auth.session-token")?.value ||
       req.cookies.get("next-auth.session-token")?.value;
 
