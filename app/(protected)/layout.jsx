@@ -9,11 +9,32 @@ export default function ProtectedLayout({ children }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // aquí luego puedes validar sesión vía API si quieres
-    setReady(true);
+    async function checkSession() {
+      try {
+        const res = await fetch("/api/auth/session");
+        const session = await res.json();
+
+        if (!session?.user) {
+          router.replace("/login");
+          return;
+        }
+
+        setReady(true);
+      } catch (err) {
+        router.replace("/login");
+      }
+    }
+
+    checkSession();
   }, []);
 
-  if (!ready) return null;
+  if (!ready) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        Loading...
+      </div>
+    );
+  }
 
   return <MainShell>{children}</MainShell>;
 }
