@@ -4,10 +4,12 @@ import { getToken } from "next-auth/jwt";
 export async function middleware(req) {
   const { pathname } = req.nextUrl;
 
-  // 🔓 rutas públicas
+  // -----------------------------
+  // 🔓 RUTAS PÚBLICAS
+  // -----------------------------
   if (
     pathname === "/login" ||
-    pathname.startsWith("/api") ||
+    pathname.startsWith("/api/auth") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon.ico") ||
     pathname.startsWith("/i/") ||
@@ -17,19 +19,32 @@ export async function middleware(req) {
     return NextResponse.next();
   }
 
-  // 🔐 verificar sesión
+  // -----------------------------
+  // 🔐 VERIFICAR SESIÓN
+  // -----------------------------
   const token = await getToken({
     req,
     secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
   });
 
+  // si no hay sesión → login
   if (!token) {
-    return NextResponse.redirect(new URL("/login", req.url));
+    const loginUrl = new URL("/login", req.url);
+    loginUrl.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // si ya está logueado y entra a /login → dashboard
+  if (token && pathname === "/login") {
+    return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
   return NextResponse.next();
 }
 
+// -----------------------------
+// 🔒 SOLO PROTEGER ESTAS RUTAS
+// -----------------------------
 export const config = {
   matcher: [
     "/dashboard/:path*",

@@ -1,34 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import MainShell from "@/components/layout/MainShell";
 
 export default function ProtectedLayout({ children }) {
+  const { status } = useSession();
   const router = useRouter();
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    async function checkSession() {
-      try {
-        const res = await fetch("/api/auth/session");
-        const session = await res.json();
-
-        if (!session?.user) {
-          router.replace("/login");
-          return;
-        }
-
-        setReady(true);
-      } catch (err) {
-        router.replace("/login");
-      }
+    if (status === "unauthenticated") {
+      router.replace("/login");
     }
+  }, [status, router]);
 
-    checkSession();
-  }, []);
-
-  if (!ready) {
+  if (status === "loading") {
     return (
       <div className="flex items-center justify-center h-screen">
         Loading...
