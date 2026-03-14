@@ -1,51 +1,35 @@
 "use client";
 
-import { signIn, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { signIn } from "next-auth/react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 
 export default function LoginPage() {
-  const { status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  // ✅ MEJORA: si ya está autenticado, no mostrar login
-  useEffect(() => {
-    if (status === "authenticated") {
-      router.replace("/dashboard");
-    }
-  }, [status, router]);
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setLoading(true);
+
+    const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
     const res = await signIn("credentials", {
       email,
       password,
       redirect: false,
+      callbackUrl,
     });
-
-    setLoading(false);
 
     if (res?.error) {
       alert("Invalid email or password");
       return;
     }
 
-    router.push("/dashboard");
-  }
-
-  // Opcional: loader mientras NextAuth verifica sesión
-  if (status === "loading") {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        Loading…
-      </div>
-    );
+    router.replace(callbackUrl);
+    router.refresh();
   }
 
   return (
@@ -74,11 +58,8 @@ export default function LoginPage() {
           required
         />
 
-        <button
-          disabled={loading}
-          className="w-full bg-black text-white py-2 rounded"
-        >
-          {loading ? "Signing in..." : "Login"}
+        <button className="w-full bg-black text-white py-2 rounded">
+          Login
         </button>
       </form>
     </div>
