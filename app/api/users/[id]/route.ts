@@ -1,39 +1,50 @@
 ﻿export const dynamic = "force-dynamic";
-import { NextResponse } from "next/server";
 
+import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { auth } from "@/lib/auth";
 
-// ðŸ”’ PATCH â€” Update user (ADMIN)
-export async function PATCH(req, { params }) {
+/* ---------------- UPDATE USER ---------------- */
+export async function PATCH(
+  req: Request,
+  { params }: { params: { id: string } },
+) {
   try {
     const session = await auth();
 
-    // ðŸ” Solo admin
+    // 🔐 Solo admin
     if (!session || session.user.role !== "admin") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
     const userId = Number(params.id);
-    const { role, isActive } = await req.json();
 
-    // ðŸ›‘ ValidaciÃ³n bÃ¡sica
     if (!userId) {
       return NextResponse.json({ error: "Invalid user id" }, { status: 400 });
     }
 
-    // âŒ Evitar que el admin se desactive a sÃ­ mismo
-    if (session.user.id === userId && isActive === false) {
+    const { role, isActive } = await req.json();
+
+    // ❌ Evitar que el admin se desactive a sí mismo
+    if (Number(session.user.id) === userId && isActive === false) {
       return NextResponse.json(
         { error: "You cannot deactivate your own account" },
         { status: 400 },
       );
     }
 
-    // ðŸ›  Construir data dinÃ¡mica
-    const data = {};
-    if (role) data.role = role;
-    if (typeof isActive === "boolean") data.isActive = isActive;
+    /* -------- VALIDATE ROLE -------- */
+    const allowedRoles = ["admin", "sales", "production", "staff"];
+
+    const data: any = {};
+
+    if (role && allowedRoles.includes(role)) {
+      data.role = role;
+    }
+
+    if (typeof isActive === "boolean") {
+      data.isActive = isActive;
+    }
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
@@ -49,8 +60,11 @@ export async function PATCH(req, { params }) {
 
     return NextResponse.json(updatedUser);
   } catch (error) {
-    console.error("âŒ Update user error:", error);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    console.error("Update user error:", error);
+
+    return NextResponse.json(
+      { error: "Server error updating user" },
+      { status: 500 },
+    );
   }
 }
-

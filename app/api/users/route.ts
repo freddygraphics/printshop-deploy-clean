@@ -6,8 +6,8 @@ import bcrypt from "bcryptjs";
 import prisma from "@/lib/db";
 import { auth } from "@/lib/auth";
 
-// ðŸ”’ GET â€” Listar usuarios (ADMIN)
-export async function GET(req) {
+/* ---------------- GET USERS ---------------- */
+export async function GET() {
   const session = await auth();
 
   if (!session || session.user.role !== "admin") {
@@ -29,7 +29,7 @@ export async function GET(req) {
   return NextResponse.json(users);
 }
 
-// ðŸ”’ POST â€” Crear usuario (ADMIN)
+/* ---------------- CREATE USER ---------------- */
 export async function POST(req) {
   try {
     const session = await auth();
@@ -58,6 +58,9 @@ export async function POST(req) {
       );
     }
 
+    const allowedRoles = ["admin", "sales", "production", "staff"];
+    const safeRole = allowedRoles.includes(role) ? role : "staff";
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.create({
@@ -65,7 +68,8 @@ export async function POST(req) {
         name,
         email,
         password: hashedPassword,
-        role: role || "staff",
+        role: safeRole,
+        isActive: true,
       },
     });
 
@@ -74,10 +78,15 @@ export async function POST(req) {
       name: user.name,
       email: user.email,
       role: user.role,
+      isActive: user.isActive,
+      createdAt: user.createdAt,
     });
   } catch (error) {
-    console.error("âŒ Create user error:", error);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    console.error("Create user error:", error);
+
+    return NextResponse.json(
+      { error: "Server error creating user" },
+      { status: 500 },
+    );
   }
 }
-
