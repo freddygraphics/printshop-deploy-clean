@@ -20,31 +20,26 @@ export async function middleware(req) {
   }
 
   // -----------------------------
-  // 🔐 VERIFICAR SESIÓN
+  // 🔐 LEER TOKEN NEXTAUTH
   // -----------------------------
   const token = await getToken({
     req,
-    secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
+    secret: process.env.NEXTAUTH_SECRET,
+    secureCookie: process.env.NODE_ENV === "production",
   });
 
-  // si no hay sesión → login
+  // -----------------------------
+  // ❌ NO HAY SESIÓN
+  // -----------------------------
   if (!token) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // si ya está logueado y entra a /login → dashboard
-  if (token && pathname === "/login") {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
-  }
-
   return NextResponse.next();
 }
 
-// -----------------------------
-// 🔒 SOLO PROTEGER ESTAS RUTAS
-// -----------------------------
 export const config = {
   matcher: [
     "/dashboard/:path*",
