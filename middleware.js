@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 
-export function middleware(req) {
-  const hostname = req.headers.get("host");
+export async function middleware(req) {
   const { pathname } = req.nextUrl;
+  const hostname = req.headers.get("host");
 
+  // 🔓 Permitir assets y APIs
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
@@ -12,6 +14,7 @@ export function middleware(req) {
     return NextResponse.next();
   }
 
+  // 🔓 Rutas públicas
   if (
     pathname === "/login" ||
     pathname.startsWith("/i/") ||
@@ -21,14 +24,14 @@ export function middleware(req) {
     return NextResponse.next();
   }
 
+  // 🔒 Solo proteger dashboard
   if (hostname?.includes("app.freddygraphics.com")) {
-    const sessionToken =
-      req.cookies.get("__Secure-authjs.session-token")?.value ||
-      req.cookies.get("authjs.session-token")?.value ||
-      req.cookies.get("__Secure-next-auth.session-token")?.value ||
-      req.cookies.get("next-auth.session-token")?.value;
+    const token = await getToken({
+      req,
+      secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
+    });
 
-    if (!sessionToken) {
+    if (!token) {
       return NextResponse.redirect(new URL("/login", req.url));
     }
   }
@@ -37,5 +40,11 @@ export function middleware(req) {
 }
 
 export const config = {
-  matcher: "/:path*",
+  matcher: [
+    "/dashboard/:path*",
+    "/jobs/:path*",
+    "/clients/:path*",
+    "/invoices/:path*",
+    "/settings/:path*",
+  ],
 };
