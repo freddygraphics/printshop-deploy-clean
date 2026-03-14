@@ -13,7 +13,7 @@ export function middleware(req) {
     return NextResponse.next();
   }
 
-  // 🔓 RUTAS PÚBLICAS (CLIENTES)
+  // 🔓 RUTAS PÚBLICAS
   if (
     pathname === "/login" ||
     pathname.startsWith("/i/") ||
@@ -23,13 +23,13 @@ export function middleware(req) {
     return NextResponse.next();
   }
 
-  // 🔒 SOLO proteger dashboard interno
+  // 🔒 SOLO proteger dashboard
   if (hostname === "app.freddygraphics.com") {
-    const session =
-      req.cookies.get("__Secure-next-auth.session-token") ||
-      req.cookies.get("next-auth.session-token");
+    const sessionToken =
+      req.cookies.get("__Secure-next-auth.session-token")?.value ||
+      req.cookies.get("next-auth.session-token")?.value;
 
-    if (!session) {
+    if (!sessionToken) {
       return NextResponse.redirect(new URL("/login", req.url));
     }
   }
