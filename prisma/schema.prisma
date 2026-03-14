@@ -406,3 +406,62 @@ enum JobStatus {
   Ready
   Delivered
 }
+model PrintSettings {
+  id String @id @default(cuid())
+
+  // Sticker material
+  stickerRollPrice Float
+  stickerRollWidth Float
+  stickerRollLength Float
+
+  // Lamination
+  laminateRollPrice Float
+  laminateRollWidth Float
+  laminateRollLength Float
+
+  // Labor
+  laborPerHour Float
+
+  // Profit
+  profitMargin Float
+
+  createdAt DateTime @default(now())
+}
+model SheetSize {
+  id String @id @default(cuid())
+
+  name String
+  width Float
+  height Float
+
+  isDefault Boolean @default(false)
+
+  createdAt DateTime @default(now())
+}
+
+model PrintPricingSettings {
+  id String @id @default(cuid())
+
+  vinylRollPrice Float
+  vinylRollWidth Float
+  vinylRollLength Float
+
+  laminateRollPrice Float
+  laminateRollWidth Float
+  laminateRollLength Float
+
+  laborPerHour Float
+  profitMargin Float
+
+  inkCostPerSqft Float @default(0)
+  machineCostPerHour Float @default(0)
+  cuttingCostPerSheet Float @default(0)
+
+  wastePercent Float @default(0)
+  setupFee Float @default(0)
+
+  minimumStickerPrice Float @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

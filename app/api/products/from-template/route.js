@@ -1,35 +1,19 @@
 ﻿export const dynamic = "force-dynamic";
 
-// app/api/products/from-template/route.js
+import prisma from "@/lib/db";
 
-import prisma from "@/lib/db"; // ðŸ”¥ IMPORTANTE: usar el prisma correcto
-console.log("ðŸ”¥ API INITIALIZED /api/products/from-template");
-console.log("ðŸ”¥ DATABASE URL (API):", process.env.DATABASE_URL);
+console.log("🔥 API INITIALIZED /api/products/from-template");
+console.log("🔥 DATABASE URL:", process.env.DATABASE_URL);
 
 export async function POST(req) {
-  console.log("ðŸ”¥ POST /api/products/from-template");
-  console.log("ðŸ”¥ DATABASE:", process.env.DATABASE_URL);
+  console.log("🔥 POST /api/products/from-template");
 
   try {
-    const raw = await req.text();
-    console.log("ðŸ“¥ RAW BODY:", raw);
-
-    if (!raw) {
-      return Response.json({ error: "Cuerpo vacÃ­o" }, { status: 400 });
-    }
-
-    let body;
-    try {
-      body = JSON.parse(raw);
-    } catch (e) {
-      console.error("âŒ JSON invÃ¡lido:", e);
-      return Response.json({ error: "JSON invÃ¡lido", raw }, { status: 400 });
-    }
+    const body = await req.json();
 
     const {
       name,
       description,
-      price,
       basePrice,
       templateType,
       customFields,
@@ -37,39 +21,59 @@ export async function POST(req) {
       templateId,
     } = body;
 
-    console.log("âž¡ name:", name);
-    console.log("âž¡ templateType:", templateType);
-    console.log("âž¡ customFields:", customFields);
-    console.log("âž¡ defaultOptions:", defaultOptions);
+    console.log("➡ name:", name);
+    console.log("➡ templateType:", templateType);
 
     if (!name) {
-      return Response.json({ error: "Falta el campo name" }, { status: 400 });
+      return Response.json({ error: "Name is required" }, { status: 400 });
+    }
+
+    let template = null;
+
+    // 🔎 Buscar template por ID si viene
+    if (templateId) {
+      template = await prisma.template.findUnique({
+        where: { id: Number(templateId) },
+      });
+    }
+
+    // 🔎 Si no existe, buscar por TYPE
+    if (!template && templateType) {
+      template = await prisma.template.findFirst({
+        where: { type: templateType },
+      });
+    }
+
+    if (!template) {
+      return Response.json({ error: "Template not found" }, { status: 400 });
     }
 
     // -----------------------------------------
-    // CREAR PRODUCTO EN LA BD
+    // CREAR PRODUCTO
     // -----------------------------------------
+
     const product = await prisma.product.create({
       data: {
         name,
         description: description ?? "",
-        price: price ?? 0,
-        basePrice: basePrice ?? 0,
+        basePrice: Number(basePrice ?? 0),
 
-        templateType: templateType || null,
-        templateId: templateId || null,
+        templateType: template.type,
 
-        customFields: customFields || {},
-        defaultOptions: defaultOptions || {},
+        template: {
+          connect: { id: template.id },
+        },
+
+        customFields: customFields ?? {},
+        defaultOptions: defaultOptions ?? {},
       },
     });
 
-    console.log("âœ… PRODUCTO CREADO:", product);
+    console.log("✅ PRODUCT CREATED:", product);
 
     return Response.json(product);
   } catch (err) {
-    console.error("âŒ ERROR API /products/from-template:", err);
+    console.error("❌ ERROR:", err);
     return Response.json({ error: String(err) }, { status: 500 });
   }
 }
-

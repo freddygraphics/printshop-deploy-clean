@@ -23,13 +23,20 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
 
-    await signIn("credentials", {
+    const res = await signIn("credentials", {
       email,
       password,
-      callbackUrl: "/dashboard",
+      redirect: false,
     });
 
     setLoading(false);
+
+    if (res?.error) {
+      alert("Invalid email or password");
+      return;
+    }
+
+    router.push("/dashboard");
   }
 
   // Opcional: loader mientras NextAuth verifica sesión

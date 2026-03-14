@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-
+import prisma from "../lib/db";
 const prisma = new PrismaClient();
 async function safe(name, fn) {
   try {
@@ -10,6 +10,22 @@ async function safe(name, fn) {
 }
 
 async function main() {
+  await prisma.sheetSize.createMany({
+    data: [
+      {
+        name: "Sticker Sheet",
+        width: 15,
+        height: 11,
+        isDefault: true,
+      },
+      {
+        name: "Medium Sheet",
+        width: 18,
+        height: 12,
+      },
+    ],
+  });
+
   console.log("🌱 Running seed...");
 
   // =========================
