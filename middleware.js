@@ -1,20 +1,10 @@
+import { auth } from "@/auth";
 import { NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 
-export async function middleware(req) {
+export default auth((req) => {
   const { pathname } = req.nextUrl;
-  const hostname = req.headers.get("host");
 
-  // 🔓 Permitir assets y APIs
-  if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api") ||
-    pathname.startsWith("/favicon.ico")
-  ) {
-    return NextResponse.next();
-  }
-
-  // 🔓 Rutas públicas
+  // rutas públicas
   if (
     pathname === "/login" ||
     pathname.startsWith("/i/") ||
@@ -24,20 +14,13 @@ export async function middleware(req) {
     return NextResponse.next();
   }
 
-  // 🔒 Solo proteger dashboard
-  if (hostname?.includes("app.freddygraphics.com")) {
-    const token = await getToken({
-      req,
-      secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
-    });
-
-    if (!token) {
-      return NextResponse.redirect(new URL("/login", req.url));
-    }
+  // si no hay sesión → login
+  if (!req.auth) {
+    return NextResponse.redirect(new URL("/login", req.url));
   }
 
   return NextResponse.next();
-}
+});
 
 export const config = {
   matcher: [
