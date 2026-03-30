@@ -12,9 +12,12 @@ export async function GET(req, { params }) {
 
     const htmlUrl = `https://app.freddygraphics.com/api/invoices/${invoiceId}/html`;
 
+    const executablePath = await chromium.executablePath();
+
     const browser = await puppeteer.launch({
       args: chromium.args,
-      executablePath: await chromium.executablePath(),
+      defaultViewport: chromium.defaultViewport,
+      executablePath,
       headless: true,
     });
 
