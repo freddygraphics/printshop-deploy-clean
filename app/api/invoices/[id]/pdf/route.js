@@ -3,7 +3,7 @@ export const revalidate = 0;
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-import chromium from "chrome-aws-lambda";
+
 import puppeteer from "puppeteer";
 
 export async function GET(req, { params }) {
