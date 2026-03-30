@@ -4,7 +4,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import puppeteer from "puppeteer-core";
-import chromium from "@sparticuz/chromium";
+import chromium from "@sparticuz/chromium-min";
 
 export async function GET(req, { params }) {
   try {
@@ -15,8 +15,7 @@ export async function GET(req, { params }) {
     const executablePath = await chromium.executablePath();
 
     const browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
+      args: [...chromium.args, "--hide-scrollbars", "--disable-web-security"],
       executablePath,
       headless: true,
     });
@@ -24,12 +23,17 @@ export async function GET(req, { params }) {
     const page = await browser.newPage();
 
     await page.goto(htmlUrl, {
-      waitUntil: "networkidle0",
+      waitUntil: "domcontentloaded",
+      timeout: 30000,
     });
+
+    // 🔥 IMPORTANTE: esperar render completo
+    await page.waitForTimeout(1000);
 
     const pdf = await page.pdf({
       format: "A4",
       printBackground: true,
+      preferCSSPageSize: true,
     });
 
     await browser.close();
@@ -37,13 +41,17 @@ export async function GET(req, { params }) {
     return new NextResponse(pdf, {
       headers: {
         "Content-Type": "application/pdf",
+        "Content-Disposition": `inline; filename=invoice-${invoiceId}.pdf`,
       },
     });
   } catch (err) {
     console.error("PDF ERROR:", err);
 
     return NextResponse.json(
-      { error: "PDF generation failed", details: err.message },
+      {
+        error: "PDF generation failed",
+        details: err.message,
+      },
       { status: 500 },
     );
   }
