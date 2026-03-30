@@ -1,57 +1,83 @@
 ﻿export const dynamic = "force-dynamic";
-export const revalidate = 0;
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-import puppeteer from "puppeteer-core";
-import chromium from "@sparticuz/chromium-min";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 export async function GET(req, { params }) {
   try {
     const invoiceId = params.id;
 
-    const htmlUrl = `https://app.freddygraphics.com/api/invoices/${invoiceId}/html`;
+    // 🔥 Traer datos de invoice (usa tu endpoint real)
+    const dataRes = await fetch(
+      `https://app.freddygraphics.com/api/invoices/${invoiceId}`,
+    );
 
-    const executablePath = await chromium.executablePath();
+    const invoice = await dataRes.json();
 
-    const browser = await puppeteer.launch({
-      args: [...chromium.args, "--hide-scrollbars", "--disable-web-security"],
-      executablePath,
-      headless: true,
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([595, 842]); // A4
+
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+    let y = 800;
+
+    // 🔥 HEADER
+    page.drawText("INVOICE", {
+      x: 50,
+      y,
+      size: 20,
+      font,
+      color: rgb(0, 0, 0),
     });
 
-    const page = await browser.newPage();
+    y -= 40;
 
-    await page.goto(htmlUrl, {
-      waitUntil: "domcontentloaded",
-      timeout: 30000,
+    page.drawText(`Invoice #: ${invoice.id}`, { x: 50, y, size: 12, font });
+    y -= 20;
+
+    page.drawText(`Customer: ${invoice.customerName}`, {
+      x: 50,
+      y,
+      size: 12,
+      font,
     });
 
-    // 🔥 IMPORTANTE: esperar render completo
-    await page.waitForTimeout(1000);
+    y -= 40;
 
-    const pdf = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      preferCSSPageSize: true,
+    // 🔥 ITEMS
+    invoice.items.forEach((item) => {
+      page.drawText(`${item.name} - $${item.price}`, {
+        x: 50,
+        y,
+        size: 11,
+        font,
+      });
+      y -= 20;
     });
 
-    await browser.close();
+    y -= 20;
 
-    return new NextResponse(pdf, {
+    page.drawText(`Total: $${invoice.total}`, {
+      x: 50,
+      y,
+      size: 14,
+      font,
+    });
+
+    const pdfBytes = await pdfDoc.save();
+
+    return new NextResponse(pdfBytes, {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `inline; filename=invoice-${invoiceId}.pdf`,
       },
     });
   } catch (err) {
-    console.error("PDF ERROR:", err);
+    console.error(err);
 
     return NextResponse.json(
-      {
-        error: "PDF generation failed",
-        details: err.message,
-      },
+      { error: "PDF generation failed", details: err.message },
       { status: 500 },
     );
   }
