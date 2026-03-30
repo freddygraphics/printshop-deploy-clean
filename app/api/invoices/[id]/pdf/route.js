@@ -3,24 +3,23 @@ export const revalidate = 0;
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-
-import puppeteer from "puppeteer";
+import puppeteer from "puppeteer-core";
+import chromium from "@sparticuz/chromium";
 
 export async function GET(req, { params }) {
   try {
     const invoiceId = params.id;
 
-    // 🔥 URL que ya usabas (perfecto)
     const htmlUrl = `https://app.freddygraphics.com/api/invoices/${invoiceId}/html`;
 
     const browser = await puppeteer.launch({
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      headless: "new",
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: true,
     });
 
     const page = await browser.newPage();
 
-    // 🔐 Si tu endpoint necesita cookies/session, dímelo luego
     await page.goto(htmlUrl, {
       waitUntil: "networkidle0",
     });
@@ -28,12 +27,6 @@ export async function GET(req, { params }) {
     const pdf = await page.pdf({
       format: "A4",
       printBackground: true,
-      margin: {
-        top: "20px",
-        bottom: "20px",
-        left: "20px",
-        right: "20px",
-      },
     });
 
     await browser.close();
@@ -41,7 +34,6 @@ export async function GET(req, { params }) {
     return new NextResponse(pdf, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename=invoice-${invoiceId}.pdf`,
       },
     });
   } catch (err) {
