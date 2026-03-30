@@ -1,42 +1,42 @@
 ﻿export const dynamic = "force-dynamic";
 export const revalidate = 0;
+export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-
-export const runtime = "nodejs";
+import chromium from "chrome-aws-lambda";
+import puppeteer from "puppeteer";
 
 export async function GET(req, { params }) {
   try {
     const invoiceId = params.id;
 
-    const pdfServiceUrl = process.env.PDF_SERVICE_URL;
-    const secret = process.env.PDF_SECRET;
-
-    if (!pdfServiceUrl || !secret) {
-      return NextResponse.json(
-        { error: "Missing PDF_SERVICE_URL or PDF_SECRET" },
-        { status: 500 },
-      );
-    }
-
+    // 🔥 URL que ya usabas (perfecto)
     const htmlUrl = `https://app.freddygraphics.com/api/invoices/${invoiceId}/html`;
 
-    const r = await fetch(`${pdfServiceUrl}/generate-pdf`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      // timeout simple (Node 18+ / 20)
-      body: JSON.stringify({ url: htmlUrl, token: secret }),
+    const browser = await puppeteer.launch({
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      headless: "new",
     });
 
-    if (!r.ok) {
-      const txt = await r.text();
-      return NextResponse.json(
-        { error: "PDF service error", status: r.status, details: txt },
-        { status: 500 },
-      );
-    }
+    const page = await browser.newPage();
 
-    const pdf = await r.arrayBuffer();
+    // 🔐 Si tu endpoint necesita cookies/session, dímelo luego
+    await page.goto(htmlUrl, {
+      waitUntil: "networkidle0",
+    });
+
+    const pdf = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      margin: {
+        top: "20px",
+        bottom: "20px",
+        left: "20px",
+        right: "20px",
+      },
+    });
+
+    await browser.close();
 
     return new NextResponse(pdf, {
       headers: {
@@ -45,12 +45,11 @@ export async function GET(req, { params }) {
       },
     });
   } catch (err) {
-    console.error("PDF PROXY ERROR:", err);
+    console.error("PDF ERROR:", err);
+
     return NextResponse.json(
-      { error: "PDF proxy failed", details: err.message },
+      { error: "PDF generation failed", details: err.message },
       { status: 500 },
     );
   }
 }
-
-
