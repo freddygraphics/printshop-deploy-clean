@@ -1,84 +1,56 @@
-﻿export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
+﻿export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-import { NextResponse } from "next/server";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import puppeteer from "puppeteer-core";
+import chromium from "@sparticuz/chromium";
 
-export async function GET(req, { params }) {
+const pdfCache = new Map();
+
+export async function GET(req, context) {
   try {
-    const invoiceId = params.id;
+    const { id } = await context.params;
 
-    // 🔥 Traer datos de invoice (usa tu endpoint real)
-    const dataRes = await fetch(
-      `https://app.freddygraphics.com/api/invoices/${invoiceId}`,
-    );
-
-    const invoice = await dataRes.json();
-
-    const pdfDoc = await PDFDocument.create();
-    const page = pdfDoc.addPage([595, 842]); // A4
-
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-
-    let y = 800;
-
-    // 🔥 HEADER
-    page.drawText("INVOICE", {
-      x: 50,
-      y,
-      size: 20,
-      font,
-      color: rgb(0, 0, 0),
-    });
-
-    y -= 40;
-
-    page.drawText(`Invoice #: ${invoice.id}`, { x: 50, y, size: 12, font });
-    y -= 20;
-
-    page.drawText(`Customer: ${invoice.customerName}`, {
-      x: 50,
-      y,
-      size: 12,
-      font,
-    });
-
-    y -= 40;
-
-    // 🔥 ITEMS
-    invoice.items.forEach((item) => {
-      page.drawText(`${item.name} - $${item.price}`, {
-        x: 50,
-        y,
-        size: 11,
-        font,
+    // ⚡ CACHE
+    if (pdfCache.has(id)) {
+      return new Response(pdfCache.get(id), {
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `inline; filename=invoice-${id}.pdf`,
+        },
       });
-      y -= 20;
+    }
+
+    const browser = await puppeteer.launch({
+      headless: true,
     });
 
-    y -= 20;
+    const page = await browser.newPage();
 
-    page.drawText(`Total: $${invoice.total}`, {
-      x: 50,
-      y,
-      size: 14,
-      font,
+    // 🔥 URL DINÁMICA (FIX IMPORTANTE)
+    const url = new URL(req.url);
+    const baseUrl = `${url.protocol}//${url.host}`;
+
+    await page.goto(`${baseUrl}/api/invoices/${id}/html`, {
+      waitUntil: "domcontentloaded",
     });
 
-    const pdfBytes = await pdfDoc.save();
+    const pdf = await page.pdf({
+      format: "A4",
+      printBackground: true,
+    });
 
-    return new NextResponse(pdfBytes, {
+    await browser.close();
+
+    pdfCache.set(id, pdf);
+
+    return new Response(pdf, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename=invoice-${invoiceId}.pdf`,
+        "Content-Disposition": `inline; filename=invoice-${id}.pdf`,
       },
     });
   } catch (err) {
-    console.error(err);
-
-    return NextResponse.json(
-      { error: "PDF generation failed", details: err.message },
-      { status: 500 },
-    );
+    console.error("❌ ERROR REAL:", err);
+    return new Response(err.message, { status: 500 });
   }
 }

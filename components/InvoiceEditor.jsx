@@ -773,13 +773,13 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         <div className="flex items-center gap-3">
           {/* DOWNLOAD PDF */}
           <button
-            disabled={!viewUrl}
-            onClick={() => viewUrl && window.open(viewUrl, "_blank")}
-            className={`border px-4 py-2 rounded-lg text-m font-semibold bg-white${
-              !viewUrl ? "opacity-50 cursor-not-allowed" : ""
-            }`}
+            disabled={!invoiceIdState}
+            onClick={() => {
+              window.open(`/api/invoices/${invoiceIdState}/pdf`, "_blank");
+            }}
+            className="border px-4 py-2 rounded-lg font-semibold bg-white"
           >
-            {isLocal ? "Download PDF" : "View PDF"}
+            View PDF
           </button>
 
           {/* ACTIONS MENU */}
