@@ -27,6 +27,17 @@ model Client {
   quotes    Quote[]
 }
 
+model PrintProduct {
+  id          String   @id @default(cuid())
+  name        String
+  sinaliteId  Int
+
+  options     Json     // 🔥 aquí guardas size, qty, etc
+  active      Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+}
+
 model Product {
   id             Int           @id @default(autoincrement())
   name           String

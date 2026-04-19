@@ -1,43 +1,41 @@
-﻿import puppeteer from "puppeteer-core";
-import chromium from "@sparticuz/chromium";
+﻿export const runtime = "nodejs";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export async function GET(req, { params }) {
+  const { id } = params;
 
-export async function GET(req, context) {
-  try {
-    const { id } = await context.params;
+  // 👇 DETECTAR ENTORNO
+  const isDev = process.env.NODE_ENV === "development";
 
-    const browser = await puppeteer.launch({
-      args: chromium.args,
-      executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
-    });
-
-    const page = await browser.newPage();
-
-    const url = new URL(req.url);
-    const baseUrl = `${url.protocol}//${url.host}`;
-
-    await page.goto(`${baseUrl}/api/invoices/${id}/html`, {
-      waitUntil: "domcontentloaded",
-    });
-
-    const pdf = await page.pdf({
-      format: "A4",
-      printBackground: true,
-    });
-
-    await browser.close();
-
-    return new Response(pdf, {
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": "inline",
-      },
-    });
-  } catch (err) {
-    console.error("❌ ERROR REAL:", err);
-    return new Response(err.message, { status: 500 });
+  // 🟢 LOCAL → REDIRIGE AL HTML
+  if (isDev) {
+    return Response.redirect(`http://localhost:3000/api/invoices/${id}/html`);
   }
+
+  // 🔥 PRODUCCIÓN → PDFSHIFT
+  const apiKey = process.env.PDFSHIFT_API_KEY;
+
+  const htmlUrl = `https://app.freddygraphics.com/api/invoices/${id}/html`;
+
+  const response = await fetch(
+    `https://api.pdfshift.io/v3/convert/pdf?api_key=${apiKey}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        source: htmlUrl,
+        use_print: true,
+      }),
+    },
+  );
+
+  const pdf = await response.arrayBuffer();
+
+  return new Response(pdf, {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": "inline",
+    },
+  });
 }
