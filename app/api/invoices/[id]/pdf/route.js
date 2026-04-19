@@ -2,22 +2,32 @@
 import { generateAndStorePDF } from "@/lib/invoice/generateAndStoreInvoicePdf";
 
 export async function GET(req, { params }) {
-  const id = Number(params.id);
+  try {
+    const id = Number(params.id);
 
-  const invoice = await prisma.invoice.findUnique({
-    where: { id },
-  });
+    console.log("PDF request for:", id);
 
-  if (!invoice) {
-    return new Response("Not found", { status: 404 });
+    const invoice = await prisma.invoice.findUnique({
+      where: { id },
+    });
+
+    if (!invoice) {
+      return new Response("Not found", { status: 404 });
+    }
+
+    if (!invoice.pdfUrl) {
+      console.log("Generating PDF...");
+
+      const url = await generateAndStorePDF(id);
+
+      return Response.redirect(url);
+    }
+
+    console.log("Using cached PDF:", invoice.pdfUrl);
+
+    return Response.redirect(invoice.pdfUrl);
+  } catch (err) {
+    console.error("❌ PDF ERROR:", err);
+    return new Response(err.message, { status: 500 });
   }
-
-  // ⚡ SI NO EXISTE → LO CREA
-  if (!invoice.pdfUrl) {
-    const url = await generateAndStorePDF(id);
-    return Response.redirect(url);
-  }
-
-  // ⚡ SI EXISTE → INSTANTÁNEO
-  return Response.redirect(invoice.pdfUrl);
 }
