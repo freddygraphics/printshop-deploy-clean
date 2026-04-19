@@ -1,5 +1,5 @@
 ﻿import prisma from "@/lib/db";
-import { generateAndStorePDF } from "@/lib/pdf/generateAndStorePdf";
+import { generateAndStorePDF } from "@/lib/invoice/generateAndStoreInvoicePdf";
 
 export async function GET(req, { params }) {
   const id = Number(params.id);
