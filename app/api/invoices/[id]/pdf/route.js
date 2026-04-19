@@ -1,44 +1,23 @@
-﻿export const runtime = "nodejs";
+﻿import prisma from "@/lib/db";
+import { generateAndStorePDF } from "@/lib/pdf/generateAndStorePdf";
 
 export async function GET(req, { params }) {
-  const { id } = params;
+  const id = Number(params.id);
 
-  const isDev = process.env.NODE_ENV === "development";
-
-  // 🟢 LOCAL → abre HTML
-  if (isDev) {
-    return Response.redirect(`http://localhost:3000/api/invoices/${id}/html`);
-  }
-
-  const apiKey = process.env.PDFSHIFT_API_KEY;
-
-  const htmlUrl = `https://app.freddygraphics.com/api/invoices/${id}/html`;
-
-  const response = await fetch("https://api.pdfshift.io/v3/convert/pdf", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-API-Key": apiKey, // 🔥 ESTE ES EL FIX
-    },
-    body: JSON.stringify({
-      source: htmlUrl,
-      use_print: true,
-      format: "A4",
-    }),
+  const invoice = await prisma.invoice.findUnique({
+    where: { id },
   });
 
-  if (!response.ok) {
-    const err = await response.text();
-    console.error("PDFShift RAW:", err);
-    throw new Error(err);
+  if (!invoice) {
+    return new Response("Not found", { status: 404 });
   }
 
-  const pdf = await response.arrayBuffer();
+  // ⚡ SI NO EXISTE → LO CREA
+  if (!invoice.pdfUrl) {
+    const url = await generateAndStorePDF(id);
+    return Response.redirect(url);
+  }
 
-  return new Response(pdf, {
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": "inline",
-    },
-  });
+  // ⚡ SI EXISTE → INSTANTÁNEO
+  return Response.redirect(invoice.pdfUrl);
 }

@@ -146,6 +146,10 @@ model Invoice {
   paymentStatus    String            @default("Unpaid")
   issuedAt         DateTime
   dueDate          DateTime?
+
+  pdfUrl String?
+pdfGeneratedAt DateTime?
+
   notes            String?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
@@ -476,3 +480,4 @@ model PrintPricingSettings {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
