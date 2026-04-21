@@ -149,6 +149,8 @@ model Invoice {
 
   pdfUrl String?
 pdfGeneratedAt DateTime?
+pdfStatus      String   @default("idle") // idle | generating | ready | error
+pdfUpdatedAt   DateTime?
 
   notes            String?
   createdAt        DateTime          @default(now())

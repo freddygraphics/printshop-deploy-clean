@@ -46,7 +46,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   });
   const savingRef = useRef(false);
   const autosaveTimerRef = useRef(null);
-
+  const pdfTimerRef = useRef(null);
   const router = useRouter();
   const [showVoidModal, setShowVoidModal] = useState(false);
   const [isVoiding, setIsVoiding] = useState(false);
@@ -176,10 +176,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         })),
       }),
     });
-    // 🔥 GENERAR PDF EN BACKGROUND
-    fetch(`/api/invoices/${invoiceIdState}/generate-pdf`, {
-      method: "POST",
-    });
+    triggerPdfGeneration();
   };
 
   const scheduleAutosave = (itemsSnapshot) => {
@@ -192,6 +189,20 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
     autosaveTimerRef.current = setTimeout(() => {
       saveItems(itemsSnapshot);
     }, 900); // ⏱️ debounce suave
+  };
+
+  const triggerPdfGeneration = () => {
+    if (!invoiceIdState) return;
+
+    if (pdfTimerRef.current) {
+      clearTimeout(pdfTimerRef.current);
+    }
+
+    pdfTimerRef.current = setTimeout(() => {
+      fetch(`/api/invoices/${invoiceIdState}/generate-pdf`, {
+        method: "POST",
+      });
+    }, 2000);
   };
 
   const [team, setTeam] = useState({
@@ -259,9 +270,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         taxRate,
       }),
     });
-    fetch(`/api/invoices/${invoiceIdState}/generate-pdf`, {
-      method: "POST",
-    });
+    triggerPdfGeneration();
   };
 
   useEffect(() => {
