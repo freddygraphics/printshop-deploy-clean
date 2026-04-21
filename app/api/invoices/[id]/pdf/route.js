@@ -1,33 +1,20 @@
-﻿import prisma from "@/lib/db";
-import { generateAndStorePDF } from "@/lib/invoice/generateAndStoreInvoicePdf";
+﻿import { NextResponse } from "next/server";
+import { head } from "@vercel/blob";
 
 export async function GET(req, { params }) {
+  const id = params.id;
+  const path = `invoices/${id}.pdf`;
+
   try {
-    const id = Number(params.id);
+    const file = await head(path);
 
-    console.log("PDF request for:", id);
-
-    const invoice = await prisma.invoice.findUnique({
-      where: { id },
-    });
-
-    if (!invoice) {
-      return new Response("Not found", { status: 404 });
+    if (file?.url) {
+      return NextResponse.redirect(file.url); // ⚡ abre rápido
     }
+  } catch (e) {}
 
-    if (!invoice.pdfUrl) {
-      console.log("Generating PDF...");
-
-      const url = await generateAndStorePDF(id);
-
-      return Response.redirect(url);
-    }
-
-    console.log("Using cached PDF:", invoice.pdfUrl);
-
-    return Response.redirect(invoice.pdfUrl);
-  } catch (err) {
-    console.error("❌ PDF ERROR:", err);
-    return new Response(err.message, { status: 500 });
-  }
+  // fallback → HTML (rápido)
+  return NextResponse.redirect(
+    `${process.env.NEXT_PUBLIC_SITE_URL}/api/invoices/${id}/html`,
+  );
 }

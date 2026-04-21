@@ -176,6 +176,10 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         })),
       }),
     });
+    // 🔥 GENERAR PDF EN BACKGROUND
+    fetch(`/api/invoices/${invoiceIdState}/generate-pdf`, {
+      method: "POST",
+    });
   };
 
   const scheduleAutosave = (itemsSnapshot) => {
@@ -254,6 +258,9 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         taxEnabled,
         taxRate,
       }),
+    });
+    fetch(`/api/invoices/${invoiceIdState}/generate-pdf`, {
+      method: "POST",
     });
   };
 
@@ -679,7 +686,13 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
 
   const removeItem = async (index) => {
     const next = items.filter((_, i) => i !== index);
+
     setItems(next);
+
+    // 🔥 GUARDAR EN DB
+    if (invoiceIdState) {
+      await saveItems(next);
+    }
   };
 
   // ======================================================
