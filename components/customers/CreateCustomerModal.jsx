@@ -1,8 +1,13 @@
 "use client";
 
-import { useState } from "react";
-
-export default function CreateCustomerModal({ open, onClose, onCreated }) {
+import { useState, useEffect } from "react";
+export default function CreateCustomerModal({
+  open,
+  onClose,
+  onCreated,
+  customer,
+  isEdit,
+}) {
   if (!open) return null;
 
   const [form, setForm] = useState({
@@ -17,12 +22,41 @@ export default function CreateCustomerModal({ open, onClose, onCreated }) {
     country: "",
   });
 
+  useEffect(() => {
+    if (customer) {
+      setForm({
+        name: customer.name || "",
+        company: customer.company || "",
+        email: customer.email || "",
+        phone: customer.phone || "",
+        address: customer.address || "",
+        city: customer.city || "",
+        state: customer.state || "",
+        zip: customer.zip || "",
+        country: customer.country || "",
+      });
+    } else {
+      // reset si es nuevo
+      setForm({
+        name: "",
+        company: "",
+        email: "",
+        phone: "",
+        address: "",
+        city: "",
+        state: "",
+        zip: "",
+        country: "",
+      });
+    }
+  }, [customer]);
+
   const [loading, setLoading] = useState(false);
 
   const update = (field, value) =>
     setForm((prev) => ({ ...prev, [field]: value }));
 
-  const handleCreate = async () => {
+  const handleSubmit = async () => {
     if (!form.name.trim()) {
       alert("Customer name is required");
       return;
@@ -31,32 +65,31 @@ export default function CreateCustomerModal({ open, onClose, onCreated }) {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/clients", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: form.name,
-          company: form.company || null,
-          email: form.email || null,
-          phone: form.phone || null,
-          address: form.address || null,
-          city: form.city || null,
-          state: form.state || null,
-          zip: form.zip || null,
-          country: form.country || null,
-        }),
-      });
+      let res;
 
-      const customer = await res.json();
+      if (isEdit) {
+        res = await fetch(`/api/clients/${customer.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
+      } else {
+        res = await fetch("/api/clients", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
+      }
 
-      if (!res.ok || !customer?.id) {
-        alert(customer?.error || "Error creating customer");
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data?.error || "Error");
         return;
       }
 
-      // 🔥 ESTA ES LA LÍNEA CLAVE
-      onCreated(customer);
-      onClose(); // 👈 CIERRA EL MODAL
+      onCreated(data);
+      onClose();
     } catch (err) {
       console.error(err);
       alert("Server error");
@@ -70,7 +103,11 @@ export default function CreateCustomerModal({ open, onClose, onCreated }) {
       <div className="bg-white w-full max-w-2xl rounded-2xl shadow-xl border">
         {/* HEADER */}
         <div className="flex items-center justify-between px-6 py-4 border-b">
-          <h2 className="text-lg font-semibold text-gray-900">New Customer</h2>
+          <h2 className="text-lg font-semibold text-gray-900">
+            {isEdit ? "Edit Customer" : "New Customer"}
+          </h2>
+
+          {/* BOTÓN CERRAR */}
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 text-xl"
@@ -209,11 +246,17 @@ export default function CreateCustomerModal({ open, onClose, onCreated }) {
           </button>
 
           <button
-            onClick={handleCreate}
+            onClick={handleSubmit}
             disabled={loading}
             className="px-5 py-2 rounded-lg bg-blue-600 text-white font-medium shadow hover:bg-blue-700 disabled:opacity-50"
           >
-            {loading ? "Creating..." : "Create Customer"}
+            {loading
+              ? isEdit
+                ? "Saving..."
+                : "Creating..."
+              : isEdit
+                ? "Save Changes"
+                : "Create Customer"}
           </button>
         </div>
       </div>

@@ -157,19 +157,28 @@ export default function CustomerCRM({ params }) {
   };
 
   invoices.forEach((inv) => {
-    stats.total += inv.total || 0;
+    if (inv.paymentStatus === "VOID") return;
 
-    if (inv.status === "CANCELLED") {
-      stats.cancelled += inv.total || 0;
-      return;
+    const total = Number(inv.total || 0);
+    const paid =
+      Number(inv.amountPaid) ||
+      Number(inv.paymentsTotal) ||
+      (Array.isArray(inv.payments)
+        ? inv.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0)
+        : 0);
+
+    const balance = total - paid;
+
+    stats.total += total;
+
+    // ✅ OUTSTANDING REAL
+    if (balance > 0) {
+      stats.outstanding += balance;
     }
 
-    if (inv.paymentStatus !== "PAID") {
-      stats.outstanding += inv.total || 0;
-    }
-
+    // ✅ OVERDUE REAL
     if (inv.paymentStatus === "OVERDUE") {
-      stats.overdue += inv.total || 0;
+      stats.overdue += balance;
     }
   });
 
@@ -285,7 +294,7 @@ export default function CustomerCRM({ params }) {
                   <td className="px-6 py-3">{formatCurrency(inv.paid)}</td>
 
                   <td className="px-6 py-3">
-                    <StatusBadge status={inv.status} />
+                    <StatusBadge status={inv.paymentStatus} />
                   </td>
                 </tr>
               ))

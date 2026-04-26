@@ -87,3 +87,54 @@ export async function GET(req, { params }) {
   }
 }
 
+export async function PUT(req, ctx) {
+  try {
+    const { id } = await ctx.params; // 👈 Next 15 fix
+    const clientId = Number(id);
+
+    if (!clientId) {
+      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+    }
+
+    const body = await req.json();
+
+    const updated = await prisma.client.update({
+      where: { id: clientId },
+      data: {
+        name: body.name || "",
+        company: body.company || "",
+        email: body.email || "",
+        phone: body.phone || "",
+      },
+    });
+
+    return NextResponse.json(updated);
+  } catch (error) {
+    console.error("❌ PUT /clients/[id]:", error);
+    return NextResponse.json(
+      { error: "Error updating client" },
+      { status: 500 },
+    );
+  }
+}
+export async function DELETE(req, ctx) {
+  try {
+    const { id } = await ctx.params;
+    const clientId = Number(id);
+
+    await prisma.client.update({
+      where: { id: clientId },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { error: "Error deleting client" },
+      { status: 500 },
+    );
+  }
+}

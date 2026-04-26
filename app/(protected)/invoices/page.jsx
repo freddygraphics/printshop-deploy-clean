@@ -118,29 +118,41 @@ export default function InvoicesPage() {
       i.client?.company?.toLowerCase().includes(q)
     );
   });
-  const cardSource = searchedInvoices; // 👈 lo que se ve en la tabla
+  const cardSource = searchedInvoices;
 
-  const totalInvoices = cardSource.reduce(
+  // 🔥 STATS CALCULADAS EN FRONTEND
+  const validInvoices = cardSource.filter(
+    (i) => getInvoiceStatus(i) !== "Void",
+  );
+
+  const total = validInvoices.reduce(
     (sum, i) => sum + Number(i.invoiceTotal || 0),
     0,
   );
 
-  const paidInvoices = cardSource
-    .filter((i) => getInvoiceStatus(i) === "Paid")
+  const paid = validInvoices
+    .filter((i) => Number(i.balance) === 0)
     .reduce((sum, i) => sum + Number(i.invoiceTotal || 0), 0);
 
-  const pendingInvoices = cardSource
-    .filter(
-      (i) =>
-        getInvoiceStatus(i) === "Issued" ||
-        getInvoiceStatus(i) === "Partially Paid",
-    )
+  const pending = validInvoices
+    .filter((i) => Number(i.balance) > 0)
     .reduce((sum, i) => sum + Number(i.balance || 0), 0);
 
-  const overdueInvoices = cardSource
-    .filter((i) => getInvoiceStatus(i) === "Overdue")
-    .reduce((sum, i) => sum + Number(i.balance || 0), 0);
+  const today = new Date();
 
+  // fuerza a solo fecha (sin hora)
+  today.setHours(0, 0, 0, 0);
+
+  const overdue = validInvoices
+    .filter((i) => {
+      if (!i.dueDate) return false;
+
+      const due = new Date(i.dueDate);
+      due.setHours(0, 0, 0, 0);
+
+      return Number(i.balance) > 0 && due < today;
+    })
+    .reduce((sum, i) => sum + Number(i.balance || 0), 0);
   // --------------------------
   // SUMMARY CARDS (KANAKKU) - TOTALS $
   // --------------------------
@@ -168,21 +180,15 @@ export default function InvoicesPage() {
       <div className="max-w-7xl mx-auto">
         {/* SUMMARY CARDS */}
         <div className="grid grid-cols-1 mt-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <SummaryCard
-            title="Total Invoices"
-            value={formatCurrency(totalInvoices)}
-          />
-          <SummaryCard
-            title="Paid Invoices"
-            value={formatCurrency(paidInvoices)}
-          />
+          <SummaryCard title="Total Invoices" value={formatCurrency(total)} />
+          <SummaryCard title="Paid Invoices" value={formatCurrency(paid)} />
           <SummaryCard
             title="Pending Invoices"
-            value={formatCurrency(pendingInvoices)}
+            value={formatCurrency(pending)}
           />
           <SummaryCard
             title="Overdue Invoices"
-            value={formatCurrency(overdueInvoices)}
+            value={formatCurrency(overdue)}
           />
         </div>
         {/* HEADER */}
