@@ -175,7 +175,11 @@ function SortableJobCard({ job, onOpen, isOverlay = false }) {
           </span>
         </div>
 
-        <div className="mt-2 text-sm font-medium text-gray-900">
+        <div className="mt-2 text-l font-medium text-gray-900">
+          {job.client?.company || "No client"}
+        </div>
+
+        <div className=" text-sm text-gray-900">
           {job.client?.name || "No client"}
         </div>
 
@@ -291,6 +295,11 @@ export default function ProductionBoardPage() {
           j.jobNumber,
           j.invoice?.invoiceNumber,
           j.client?.name,
+          j.client?.company,
+          j.client?.phone,
+          j.client?.email,
+          j.description,
+          j.status,
           j.assignedTo,
           ...(j.invoice?.invoiceItems?.map((i) => i.name) || []),
         ]
@@ -329,6 +338,11 @@ export default function ProductionBoardPage() {
       map[key].push(j);
     });
 
+    // 🔥 MÁS NUEVOS ARRIBA EN TODAS LAS COLUMNAS
+    Object.keys(map).forEach((status) => {
+      map[status].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    });
+
     return map;
   }, [filtered]);
 
@@ -341,21 +355,25 @@ export default function ProductionBoardPage() {
       if (!activeJob) return prev;
 
       let newStatus = activeJob.status;
-      if (STATUSES.some((s) => s.key === over.id)) newStatus = over.id;
+
+      if (STATUSES.some((s) => s.key === over.id)) {
+        newStatus = over.id;
+      }
 
       const overJob = prev.find((j) => j.id === over.id);
-      if (overJob) newStatus = overJob.status;
+
+      if (overJob) {
+        newStatus = overJob.status;
+      }
 
       let updated = prev.map((j) =>
         j.id === active.id ? { ...j, status: newStatus } : j,
       );
 
-      const oldIndex = updated.findIndex((j) => j.id === active.id);
-      const newIndex = updated.findIndex((j) => j.id === over.id);
-
-      if (oldIndex !== -1 && newIndex !== -1) {
-        updated = arrayMove(updated, oldIndex, newIndex);
-      }
+      // 🔥 SIEMPRE MÁS NUEVOS ARRIBA
+      updated = updated.sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+      );
 
       fetch("/api/jobs/reorder", {
         method: "POST",

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { memo } from "react";
-
+import StickerCalculator from "@/components/StickerCalculator.jsx";
 function InlineProductEditor({ product, data, onChange, onClose }) {
   const cfg = product?.customFields || {};
   const isManual = !product;
@@ -238,7 +238,7 @@ function InlineProductEditor({ product, data, onChange, onClose }) {
 
     return Number(total.toFixed(2));
   };
-
+  const isSticker = product?.category === "stickers";
   // ------------------------------------------
   // RENDER
   // ------------------------------------------
@@ -382,11 +382,75 @@ function InlineProductEditor({ product, data, onChange, onClose }) {
           </div>
         </div>
       )}
+      {/* ===================================================== */}
+      {/* 🔥 STICKER CALCULATOR */}
+      {/* ===================================================== */}
 
       {/* ===================================================== */}
       {/* 🔥 CONFIGURABLE PRODUCTS (KANAKKU STYLE + FIX QTY) */}
       {/* ===================================================== */}
-      {!isManual && (
+
+      {/* ===================================================== */}
+      {/* 🔥 STICKER CALCULATOR */}
+      {/* ===================================================== */}
+
+      {isSticker && (
+        <>
+          <div className="mb-6">
+            <StickerCalculator
+              value={local}
+              onChange={(data) => {
+                setLocal((prev) => ({
+                  ...prev,
+
+                  qty: data.qty,
+
+                  unitPrice: data.unitPrice,
+
+                  total: data.total,
+
+                  description: data.description,
+                }));
+              }}
+            />
+          </div>
+
+          {/* DONE */}
+          <div className="mt-6 pt-4 border-t border-gray-200 flex justify-end">
+            <button
+              onClick={() =>
+                onChange({
+                  qty: local.qty,
+
+                  name: local.description,
+
+                  unitPrice: local.unitPrice,
+
+                  total: local.total,
+
+                  _expanded: false,
+
+                  __commit: true,
+                })
+              }
+              className="
+          h-11
+          px-6
+          rounded-xl
+          bg-blue-600
+          text-white
+          font-medium
+          hover:bg-blue-700
+          transition
+          shadow-sm
+        "
+            >
+              Done
+            </button>
+          </div>
+        </>
+      )}
+      {!isManual && !isSticker && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* QUANTITY */}

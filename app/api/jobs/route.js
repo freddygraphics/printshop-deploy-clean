@@ -10,7 +10,7 @@ import crypto from "crypto";
 export async function GET() {
   try {
     const jobs = await prisma.job.findMany({
-      orderBy: [{ status: "asc" }, { position: "asc" }],
+      orderBy: [{ status: "asc" }, { createdAt: "desc" }],
       select: {
         id: true,
         jobNumber: true,
@@ -22,7 +22,11 @@ export async function GET() {
         pickedUpAt: true,
 
         client: {
-          select: { id: true, name: true },
+          select: {
+            id: true,
+            name: true,
+            company: true,
+          },
         },
 
         files: {

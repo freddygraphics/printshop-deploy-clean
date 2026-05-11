@@ -432,7 +432,22 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
       const res = await fetch(`/api/products/search?q=${productSearch}`);
       const data = await res.json();
 
-      setProductResults(Array.isArray(data) ? data : []);
+      const results = Array.isArray(data) ? data : [];
+
+      // 🔥 STICKER CALCULATOR
+      if (productSearch.toLowerCase().includes("sticker")) {
+        results.unshift({
+          id: "sticker-calculator",
+
+          name: "Sticker Calculator",
+
+          category: "stickers",
+
+          basePrice: 0,
+        });
+      }
+
+      setProductResults(results);
     }, 300);
 
     return () => clearTimeout(delay);
@@ -542,9 +557,55 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   // SELECT PRODUCT
   // ----------------------------------------
   const handleSelectProduct = async (p) => {
-    isMutatingItemsRef.current = true;
+    // 🔥 STICKER CALCULATOR
+    if (p.id === "sticker-calculator") {
+      const newLine = {
+        id: crypto.randomUUID(),
 
+        productId: null,
+
+        product: {
+          id: "sticker-calculator",
+
+          name: "Sticker Calculator",
+
+          category: "stickers",
+        },
+
+        name: "Sticker Calculator",
+
+        qty: 1,
+
+        unitPrice: 0,
+
+        total: 0,
+
+        customFields: null,
+
+        options: {},
+
+        _expanded: true,
+      };
+
+      setItems((prev) =>
+        prev
+          .map((i) => ({
+            ...i,
+            _expanded: false,
+          }))
+          .concat(newLine),
+      );
+
+      setProductSearch("");
+      setProductResults([]);
+      setShowAddCard(false);
+
+      return;
+    }
+
+    // 🔥 PRODUCTOS NORMALES
     const res = await fetch(`/api/products/${p.id}`);
+
     const full = await res.json();
 
     const newLine = {
@@ -559,7 +620,6 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
 
       customFields: full.customFields || full.template?.fields || null,
 
-      // ✅ TODO VA EN options (objeto)
       options: normalizeOptions(
         full.defaultOptions ?? full.template?.options ?? {},
       ),
@@ -569,12 +629,16 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
 
     setItems((prev) =>
       prev
-        .map((i) => ({ ...i, _expanded: false }))
+        .map((i) => ({
+          ...i,
+          _expanded: false,
+        }))
         .concat({
           ...newLine,
-          _expanded: true, // 👈 AQUÍ se abre el configurable
+          _expanded: true,
         }),
     );
+
     setTimeout(() => {
       isMutatingItemsRef.current = false;
     }, 0);
@@ -583,7 +647,6 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
     setProductResults([]);
     setShowAddCard(false);
   };
-
   // ----------------------------------------
   // ADD MANUAL ITEM
   const addManualItem = async () => {

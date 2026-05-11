@@ -29,7 +29,16 @@ model Client {
   orders    Order[]
   quotes    Quote[]
 }
-
+model StickerSheetPricing {
+  id           String   @id @default(cuid())
+  name         String   @unique // Regular, Transparente
+  costPerSheet Float
+  laminateCost Float
+  cutCost      Float
+  wastePercent Float   @default(10)
+  profitMargin Float   @default(40)
+  createdAt    DateTime @default(now())
+}
 model PrintProduct {
   id          String   @id @default(cuid())
   name        String

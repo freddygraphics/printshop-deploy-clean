@@ -3,5 +3,12 @@
     "app/api/invoices/[id]/pdf/route.js": {
       "maxDuration": 30
     }
-  }
+  },
+
+  "crons": [
+    {
+      "path": "/api/backup",
+      "schedule": "0 2 * * *"
+    }
+  ]
 }
