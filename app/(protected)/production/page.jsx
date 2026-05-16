@@ -169,10 +169,6 @@ function SortableJobCard({ job, onOpen, isOverlay = false }) {
               JOB #{job.jobNumber}
             </div>
           </div>
-
-          <span className="text-[11px] text-gray-400 border px-2 py-1 rounded-lg">
-            Drag
-          </span>
         </div>
 
         <div className="mt-2 text-l font-medium text-gray-900">
@@ -209,7 +205,7 @@ function Column({ title, statusKey, jobs, onOpen }) {
   const { setNodeRef, isOver } = useDroppable({ id: statusKey });
 
   return (
-    <div className="min-w-0">
+    <div className="w-[350px] flex-shrink-0">
       <div className="flex items-center gap-2 mb-2">
         <div className="font-semibold">{title}</div>
         <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 border">
@@ -220,11 +216,11 @@ function Column({ title, statusKey, jobs, onOpen }) {
       <div
         ref={setNodeRef}
         className={[
-          "rounded-2xl bg-gray-100 h-[calc(100vh-260px)]",
-          isOver ? "bg-blue-100/70" : "",
+          "rounded-2xl bg-[#F5F7F9] min-h-[70vh]",
+          isOver ? "bg-[#F5F7F9]" : "",
         ].join(" ")}
       >
-        <div className="h-full overflow-y-auto overflow-x-hidden flex flex-col min-w-0">
+        <div className="w-[320px] flex-shrink-0">
           <SortableContext
             items={jobs.map((j) => j.id)}
             strategy={verticalListSortingStrategy}
@@ -478,7 +474,7 @@ export default function ProductionBoardPage() {
             onDragCancel={() => setActiveJob(null)}
           >
             <div className="mt-5 overflow-x-auto">
-              <div className="grid grid-cols-6 gap-6 pb-6">
+              <div className="flex gap-4 pb-6">
                 {STATUSES.map((s) => (
                   <Column
                     key={s.key}
