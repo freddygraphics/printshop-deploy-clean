@@ -12,6 +12,7 @@ export default function CommercialPrintingTemplate({
   const cf = existingData?.customFields || {};
 
   const [name, setName] = useState(existingData?.name || cf.name || "");
+  const [image, setImage] = useState(existingData?.image || "");
 
   const [rows, setRows] = useState(
     Array.isArray(cf.rows) && cf.rows.length > 0
@@ -56,6 +57,24 @@ export default function CommercialPrintingTemplate({
   );
 
   // ============================================================
+  // 🔥 SINALITE
+  // ============================================================
+
+  const [sinaliteEnabled, setSinaliteEnabled] = useState(
+    existingData?.sinaliteEnabled || false,
+  );
+
+  const [sinaliteId, setSinaliteId] = useState(existingData?.sinaliteId || "");
+
+  const [profitMargin, setProfitMargin] = useState(
+    existingData?.profitMargin || 1.5,
+  );
+
+  const [sinaliteOptions, setSinaliteOptions] = useState(
+    JSON.stringify(existingData?.sinaliteOptions || {}, null, 2),
+  );
+
+  // ============================================================
   // 🔧 MANEJO DE FORMULARIO
   // ============================================================
   const addRow = () => {
@@ -81,7 +100,15 @@ export default function CommercialPrintingTemplate({
   // ============================================================
   const handleSave = () => {
     const updated = {
+      // 🔥 SINALITE
+      image,
+      sinaliteEnabled,
+      sinaliteId: Number(sinaliteId),
+      profitMargin: Number(profitMargin),
+
+      sinaliteOptions: JSON.parse(sinaliteOptions),
       ...existingData,
+      image,
 
       name,
       templateId: 1,
@@ -117,6 +144,50 @@ export default function CommercialPrintingTemplate({
   // ============================================================
   return (
     <div className="space-y-8">
+      {/* PRODUCT IMAGE */}
+
+      {/* PRODUCT IMAGE */}
+
+      <div className="space-y-4">
+        <div>
+          <label className="font-medium text-gray-700">Product Image</label>
+
+          <input
+            type="file"
+            accept="image/*"
+            className="border rounded-lg px-3 py-2 w-full mt-1"
+            onChange={(e) => {
+              const file = e.target.files[0];
+
+              if (!file) return;
+
+              const reader = new FileReader();
+
+              reader.onloadend = () => {
+                setImage(reader.result);
+              };
+
+              reader.readAsDataURL(file);
+            }}
+          />
+        </div>
+
+        {/* PREVIEW */}
+
+        <div className="border rounded-2xl bg-gray-50 p-4 w-fit">
+          <div className="w-44 h-44 rounded-xl overflow-hidden border bg-white flex items-center justify-center">
+            {image ? (
+              <img
+                src={image}
+                alt="Product"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="text-sm text-gray-400">No Image</div>
+            )}
+          </div>
+        </div>
+      </div>
       {/* PRODUCT NAME */}
       <div>
         <label className="font-medium text-gray-700">Product Name</label>
@@ -307,7 +378,70 @@ export default function CommercialPrintingTemplate({
           </div>
         </div>
       </div>
+      {/* ============================================================ */}
+      {/* 🔥 SINALITE */}
+      {/* ============================================================ */}
 
+      <div className="border rounded-xl p-5 mt-6 space-y-4 bg-gray-50">
+        <h3 className="text-lg font-semibold text-gray-800">
+          Sinalite Integration
+        </h3>
+
+        {/* ENABLE */}
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={sinaliteEnabled}
+            onChange={(e) => setSinaliteEnabled(e.target.checked)}
+          />
+
+          <span className="text-sm font-medium">Enable Sinalite Pricing</span>
+        </label>
+
+        {/* PRODUCT ID */}
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Sinalite Product ID
+          </label>
+
+          <input
+            type="number"
+            value={sinaliteId}
+            onChange={(e) => setSinaliteId(e.target.value)}
+            className="border rounded-lg px-3 py-2 w-full"
+            placeholder="101"
+          />
+        </div>
+
+        {/* PROFIT MARGIN */}
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Profit Margin
+          </label>
+
+          <input
+            type="number"
+            step="0.1"
+            value={profitMargin}
+            onChange={(e) => setProfitMargin(e.target.value)}
+            className="border rounded-lg px-3 py-2 w-full"
+          />
+        </div>
+
+        {/* OPTIONS */}
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Sinalite Options JSON
+          </label>
+
+          <textarea
+            rows={10}
+            value={sinaliteOptions}
+            onChange={(e) => setSinaliteOptions(e.target.value)}
+            className="border rounded-lg px-3 py-2 w-full font-mono text-sm"
+          />
+        </div>
+      </div>
       {/* SAVE BUTTON */}
       <div className="flex justify-end border-t pt-4 mt-6">
         <button

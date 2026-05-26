@@ -145,7 +145,21 @@ export default function ProductsPage() {
             <tbody>
               {filtered.map((p) => (
                 <tr key={p.id} className="border-b hover:bg-gray-50">
-                  <td className="p-3 font-medium">{p.name}</td>
+                  <td className="p-3">
+                    <div className="flex items-center gap-3">
+                      {p.image && (
+                        <img
+                          src={p.image}
+                          alt={p.name}
+                          className="w-12 h-12 rounded-lg object-cover border"
+                        />
+                      )}
+
+                      <div>
+                        <p className="font-medium">{p.name}</p>
+                      </div>
+                    </div>
+                  </td>
 
                   <td className="p-3">
                     <div className="flex justify-end gap-3">

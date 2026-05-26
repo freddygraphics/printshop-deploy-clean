@@ -53,17 +53,29 @@ model PrintProduct {
 model Product {
   id             Int           @id @default(autoincrement())
   name           String
+  image String?
   sku            String?       @unique
   description    String?
   category       String?
+
   pricingMode    String        @default("manual")
   basePrice      Float         @default(0)
+
+  // 🔥 SINALITE
+  sinaliteEnabled Boolean      @default(false)
+  sinaliteId      Int?
+  sinaliteOptions Json?
+  profitMargin    Float        @default(1.5)
+
   defaultOptions Json?
   customFields   Json?
+
   templateType   String?
   templateId     Int?
+
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
+
   invoiceItems   InvoiceItem[]
   orders         Order[]
   template       Template?     @relation(fields: [templateId], references: [id])

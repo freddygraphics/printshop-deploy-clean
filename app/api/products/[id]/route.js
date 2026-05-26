@@ -2,12 +2,40 @@
 
 import prisma from "../../../../lib/db";
 
+// -------------------------------------------------------
+// GET
+// -------------------------------------------------------
+
 export async function GET(req, { params }) {
   try {
     const id = Number(params.id);
 
     const product = await prisma.product.findUnique({
-      where: { id },
+      where: {
+        id,
+      },
+
+      select: {
+        id: true,
+        name: true,
+
+        // 🔥 IMPORTANTE
+        image: true,
+
+        description: true,
+        basePrice: true,
+
+        sinaliteEnabled: true,
+        sinaliteId: true,
+        sinaliteOptions: true,
+        profitMargin: true,
+
+        customFields: true,
+        defaultOptions: true,
+
+        templateType: true,
+        templateId: true,
+      },
     });
 
     if (!product) {
@@ -16,70 +44,102 @@ export async function GET(req, { params }) {
 
     return Response.json(product);
   } catch (error) {
-    console.error("âŒ Error GET product:", error);
+    console.error("Error GET product:", error);
+
     return Response.json({ error: "Server error" }, { status: 500 });
   }
 }
 
 // -------------------------------------------------------
-// PUT â†’ Editar producto
+// PUT
 // -------------------------------------------------------
+
 export async function PUT(req, { params }) {
   try {
     const id = Number(params.id);
+
     const body = await req.json();
 
     const updated = await prisma.product.update({
-      where: { id },
+      where: {
+        id,
+      },
+
       data: {
         name: body.name,
+
+        // 🔥 IMAGE
+        image: body.image ?? null,
+
         description: body.description ?? "",
-        basePrice: body.basePrice ?? 0, // âœ… ÃšNICO precio base
-        templateId: body.templateId ?? null,
+
+        basePrice: Number(body.basePrice ?? 0),
+
+        templateId: undefined,
+
         customFields: body.customFields || {},
+
         defaultOptions: body.defaultOptions || {},
       },
     });
 
     return Response.json(updated);
   } catch (error) {
-    console.error("âŒ Error PUT product:", error);
-    return Response.json({ error: "Error updating product" }, { status: 500 });
+    console.error("❌ Error PUT product:", error);
+
+    return Response.json(
+      {
+        error: error.message,
+      },
+      {
+        status: 500,
+      },
+    );
   }
 }
 
 // -------------------------------------------------------
-// DELETE â†’ opcional
+// PATCH
 // -------------------------------------------------------
 
 export async function PATCH(req, { params }) {
-  const session = await auth();
+  try {
+    const body = await req.json();
 
-  if (!session || !can(session.user.role, "products")) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    const product = await prisma.product.update({
+      where: {
+        id: Number(params.id),
+      },
+
+      data: body,
+    });
+
+    return Response.json(product);
+  } catch (error) {
+    console.error("PATCH ERROR:", error);
+
+    return Response.json({ error: "Patch failed" }, { status: 500 });
   }
-
-  const body = await req.json();
-
-  const product = await prisma.product.update({
-    where: { id: Number(params.id) },
-    data: body,
-  });
-
-  return NextResponse.json(product);
 }
+
+// -------------------------------------------------------
+// DELETE
+// -------------------------------------------------------
 
 export async function DELETE(req, { params }) {
-  const session = await auth();
+  try {
+    await prisma.product.delete({
+      where: {
+        id: Number(params.id),
+      },
+    });
 
-  if (!session || !can(session.user.role, "products")) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    return Response.json({
+      success: true,
+    });
+  } catch (error) {
+    console.error("DELETE ERROR:", error);
+
+    return Response.json({ error: "Delete failed" }, { status: 500 });
   }
-
-  await prisma.product.delete({
-    where: { id: Number(params.id) },
-  });
-
-  return NextResponse.json({ success: true });
 }
-

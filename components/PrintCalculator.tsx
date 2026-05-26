@@ -102,26 +102,32 @@ export default function PrintCalculator({ onAdd }: any) {
 
       {/* 🔥 OPCIONES DINÁMICAS */}
       {selectedProduct &&
-        Object.entries(selectedProduct.options).map(([key, values]: any) => (
-          <div key={key}>
-            <label className="block text-sm font-medium">{key}</label>
+        Object.entries(selectedProduct.options)
+          .filter(
+            ([key]) =>
+              !key.toLowerCase().trim().includes("qty") &&
+              !key.toLowerCase().trim().includes("quantity"),
+          )
+          .map(([key, values]: any) => (
+            <div key={key}>
+              <label className="block text-sm font-medium">{key}</label>
 
-            <select
-              onChange={(e) =>
-                setOptions({
-                  ...options,
-                  [key]: e.target.value,
-                })
-              }
-            >
-              {values.map((v: any) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </div>
-        ))}
+              <select
+                onChange={(e) =>
+                  setOptions({
+                    ...options,
+                    [key]: e.target.value,
+                  })
+                }
+              >
+                {values.map((v: any) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ))}
 
       <button onClick={calculate} className="bg-black text-white px-4 py-2">
         Calcular precio

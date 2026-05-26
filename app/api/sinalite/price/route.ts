@@ -1,10 +1,26 @@
 import { NextResponse } from "next/server";
+
 import { getSinalitePrice } from "@/lib/sinalite";
 
 export async function POST(req: Request) {
-  const { productId, options } = await req.json();
+  try {
+    const body = await req.json();
 
-  const data = await getSinalitePrice(productId, options);
+    console.log("🔥 PRICE BODY:", body);
 
-  return NextResponse.json(data);
+    const data = await getSinalitePrice(body.productId, body.options);
+
+    console.log("🔥 SINALITE RESPONSE:", data);
+
+    return NextResponse.json(data);
+  } catch (err: any) {
+    console.error("❌ API PRICE ERROR:", err);
+
+    return NextResponse.json(
+      {
+        error: err.message || "Sinalite Error",
+      },
+      { status: 500 },
+    );
+  }
 }

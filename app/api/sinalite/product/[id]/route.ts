@@ -8,7 +8,7 @@ export async function GET(
   const token = await getSinaliteToken();
 
   const res = await fetch(
-    `https://api.sinaliteuppy.com/product/${params.id}?include=attributes`,
+    `https://api.sinaliteuppy.com/product/${params.id}/1`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -18,7 +18,7 @@ export async function GET(
 
   const data = await res.json();
 
-  console.log("FULL PRODUCT:", data); // 🔥 DEBUG
+  console.log("🔥 FULL PRODUCT:", JSON.stringify(data, null, 2));
 
   return NextResponse.json(data);
 }

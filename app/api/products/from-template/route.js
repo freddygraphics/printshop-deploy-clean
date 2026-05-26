@@ -19,6 +19,12 @@ export async function POST(req) {
       customFields,
       defaultOptions,
       templateId,
+
+      // 🔥 SINALITE
+      sinaliteEnabled,
+      sinaliteId,
+      sinaliteOptions,
+      profitMargin,
     } = body;
 
     console.log("➡ name:", name);
@@ -54,6 +60,11 @@ export async function POST(req) {
 
     const product = await prisma.product.create({
       data: {
+        // 🔥 SINALITE
+        sinaliteEnabled: sinaliteEnabled ?? false,
+        sinaliteId: sinaliteId ?? null,
+        sinaliteOptions: sinaliteOptions ?? null,
+        profitMargin: Number(profitMargin ?? 1.5),
         name,
         description: description ?? "",
         basePrice: Number(basePrice ?? 0),

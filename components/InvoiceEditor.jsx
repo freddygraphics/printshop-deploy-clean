@@ -14,7 +14,6 @@ import { useRouter } from "next/navigation";
 import ConfirmModal from "@/components/ConfirmModal";
 import { getInvoiceStatus } from "@/lib/invoiceStatus";
 import DiscountModal from "@/components/modals/DiscountModal";
-import PrintCalculator from "@/components/PrintCalculator";
 
 export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   const [invoice, setInvoice] = useState(null);
@@ -1018,40 +1017,6 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
       </div>
       {/* PRODUCTS SECTION */}
       <div>
-        {/* 🔥 PRINT CALCULATOR PRO */}
-        <div className="px-6 mb-6">
-          <PrintCalculator
-            onAdd={(item) => {
-              const newItem = {
-                id: crypto.randomUUID(),
-                productId: null,
-                product: null,
-
-                name: item.name,
-
-                // 🔥 IMPORTANTE
-                qty: item.quantity || 1,
-                unitPrice: item.unitPrice,
-                total: (item.quantity || 1) * item.unitPrice,
-
-                customFields: null,
-                options: item.options || {},
-
-                _expanded: false,
-              };
-
-              setItems((prev) => {
-                const next = [...prev, newItem];
-
-                if (invoiceIdState) {
-                  saveItems(next);
-                }
-
-                return next;
-              });
-            }}
-          />
-        </div>
         {/* PRODUCTS HEADER — fuera de la card */}
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
@@ -1121,18 +1086,44 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                       </div>
 
                       {productResults.length > 0 && (
-                        <div className="absolute z-50 w-full bg-white border rounded-xl shadow max-h-56 overflow-y-auto mt-2">
+                        <div
+                          className="
+      absolute
+      left-0
+      top-[calc(100%+8px)]
+      z-50
+      w-[340px]
+      bg-white
+      border
+      border-gray-200
+      rounded-2xl
+      shadow-2xl
+      overflow-hidden
+      max-h-[320px]
+      overflow-y-auto
+    "
+                        >
                           {productResults.map((p) => (
-                            <div
+                            <button
                               key={p.id}
-                              className="p-3 hover:bg-gray-100 cursor-pointer"
+                              type="button"
                               onClick={() => handleSelectProduct(p)}
+                              className="
+          w-full
+          text-left
+          px-4
+          py-3
+          hover:bg-gray-50
+          transition
+          border-b
+          border-gray-100
+          last:border-0
+        "
                             >
-                              <p className="font-medium">{p.name}</p>
-                              <p className="text-sm text-gray-500">
-                                ${p.price || p.basePrice}
+                              <p className="font-medium text-gray-900 truncate">
+                                {p.name}
                               </p>
-                            </div>
+                            </button>
                           ))}
                         </div>
                       )}
