@@ -16,6 +16,7 @@ export default function InvoicesPage() {
   const urlFilter = searchParams.get("filter") || "thismonth";
 
   const [filter, setFilter] = useState(urlFilter);
+
   const [loading, setLoading] = useState(true);
   const [invoices, setInvoices] = useState([]);
   const [search, setSearch] = useState("");
@@ -72,7 +73,10 @@ export default function InvoicesPage() {
     const now = new Date();
 
     return list.filter((i) => {
-      const date = new Date(i.issuedAt || i.createdAt);
+      const invoiceDate = new Date(i.issuedAt || i.createdAt);
+
+      const invoiceYear = invoiceDate.getUTCFullYear();
+      const invoiceMonth = invoiceDate.getUTCMonth();
 
       if (filter === "today") return isToday(date);
 
@@ -81,28 +85,27 @@ export default function InvoicesPage() {
         last7.setDate(now.getDate() - 7);
         return date >= last7 && date <= now;
       }
-
       if (filter === "thismonth") {
         return (
-          date.getMonth() === now.getMonth() &&
-          date.getFullYear() === now.getFullYear()
+          invoiceMonth === now.getUTCMonth() &&
+          invoiceYear === now.getUTCFullYear()
         );
       }
 
       // 🟢 MES ESPECÍFICO (January 2026, etc.)
       if (filter.includes("-")) {
         const [year, month] = filter.split("-").map(Number);
-        return date.getFullYear() === year && date.getMonth() === month;
-      }
 
+        return invoiceYear === year && invoiceMonth === month;
+      }
       if (filter === "lastyear") {
-        return date.getFullYear() === now.getFullYear() - 1;
+        return invoiceYear === now.getUTCFullYear() - 1;
       }
 
       return true; // All Time
     });
   }
-
+  console.log("FILTER:", filter);
   const filteredInvoices = applyFilter(invoices);
 
   // --------------------------
