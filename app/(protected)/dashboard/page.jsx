@@ -114,12 +114,12 @@ export default function DashboardPage() {
   return (
     <div className="w-full">
       {/* CONTENEDOR CENTRAL */}
-      <div className="mx-auto max-w-[1400px] px-4 md:px-6 lg:px-8">
+      <div className="max-w-[1200px] mx-auto">
         <div className="space-y-8 animate-fadeIn">
           {/* HEADER + FILTERS */}
           <div className="flex flex-wrap items-center justify-between gap-4">
             <h1 className="text-2xl font-semibold tracking-tight">
-              Hola Freddy
+              Freddy Graphics LLC
             </h1>
 
             <div className="flex items-center gap-2 bg-white border rounded-lg shadow-sm px-3 py-2">

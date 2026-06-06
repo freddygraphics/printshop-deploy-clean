@@ -853,7 +853,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
     <div className="w-full max-w-7xl mx-auto px-4 space-y-8">
       <div className="mx-auto mb-4 flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-700">
-          {mode === "new" ? "New Invoice" : `IN #${invoiceNumber ?? ""}`}
+          {mode === "new" ? "" : `IN #${invoiceNumber ?? ""}`}
         </h1>
 
         <div className="flex items-center gap-3">
@@ -916,7 +916,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                   <div className="flex items-center gap-3">
                     <div>
                       <p className="text-sm font-semibold text-[#91969C]">
-                        Primary Contact
+                        Business Name
                       </p>
                       <p className="text-xl font-semibold text-black-500">
                         {selectedClient.company || "Primary Contact"}
