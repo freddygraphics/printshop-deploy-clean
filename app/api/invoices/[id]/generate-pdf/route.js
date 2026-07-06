@@ -1,17 +1,33 @@
 import { put } from "@vercel/blob";
 import puppeteer from "puppeteer-core";
 import chromium from "@sparticuz/chromium";
-import { prisma } from "@/lib/db";
+import prisma from "@/lib/db";
 
 export async function POST(req, { params }) {
-  const id = params.id;
+  const invoiceId = Number(params.id);
+
+  if (Number.isNaN(invoiceId)) {
+    return new Response("Invalid invoice id", {
+      status: 400,
+    });
+  }
 
   try {
     const invoice = await prisma.invoice.findUnique({
-      where: { id },
-      select: { pdfStatus: true, updatedAt: true, pdfUpdatedAt: true },
+      where: {
+        id: invoiceId,
+      },
+      select: {
+        pdfStatus: true,
+        updatedAt: true,
+        pdfUpdatedAt: true,
+      },
     });
-
+    if (!invoice) {
+      return new Response("Invoice not found", {
+        status: 404,
+      });
+    }
     // 🧠 SI YA ESTÁ GENERANDO → NO DUPLICAR
     if (invoice.pdfStatus === "generating") {
       return new Response("Already generating");
@@ -24,11 +40,13 @@ export async function POST(req, { params }) {
 
     // 🔥 marcar como generando
     await prisma.invoice.update({
-      where: { id },
+      where: {
+        id: invoiceId,
+      },
       data: { pdfStatus: "generating" },
     });
 
-    const htmlUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/api/invoices/${id}/html`;
+    const htmlUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/api/invoices/${invoiceId}/html`;
 
     const browser = await puppeteer.launch({
       args: chromium.args,
@@ -45,14 +63,15 @@ export async function POST(req, { params }) {
     });
 
     await browser.close();
-
-    await put(`invoices/${id}.pdf`, pdf, {
+    await put(`invoices/${invoiceId}.pdf`, pdf, {
       access: "public",
       contentType: "application/pdf",
     });
 
     await prisma.invoice.update({
-      where: { id },
+      where: {
+        id: invoiceId,
+      },
       data: {
         pdfStatus: "ready",
         pdfUpdatedAt: new Date(),
@@ -64,7 +83,9 @@ export async function POST(req, { params }) {
     console.error(err);
 
     await prisma.invoice.update({
-      where: { id },
+      where: {
+        id: invoiceId,
+      },
       data: { pdfStatus: "error" },
     });
 

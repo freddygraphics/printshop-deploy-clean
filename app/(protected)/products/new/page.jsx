@@ -2,97 +2,77 @@
 export const dynamic = "force-dynamic";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+
+import ProductTemplateSelector from "@/components/ProductTemplateSelector";
+import ProductBuilder from "@/components/products/ProductBuilder/index";
 
 export default function NewProductPage() {
   const router = useRouter();
 
-  const [name, setName] = useState("");
-  const [sku, setSku] = useState("");
-  const [description, setDescription] = useState("");
-  const [basePrice, setBasePrice] = useState(0);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
 
-  const [options, setOptions] = useState({
-    design: false,
-    lamination: false,
-    roundCorners: false,
-    urgent: false,
-  });
+  async function handleSave(product) {
+    try {
+      const payload = {
+        ...product,
+        templateId: selectedTemplate.id,
+        templateSlug: selectedTemplate.slug,
+      };
 
-  function toggleOption(key) {
-    setOptions((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
+      const res = await fetch("/api/products/from-template", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
-  async function saveProduct() {
-    const res = await fetch("/api/products", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name,
-        sku,
-        description,
-        basePrice,
-        defaultOptions: options,
-      }),
-    });
+      const data = await res.json();
 
-    if (res.ok) router.push("/products");
+      if (!res.ok) {
+        alert(data.error || "Error saving product");
+        return;
+      }
+
+      router.push("/products");
+    } catch (err) {
+      console.error(err);
+      alert("Unexpected error");
+    }
   }
 
   return (
-    <div className="p-6 max-w-xl mx-auto">
-      <h1 className="text-2xl font-semibold mb-4">Crear Producto</h1>
+    <main className="max-w-7xl mx-auto px-6 py-8">
+      {/* HEADER */}
 
-      <label>Nombre</label>
-      <input
-        className="border p-2 w-full mb-3"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
-
-      <label>SKU</label>
-      <input
-        className="border p-2 w-full mb-3"
-        value={sku}
-        onChange={(e) => setSku(e.target.value)}
-      />
-
-      <label>Precio Base</label>
-      <input
-        type="number"
-        className="border p-2 w-full mb-3"
-        value={basePrice}
-        onChange={(e) => setBasePrice(parseFloat(e.target.value))}
-      />
-
-      <label>Descripción</label>
-      <textarea
-        className="border p-2 w-full mb-4"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-      />
-
-      <h2 className="text-lg font-semibold">Opciones por defecto</h2>
-
-      <div className="mt-2 space-y-2">
-        {Object.keys(options).map((key) => (
-          <label key={key} className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={options[key]}
-              onChange={() => toggleOption(key)}
-            />
-            {key}
-          </label>
-        ))}
+      <div className="mb-8">
+        <Link
+          href="/products"
+          className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-900"
+        >
+          <ArrowLeft size={18} />
+          Back to Products
+        </Link>
       </div>
 
-      <button
-        onClick={saveProduct}
-        className="bg-blue-600 text-white px-4 py-2 rounded mt-5"
-      >
-        Guardar Producto
-      </button>
-    </div>
+      {!selectedTemplate ? (
+        <ProductTemplateSelector
+          embedded
+          onSelect={(template) => {
+            console.log("SELECTED TEMPLATE", template);
+            setSelectedTemplate(template);
+          }}
+        />
+      ) : (
+        <ProductBuilder
+          template={selectedTemplate}
+          mode="new"
+          onSave={handleSave}
+        />
+      )}
+    </main>
   );
 }

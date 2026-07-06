@@ -5,10 +5,11 @@ import { X } from "lucide-react";
 
 // Modal wrapper
 import ModalPortal from "./ModalPortal";
-
+import ProductBuilder from "@/components/products/ProductBuilder";
 // Templates
 import CommercialPrintingTemplate from "@/app/templates/CommercialPrintingTemplate";
 import LargeFormatTemplate from "@/app/templates/LargeFormatTemplate";
+import SignsTemplate from "@/app/templates/SignsTemplate";
 
 export default function ProductModal({
   open,
@@ -107,6 +108,9 @@ export default function ProductModal({
 
       case "large-format":
         return <LargeFormatTemplate {...props} />;
+
+      case "signs":
+        return <ProductBuilder />;
 
       default:
         return (

@@ -57,7 +57,10 @@ export async function POST(req) {
     // -----------------------------------------
     // CREAR PRODUCTO
     // -----------------------------------------
-
+    console.log(
+      "CONFIG COPIED:",
+      JSON.stringify(template.configuration, null, 2),
+    );
     const product = await prisma.product.create({
       data: {
         // 🔥 SINALITE
@@ -69,14 +72,18 @@ export async function POST(req) {
         description: description ?? "",
         basePrice: Number(basePrice ?? 0),
 
-        templateType: template.type,
+        templateType: body.templateSlug ?? template.slug,
 
         template: {
           connect: { id: template.id },
         },
 
         customFields: customFields ?? {},
-        defaultOptions: defaultOptions ?? {},
+
+        defaultOptions:
+          Object.keys(defaultOptions ?? {}).length > 0
+            ? defaultOptions
+            : (template.configuration ?? {}),
       },
     });
 

@@ -167,6 +167,8 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
           unitPrice: i.unitPrice,
           total: i.total,
           options: {
+            ...(i.options || {}),
+
             finish: i.finish ?? i.options?.finish ?? null,
             design: i.design ?? i.options?.design ?? null,
             sides: i.sides ?? i.options?.sides ?? null,
@@ -220,11 +222,36 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
 
     const fields = [];
 
-    if (item.qty) fields.push(`Qty: ${item.qty}`);
+    if (item.qty) {
+      fields.push(`Qty: ${item.qty}`);
+    }
 
-    Object.entries(item.options).forEach(([key, value]) => {
-      if (value) fields.push(`${key}: ${value}`);
-    });
+    // Medidas
+    if (item.options.width) {
+      fields.push(`Width: ${item.options.width}`);
+    }
+
+    if (item.options.height) {
+      fields.push(`Height: ${item.options.height}`);
+    }
+
+    if (item.options.unit) {
+      fields.push(`Unit: ${item.options.unit}`);
+    }
+
+    // Opciones dinámicas seleccionadas
+    if (item.options.dynamicOptions) {
+      Object.entries(item.options.dynamicOptions).forEach(([key, value]) => {
+        if (
+          value !== null &&
+          value !== undefined &&
+          value !== "" &&
+          value !== false
+        ) {
+          fields.push(`${key}: ${value}`);
+        }
+      });
+    }
 
     return fields.join(" • ");
   };
@@ -711,13 +738,36 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         nextItems[index] = {
           ...nextItems[index],
           ...fields,
+
           options: {
-            finish: fields.finish ?? nextItems[index].options?.finish ?? null,
-            design: fields.design ?? nextItems[index].options?.design ?? null,
-            sides: fields.sides ?? nextItems[index].options?.sides ?? null,
+            ...(nextItems[index].options || {}),
+            ...(fields.options || {}),
+
+            finish:
+              fields.finish ??
+              fields.options?.finish ??
+              nextItems[index].options?.finish ??
+              null,
+
+            design:
+              fields.design ??
+              fields.options?.design ??
+              nextItems[index].options?.design ??
+              null,
+
+            sides:
+              fields.sides ??
+              fields.options?.sides ??
+              nextItems[index].options?.sides ??
+              null,
+
             corners:
-              fields.corners ?? nextItems[index].options?.corners ?? null,
+              fields.corners ??
+              fields.options?.corners ??
+              nextItems[index].options?.corners ??
+              null,
           },
+
           _expanded: fields.__commit ? false : nextItems[index]._expanded,
         };
 

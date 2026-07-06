@@ -1,60 +1,79 @@
 ﻿export const dynamic = "force-dynamic";
 
 import { PrismaClient } from "@prisma/client";
+
 const prisma = new PrismaClient();
 
 //
-// ðŸ”¹ OBTENER TODAS LAS PLANTILLAS
+// OBTENER TODAS LAS PLANTILLAS
 //
 export async function GET() {
   try {
     const templates = await prisma.template.findMany({
-      orderBy: { createdAt: "desc" },
+      orderBy: {
+        createdAt: "desc",
+      },
     });
 
     return Response.json(templates);
   } catch (err) {
-    console.error("âŒ Error al obtener templates:", err);
-    return Response.json({ error: err.message }, { status: 500 });
+    console.error("Error loading templates:", err);
+
+    return Response.json(
+      {
+        error: err.message,
+      },
+      {
+        status: 500,
+      },
+    );
   }
 }
 
 //
-// ðŸ”¹ CREAR UNA NUEVA PLANTILLA
+// CREAR TEMPLATE
 //
 export async function POST(req) {
   try {
-    const text = await req.text();
-    if (!text) {
-      return Response.json(
-        { error: "El cuerpo estÃ¡ vacÃ­o" },
-        { status: 400 },
-      );
-    }
+    const body = await req.json();
 
-    const body = JSON.parse(text);
-    const { name, category, description } = body;
-
-    if (!name) {
-      return Response.json(
-        { error: "El campo 'name' es requerido" },
-        { status: 400 },
-      );
-    }
+    console.log("BODY TEMPLATE");
+    console.log(JSON.stringify(body, null, 2));
 
     const newTemplate = await prisma.template.create({
       data: {
-        name,
-        category: category || null,
-        description: description || null,
+        name: body.name,
+        slug: body.slug,
+        description: body.description ?? "",
+        icon: body.icon ?? "",
+        category: body.category ?? null,
+        active: true,
+
+        configuration: body.configuration ?? {
+          sections: {},
+          productOptions: [],
+          pricing: [],
+          inventory: {},
+          supplier: {},
+          metadata: {},
+        },
+
+        fields: body.fields ?? [],
+        options: body.options ?? [],
       },
     });
 
-    console.log("âœ… Template creado:", newTemplate);
     return Response.json(newTemplate);
   } catch (err) {
-    console.error("âŒ Error al crear template:", err);
-    return Response.json({ error: err.message }, { status: 500 });
+    console.error(err);
+
+    return Response.json(
+      {
+        error: err.message,
+      },
+      {
+        status: 500,
+      },
+    );
   }
 }
-

@@ -20,66 +20,57 @@ model Client {
   zip       String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-
-  deletedAt DateTime? // 🔥 AGREGA ESTO
-
+  deletedAt DateTime?
   invoices  Invoice[]
   jobs      Job[]
   notes     Note[]
   orders    Order[]
   quotes    Quote[]
 }
+
 model StickerSheetPricing {
   id           String   @id @default(cuid())
-  name         String   @unique // Regular, Transparente
+  name         String   @unique
   costPerSheet Float
   laminateCost Float
   cutCost      Float
-  wastePercent Float   @default(10)
-  profitMargin Float   @default(40)
+  wastePercent Float    @default(10)
+  profitMargin Float    @default(40)
   createdAt    DateTime @default(now())
 }
+
 model PrintProduct {
-  id          String   @id @default(cuid())
-  name        String
-  sinaliteId  Int
-
-  options     Json     // 🔥 aquí guardas size, qty, etc
-  active      Boolean  @default(true)
-
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  name       String
+  sinaliteId Int
+  options    Json
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
 }
 
 model Product {
-  id             Int           @id @default(autoincrement())
-  name           String
-  image String?
-  sku            String?       @unique
-  description    String?
-  category       String?
-
-  pricingMode    String        @default("manual")
-  basePrice      Float         @default(0)
-
-  // 🔥 SINALITE
-  sinaliteEnabled Boolean      @default(false)
+  id              Int           @id @default(autoincrement())
+  name            String
+  sku             String?       @unique
+  description     String?
+  category        String?
+  pricingMode     String        @default("manual")
+  basePrice       Float         @default(0)
+  defaultOptions  Json?
+  customFields    Json?
+  templateType    String?
+  templateId      Int?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  profitMargin    Float         @default(1.5)
+  sinaliteEnabled Boolean       @default(false)
   sinaliteId      Int?
   sinaliteOptions Json?
-  profitMargin    Float        @default(1.5)
-
-  defaultOptions Json?
-  customFields   Json?
-
-  templateType   String?
-  templateId     Int?
-
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-
-  invoiceItems   InvoiceItem[]
-  orders         Order[]
-  template       Template?     @relation(fields: [templateId], references: [id])
-  quoteItems     QuoteItem[]
+  image           String?
+  invoiceItems    InvoiceItem[]
+  orders          Order[]
+  template        Template?     @relation(fields: [templateId], references: [id])
+  quoteItems      QuoteItem[]
 }
 
 model PrintProductionProfile {
@@ -170,12 +161,6 @@ model Invoice {
   paymentStatus    String            @default("Unpaid")
   issuedAt         DateTime
   dueDate          DateTime?
-
-  pdfUrl String?
-pdfGeneratedAt DateTime?
-pdfStatus      String   @default("idle") // idle | generating | ready | error
-pdfUpdatedAt   DateTime?
-
   notes            String?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
@@ -188,6 +173,10 @@ pdfUpdatedAt   DateTime?
   status           InvoiceStatus     @default(DRAFT)
   voidReason       String?
   voidedAt         DateTime?
+  pdfGeneratedAt   DateTime?
+  pdfUrl           String?
+  pdfStatus        String            @default("idle")
+  pdfUpdatedAt     DateTime?
   client           Client            @relation(fields: [clientId], references: [id])
   quote            Quote?            @relation(fields: [quoteId], references: [id])
   user             User?             @relation(fields: [userId], references: [id])
@@ -268,14 +257,21 @@ model Note {
 }
 
 model Template {
-  id        Int       @id @default(autoincrement())
-  name      String
-  type      String?
-  fields    Json?
-  options   Json?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  products  Product[]
+  id            Int       @id @default(autoincrement())
+  name          String
+  type          String?
+  fields        Json?
+  options       Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  active        Boolean   @default(true)
+  category      String?
+  configuration Json?
+  description   String?
+  measurements Json?
+  icon          String?
+  slug          String?   @unique
+  products      Product[]
 }
 
 model Job {
@@ -386,8 +382,8 @@ model JobFile {
   name      String
   url       String
   type      String
-  isDefault Boolean @default(false)
   createdAt DateTime @default(now())
+  isDefault Boolean  @default(false)
   job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
 }
 
@@ -431,6 +427,115 @@ model Finish {
   printProductionProfiles PrintProductionProfile[]
 }
 
+model PrintSettings {
+  id                 String   @id @default(cuid())
+  stickerRollPrice   Float
+  stickerRollWidth   Float
+  stickerRollLength  Float
+  laminateRollPrice  Float
+  laminateRollWidth  Float
+  laminateRollLength Float
+  laborPerHour       Float
+  profitMargin       Float
+  createdAt          DateTime @default(now())
+}
+
+model SheetSize {
+  id        String   @id @default(cuid())
+  name      String
+  width     Float
+  height    Float
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model PrintPricingSettings {
+  id                  String   @id @default(cuid())
+  vinylRollPrice      Float
+  vinylRollWidth      Float
+  vinylRollLength     Float
+  laminateRollPrice   Float
+  laminateRollWidth   Float
+  laminateRollLength  Float
+  laborPerHour        Float
+  profitMargin        Float
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  cuttingCostPerSheet Float    @default(0)
+  inkCostPerSqft      Float    @default(0)
+  machineCostPerHour  Float    @default(0)
+  minimumStickerPrice Float    @default(0)
+  setupFee            Float    @default(0)
+  wastePercent        Float    @default(0)
+}
+
+model CounterSaleProduct {
+  id        Int                  @id @default(autoincrement())
+  category  String
+  name      String
+  active    Boolean              @default(true)
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+  items     CounterSaleItem[]
+  variants  CounterSaleVariant[]
+}
+
+model CounterSaleVariant {
+  id        Int                @id @default(autoincrement())
+  productId Int
+  size      String
+  sides     String?
+  paperType String?
+  finish    String?
+  active    Boolean            @default(true)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  items     CounterSaleItem[]
+  tiers     CounterSaleTier[]
+  product   CounterSaleProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model CounterSaleTier {
+  id        Int                @id @default(autoincrement())
+  variantId Int
+  minQty    Int
+  maxQty    Int?
+  unitPrice Float
+  createdAt DateTime           @default(now())
+  variant   CounterSaleVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+}
+
+model CounterSale {
+  id        Int               @id @default(autoincrement())
+  total     Float
+  saleDate  DateTime          @default(now())
+  createdAt DateTime          @default(now())
+  items     CounterSaleItem[]
+}
+
+model CounterSaleItem {
+  id        Int                @id @default(autoincrement())
+  saleId    Int
+  productId Int
+  variantId Int
+  quantity  Int
+  unitPrice Float
+  total     Float
+  product   CounterSaleProduct @relation(fields: [productId], references: [id])
+  sale      CounterSale        @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  variant   CounterSaleVariant @relation(fields: [variantId], references: [id])
+}
+
+model ProductOptionLibrary {
+  id        String   @id @default(cuid())
+  name      String
+  key       String
+  type      String
+  values    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 enum InvoiceStatus {
   DRAFT
   SENT
@@ -442,68 +547,8 @@ enum InvoiceStatus {
 enum JobStatus {
   Pending
   Design
-  Proofing
   Production
   Ready
   Delivered
+  Proofing
 }
-model PrintSettings {
-  id String @id @default(cuid())
-
-  // Sticker material
-  stickerRollPrice Float
-  stickerRollWidth Float
-  stickerRollLength Float
-
-  // Lamination
-  laminateRollPrice Float
-  laminateRollWidth Float
-  laminateRollLength Float
-
-  // Labor
-  laborPerHour Float
-
-  // Profit
-  profitMargin Float
-
-  createdAt DateTime @default(now())
-}
-model SheetSize {
-  id String @id @default(cuid())
-
-  name String
-  width Float
-  height Float
-
-  isDefault Boolean @default(false)
-
-  createdAt DateTime @default(now())
-}
-
-model PrintPricingSettings {
-  id String @id @default(cuid())
-
-  vinylRollPrice Float
-  vinylRollWidth Float
-  vinylRollLength Float
-
-  laminateRollPrice Float
-  laminateRollWidth Float
-  laminateRollLength Float
-
-  laborPerHour Float
-  profitMargin Float
-
-  inkCostPerSqft Float @default(0)
-  machineCostPerHour Float @default(0)
-  cuttingCostPerSheet Float @default(0)
-
-  wastePercent Float @default(0)
-  setupFee Float @default(0)
-
-  minimumStickerPrice Float @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-

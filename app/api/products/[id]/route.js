@@ -14,27 +14,8 @@ export async function GET(req, { params }) {
       where: {
         id,
       },
-
-      select: {
-        id: true,
-        name: true,
-
-        // 🔥 IMPORTANTE
-        image: true,
-
-        description: true,
-        basePrice: true,
-
-        sinaliteEnabled: true,
-        sinaliteId: true,
-        sinaliteOptions: true,
-        profitMargin: true,
-
-        customFields: true,
-        defaultOptions: true,
-
-        templateType: true,
-        templateId: true,
+      include: {
+        template: true,
       },
     });
 
@@ -60,26 +41,23 @@ export async function PUT(req, { params }) {
 
     const body = await req.json();
 
+    console.log("===== UPDATE PRODUCT =====");
+    console.log(JSON.stringify(body, null, 2));
     const updated = await prisma.product.update({
       where: {
         id,
       },
-
       data: {
         name: body.name,
 
-        // 🔥 IMAGE
         image: body.image ?? null,
 
         description: body.description ?? "",
 
         basePrice: Number(body.basePrice ?? 0),
 
-        templateId: undefined,
-
         customFields: body.customFields || {},
-
-        defaultOptions: body.defaultOptions || {},
+        defaultOptions: body.configuration ?? body.defaultOptions ?? {},
       },
     });
 

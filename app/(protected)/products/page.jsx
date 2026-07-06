@@ -1,6 +1,7 @@
 "use client";
-export const dynamic = "force-dynamic";
 
+export const dynamic = "force-dynamic";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, Search, Pencil, Trash2, Eye } from "lucide-react";
@@ -18,7 +19,7 @@ export default function ProductsPage() {
   const [selectedTemplateType, setSelectedTemplateType] = useState(null);
 
   const [success, setSuccess] = useState(""); // ⭐ mensaje éxito
-
+  const router = useRouter();
   // ==========================================================
   // Cargar productos
   // ==========================================================
@@ -87,13 +88,12 @@ export default function ProductsPage() {
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold text-[#1E293B]">Products</h1>
 
-        <button
-          onClick={() => setShowTemplateSelector(true)}
-          className="flex items-center gap-2 bg-[#0051A8] hover:bg-[#00418A] text-white px-4 py-2 rounded-lg text-sm font-medium shadow"
-        >
-          <Plus size={18} />
-          New Product
-        </button>
+        <Link href="/products/new">
+          <button className="flex items-center gap-2 bg-[#0051A8] hover:bg-[#00418A] text-white px-4 py-2 rounded-lg text-sm font-medium shadow">
+            <Plus size={18} />
+            New Product
+          </button>
+        </Link>
       </div>
 
       {/* TARJETAS */}
@@ -172,11 +172,7 @@ export default function ProductsPage() {
                       <button
                         className="text-gray-600 hover:text-green-600"
                         title="Edit product"
-                        onClick={() => {
-                          setEditingProduct(p); // 🔥 producto completo
-                          setSelectedTemplateType(null);
-                          setShowProductModal(true);
-                        }}
+                        onClick={() => router.push(`/products/${p.id}/edit`)}
                       >
                         <Pencil size={18} />
                       </button>

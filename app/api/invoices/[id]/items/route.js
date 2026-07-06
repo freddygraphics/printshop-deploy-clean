@@ -6,11 +6,16 @@ import { priceFromPrintProfileSqft } from "@/lib/pricing/pricingEngine";
 
 export async function PUT(req, { params }) {
   const invoiceId = Number(params.id);
+
   if (!invoiceId) {
     return NextResponse.json({ error: "Invalid invoice id" }, { status: 400 });
   }
 
   const body = await req.json();
+
+  console.log("🔥 SAVE ITEMS");
+  console.log(body);
+
   const items = body.items || [];
 
   try {
@@ -21,6 +26,7 @@ export async function PUT(req, { params }) {
 
     // ðŸ”¥ 2. RECREAR ITEMS (UNO POR UNO)
     for (const i of items) {
+      console.log("Saving:", i.name);
       const pricingMode = i.options?.pricingMode;
 
       // ============================
@@ -89,4 +95,3 @@ export async function PUT(req, { params }) {
     );
   }
 }
-
