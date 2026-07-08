@@ -21,12 +21,15 @@ function unitLabel(unit) {
   }
 }
 function InlineProductEditor({ product, data, onChange, onClose }) {
+  const isManual = !product;
+
+  const configuration = product?.defaultOptions ?? {};
+
   console.log("DEFAULT OPTIONS");
-  console.log(product.defaultOptions);
+  console.log(configuration);
 
   console.log("TEMPLATE CONFIG");
-  console.log(product.template?.configuration);
-  const configuration = product?.defaultOptions || {};
+  console.log(product?.template?.configuration);
   console.log("configuration", configuration);
   console.log("configuration.pricing", configuration.pricing);
   console.log("isArray", Array.isArray(configuration.pricing));
@@ -34,15 +37,14 @@ function InlineProductEditor({ product, data, onChange, onClose }) {
     configuration.productOptions || [],
   );
 
-  const pricingRows = configuration.pricing;
+  const pricingRows = configuration.pricing ?? [];
 
   console.log("pricingRows", pricingRows);
 
-  const inventory = configuration.inventory || {};
+  const inventory = configuration.inventory ?? {};
 
-  const supplier = configuration.supplier || {};
-  const measurements = configuration.measurements || {};
-  const isManual = !product;
+  const supplier = configuration.supplier ?? {};
+  const measurements = configuration.measurements ?? {};
 
   // ------------------------------------------
   // SAFE INITIAL VALUES
