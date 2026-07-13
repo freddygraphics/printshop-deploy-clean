@@ -4,15 +4,10 @@
       "maxDuration": 30
     }
   },
-
   "crons": [
     {
       "path": "/api/backup",
       "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/jobs/archive-old",
-      "schedule": "0 * * * *"
     }
   ]
 }
