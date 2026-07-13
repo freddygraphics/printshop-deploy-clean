@@ -6,7 +6,7 @@ import CustomerSearchModal from "@/components/CustomerSearchModal";
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { XCircle } from "lucide-react";
 import CreateCustomerModal from "@/components/customers/CreateCustomerModal";
-
+import ConfirmDialog from "@/components/dialogs/ConfirmDialog";
 import AssignTeamMemberModal from "@/components/AssignTeamMemberModal";
 import CreateJobModal from "@/components/CreateJobModal";
 import RecordPaymentModal from "@/components/RecordPaymentModal";
@@ -16,6 +16,8 @@ import { getInvoiceStatus } from "@/lib/invoiceStatus";
 import DiscountModal from "@/components/modals/DiscountModal";
 
 export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
+  const [showCancelJobDialog, setShowCancelJobDialog] = useState(false);
+  const [pendingVoid, setPendingVoid] = useState(false);
   const [invoice, setInvoice] = useState(null);
 
   // 🔑 IDs
@@ -819,6 +821,32 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   // ======================================================
   // ACTIONS MENU (igual a tu código)
   // ======================================================
+  async function executeVoid(cancelJob) {
+    try {
+      setIsVoiding(true);
+
+      const res = await fetch(`/api/invoices/${invoiceIdState}/void`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          cancelJob,
+        }),
+      });
+
+      if (!res.ok) throw new Error();
+
+      router.push("/invoices");
+      router.refresh();
+    } catch (err) {
+      alert("Error voiding invoice");
+    } finally {
+      setIsVoiding(false);
+      setShowVoidModal(false);
+      setShowCancelJobDialog(false);
+    }
+  }
   function QuoteActionsMenu() {
     const [open, setOpen] = useState(false);
     const menuRef = useRef(null);
@@ -1680,29 +1708,30 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         cancelText="Cancel"
         danger
         onCancel={() => setShowVoidModal(false)}
-        onConfirm={async () => {
-          try {
-            setIsVoiding(true);
-
-            const res = await fetch(`/api/invoices/${invoiceIdState}/void`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-            });
-
-            if (!res.ok) throw new Error();
-
-            // 🔁 REDIRECCIÓN OBLIGATORIA
-            router.push("/invoices");
-            router.refresh();
-          } catch (err) {
-            alert("Error voiding invoice");
-          } finally {
-            setIsVoiding(false);
+        onConfirm={() => {
+          if (jobInfo?.exists) {
             setShowVoidModal(false);
+            setShowCancelJobDialog(true);
+            return;
           }
+
+          executeVoid(false);
         }}
       />
-
+      <ConfirmDialog
+        open={showCancelJobDialog}
+        onClose={() => {
+          setShowCancelJobDialog(false);
+        }}
+        title="Production Job Found"
+        description="This invoice has an associated production job. Do you also want to cancel the production job?"
+        icon="warning"
+        color="amber"
+        primaryText="Cancel Job Too"
+        secondaryText="Keep Job"
+        onPrimaryAction={() => executeVoid(true)}
+        onSecondaryAction={() => executeVoid(false)}
+      />
       <DiscountModal
         open={showDiscountModal}
         onClose={() => setShowDiscountModal(false)}

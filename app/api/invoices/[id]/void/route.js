@@ -4,12 +4,17 @@ export const dynamic = "force-dynamic";
 import prisma from "@/lib/db";
 
 export async function PATCH(req, { params }) {
-  const invoiceId = Number(params.id); // ðŸ”¥ importante
+  const invoiceId = Number(params.id);
 
+  const { cancelJob = false } = await req.json().catch(() => ({}));
+  console.log("cancelJob:", cancelJob);
   const invoice = await prisma.invoice.findUnique({
     where: { id: invoiceId },
+    include: {
+      job: true,
+    },
   });
-
+  console.log(invoice.job);
   if (!invoice) {
     return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
   }
@@ -21,14 +26,31 @@ export async function PATCH(req, { params }) {
     );
   }
 
-  await prisma.invoice.update({
-    where: { id: invoiceId },
-    data: {
-      status: "VOID",
-      voidedAt: new Date(),
-    },
+  await prisma.$transaction(async (tx) => {
+    // Void Invoice
+    await tx.invoice.update({
+      where: { id: invoiceId },
+      data: {
+        status: "VOID",
+        voidedAt: new Date(),
+      },
+    });
+
+    // Cancel Job (opcional)
+    if (cancelJob && invoice.job) {
+      await tx.job.update({
+        where: {
+          id: invoice.job.id,
+        },
+        data: {
+          status: "Cancelled",
+        },
+      });
+    }
   });
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({
+    success: true,
+    jobCancelled: cancelJob && !!invoice.job,
+  });
 }
-

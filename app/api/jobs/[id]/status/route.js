@@ -15,10 +15,25 @@ export async function PUT(req, context) {
         { status: 400 },
       );
     }
+    let data = {
+      status,
+    };
+
+    // Cuando pasa a Delivered
+    if (status === "Delivered") {
+      data.deliveredAt = new Date();
+    }
+
+    // Si sale de Delivered
+    if (status !== "Delivered") {
+      data.deliveredAt = null;
+      data.archived = false;
+      data.archivedAt = null;
+    }
 
     const job = await prisma.job.update({
       where: { id: jobId },
-      data: { status },
+      data,
     });
 
     return NextResponse.json(job);

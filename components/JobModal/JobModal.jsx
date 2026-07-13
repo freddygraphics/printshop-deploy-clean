@@ -9,6 +9,8 @@ import JobDescriptionEditor from "./JobDescriptionEditor";
 import JobFileUpload from "@/components/JobFileUpload";
 import JobAttachments from "./JobAttachments";
 import Barcode from "react-barcode";
+import ConfirmPickupDialog from "@/components/dialogs/ConfirmPickupDialog";
+import PaymentRequiredDialog from "@/components/dialogs/PaymentRequiredDialog";
 const STATUS_STYLE = {
   Pending: "bg-gray-100 text-gray-700",
   Design: "bg-blue-100 text-blue-700",
@@ -19,7 +21,14 @@ const STATUS_STYLE = {
 
 export default function JobModal({ job, onClose }) {
   const [files, setFiles] = useState([]);
+  const [showConfirmPickup, setShowConfirmPickup] = useState(false);
 
+  const [paymentDialog, setPaymentDialog] = useState({
+    open: false,
+    invoiceId: null,
+    invoiceNumber: null,
+    balance: 0,
+  });
   async function approveProof() {
     try {
       const res = await fetch(`/api/jobs/${job.id}/status`, {
@@ -82,6 +91,50 @@ export default function JobModal({ job, onClose }) {
   }
   const previewFile =
     sortedFiles.find((f) => f.isDefault) || sortedFiles[0] || null;
+  async function completePickup() {
+    setShowConfirmPickup(false);
+
+    // 1. Validar pago
+    const pickupRes = await fetch(`/api/jobs/${job.id}/pickup`, {
+      method: "PATCH",
+    });
+
+    const pickupData = await pickupRes.json();
+
+    if (!pickupRes.ok) {
+      if (pickupData.error === "PAYMENT_REQUIRED") {
+        setPaymentDialog({
+          open: true,
+          invoiceId: pickupData.invoiceId,
+          invoiceNumber: pickupData.invoiceNumber,
+          balance: pickupData.balance,
+        });
+        return;
+      }
+
+      alert(pickupData.error || "Unable to complete pickup.");
+      return;
+    }
+
+    // 2. Cambiar estado
+    const statusRes = await fetch(`/api/jobs/${job.id}/status`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status: "Delivered",
+      }),
+    });
+
+    if (!statusRes.ok) {
+      alert("Failed to update job status.");
+      return;
+    }
+
+    onClose();
+    window.location.reload();
+  }
   return (
     <>
       {/* Overlay */}
@@ -248,6 +301,12 @@ export default function JobModal({ job, onClose }) {
                       >
                         Print Barcode
                       </button>
+                      <button
+                        onClick={() => setShowConfirmPickup(true)}
+                        className="mt-3 w-full rounded-lg bg-green-600 py-2 text-sm font-medium text-white hover:bg-green-700 transition"
+                      >
+                        Complete Pickup
+                      </button>
                     </div>
                   )}
                 </div>
@@ -256,6 +315,25 @@ export default function JobModal({ job, onClose }) {
           </div>
         </div>
       </div>
+      <ConfirmPickupDialog
+        open={showConfirmPickup}
+        onClose={() => setShowConfirmPickup(false)}
+        onConfirm={completePickup}
+        invoiceNumber={job.invoice?.invoiceNumber}
+      />
+
+      <PaymentRequiredDialog
+        open={paymentDialog.open}
+        onClose={() =>
+          setPaymentDialog({
+            ...paymentDialog,
+            open: false,
+          })
+        }
+        invoiceId={paymentDialog.invoiceId}
+        invoiceNumber={paymentDialog.invoiceNumber}
+        balance={paymentDialog.balance}
+      />
     </>
   );
 }

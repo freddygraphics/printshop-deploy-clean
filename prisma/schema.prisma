@@ -289,9 +289,17 @@ model Job {
   updatedAt           DateTime  @updatedAt
   invoiceId           Int       @unique
   position            Int       @default(0)
+
   pickupToken         String?   @unique
   pickedUpAt          DateTime?
   pickedUpBy          String?
+
+  deliveredAt DateTime?
+
+  // ✅ NUEVO
+  archived            Boolean   @default(false)
+  archivedAt          DateTime?
+
   client              Client    @relation(fields: [clientId], references: [id])
   invoice             Invoice   @relation(fields: [invoiceId], references: [id])
   files               JobFile[]
@@ -547,8 +555,9 @@ enum InvoiceStatus {
 enum JobStatus {
   Pending
   Design
+  Proofing
   Production
   Ready
   Delivered
-  Proofing
+  Cancelled
 }

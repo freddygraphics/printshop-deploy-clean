@@ -9,8 +9,52 @@ import crypto from "crypto";
 // ============================
 export async function GET() {
   try {
+    // ============================
+    // AUTO ARCHIVE OLD DELIVERED JOBS
+    // ============================
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    await prisma.job.updateMany({
+      where: {
+        status: "Delivered",
+        archived: false,
+
+        // Solo archivar trabajos que YA fueron recogidos
+        pickedUpAt: {
+          not: null,
+          lt: sevenDaysAgo,
+        },
+      },
+
+      data: {
+        archived: true,
+        archivedAt: new Date(),
+      },
+    });
+
+    // ============================
+    // LOAD ACTIVE JOBS
+    // ============================
+    const deliveredCount = await prisma.job.count({
+      where: {
+        status: "Delivered",
+        archived: false,
+      },
+    });
+
+    console.log("Delivered visibles:", deliveredCount);
     const jobs = await prisma.job.findMany({
+      where: {
+        archived: false,
+        status: {
+          not: "Cancelled",
+        },
+      },
+
       orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+
       select: {
         id: true,
         jobNumber: true,
@@ -30,7 +74,9 @@ export async function GET() {
         },
 
         files: {
-          orderBy: { createdAt: "desc" },
+          orderBy: {
+            createdAt: "desc",
+          },
           select: {
             id: true,
             name: true,
@@ -45,23 +91,32 @@ export async function GET() {
             id: true,
             invoiceNumber: true,
             invoiceItems: {
-              select: { name: true, qty: true },
+              select: {
+                name: true,
+                qty: true,
+              },
             },
           },
         },
       },
     });
-
+    console.log(
+      "Estados devueltos:",
+      jobs.map((j) => ({
+        job: j.jobNumber,
+        status: j.status,
+      })),
+    );
     return NextResponse.json(jobs);
   } catch (error) {
     console.error("❌ GET JOBS ERROR:", error);
+
     return NextResponse.json(
       { error: "Failed to fetch jobs" },
       { status: 500 },
     );
   }
 }
-
 // ============================
 // POST â€” CREATE JOB FROM INVOICE
 // ============================
