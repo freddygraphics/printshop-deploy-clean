@@ -20,7 +20,7 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(true);
   const [invoices, setInvoices] = useState([]);
   const [search, setSearch] = useState("");
-
+  const [statusFilter, setStatusFilter] = useState("ACTIVE");
   useEffect(() => {
     async function loadInvoices() {
       try {
@@ -111,7 +111,30 @@ export default function InvoicesPage() {
   // --------------------------
   // BUSCADOR (invoice / cliente)
   // --------------------------
-  const searchedInvoices = filteredInvoices.filter((i) => {
+  const statusFilteredInvoices = filteredInvoices.filter((i) => {
+    const status = getInvoiceStatus(i);
+
+    switch (statusFilter) {
+      case "ACTIVE":
+        return status !== "Void";
+
+      case "PAID":
+        return status === "Paid";
+
+      case "PARTIALLY PAID":
+        return status === "Partially Paid";
+
+      case "ISSUED":
+        return status === "Issued";
+
+      case "VOID":
+        return status === "Void";
+
+      default:
+        return true;
+    }
+  });
+  const searchedInvoices = statusFilteredInvoices.filter((i) => {
     const q = search.toLowerCase();
 
     return (
@@ -177,7 +200,38 @@ export default function InvoicesPage() {
       }),
     };
   });
-
+  const statusTabs = [
+    {
+      label: "ALL",
+      count: filteredInvoices.length,
+    },
+    {
+      label: "ACTIVE",
+      count: filteredInvoices.filter((i) => getInvoiceStatus(i) !== "Void")
+        .length,
+    },
+    {
+      label: "PAID",
+      count: filteredInvoices.filter((i) => getInvoiceStatus(i) === "Paid")
+        .length,
+    },
+    {
+      label: "PARTIALLY PAID",
+      count: filteredInvoices.filter(
+        (i) => getInvoiceStatus(i) === "Partially Paid",
+      ).length,
+    },
+    {
+      label: "ISSUED",
+      count: filteredInvoices.filter((i) => getInvoiceStatus(i) === "Issued")
+        .length,
+    },
+    {
+      label: "VOID",
+      count: filteredInvoices.filter((i) => getInvoiceStatus(i) === "Void")
+        .length,
+    },
+  ];
   return (
     <div className="space-y-6 animate-fadeIn">
       <div className="max-w-7xl mx-auto">
@@ -250,7 +304,26 @@ export default function InvoicesPage() {
           onChange={(e) => setSearch(e.target.value)}
           className="w-full mt-5 md:w-1/3 px-4 py-2 border rounded-md"
         />
+        <div className="mt-5 border-b border-gray-200">
+          <nav className="flex gap-8 overflow-x-auto">
+            {statusTabs.map((tab) => (
+              <button
+                key={tab.label}
+                onClick={() => setStatusFilter(tab.label)}
+                className={`pb-3 text-sm font-medium whitespace-nowrap transition
 
+      ${
+        statusFilter === tab.label
+          ? "text-blue-600 border-b-2 border-blue-600"
+          : "text-gray-500 hover:text-gray-700"
+      }
+    `}
+              >
+                {tab.label} ({tab.count})
+              </button>
+            ))}
+          </nav>
+        </div>
         {/* TABLE */}
         <div className="rounded-xl mt-5 border bg-white shadow-sm overflow-hidden">
           <table className="w-full border-collapse">

@@ -38,6 +38,12 @@ export async function POST(req, { params }) {
     }
 
     const body = await req.json();
+    console.log("🚨 PAYMENT REQUEST");
+    console.log({
+      invoiceId,
+      body,
+      time: new Date().toISOString(),
+    });
     console.log("ðŸ’° PAYMENT BODY:", body);
 
     const {
@@ -51,7 +57,7 @@ export async function POST(req, { params }) {
 
     const finalAmount = Number(amount ?? amountTotal);
     const finalMethod = paymentMethod ?? method ?? "Unknown";
-
+    const finalProcessingFee = Number(processingFee || 0);
     if (!Number.isFinite(finalAmount) || finalAmount <= 0) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
     }
@@ -64,18 +70,49 @@ export async function POST(req, { params }) {
     if (!invoice) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
+    // =================================
+    // 🛡️ DUPLICATE PROTECTION
+    // =================================
+    const duplicate = await prisma.invoicePayment.findFirst({
+      where: {
+        invoiceId,
+        amount: finalAmount,
+        processingFee: finalProcessingFee,
+        method: finalMethod,
+        createdAt: {
+          gte: new Date(Date.now() - 5000),
+        },
+      },
+    });
 
-    // 2ï¸âƒ£ Guardar pago (customer paid)
+    if (duplicate) {
+      console.warn("⚠️ Duplicate payment prevented");
+
+      return NextResponse.json({
+        success: true,
+        duplicate: true,
+        totalApplied: null,
+        balance: invoice.balance,
+        paymentStatus: invoice.paymentStatus,
+      });
+    }
+
+    console.log("🟢 Creating payment...");
+
+    // =================================
+    // 💾 CREATE PAYMENT
+    // =================================
     await prisma.invoicePayment.create({
       data: {
         invoiceId,
-        amount: finalAmount, // total charged
-        processingFee,
+        amount: finalAmount,
+        processingFee: finalProcessingFee,
         method: finalMethod,
         note,
       },
     });
 
+    console.log("✅ Payment created");
     // 3ï¸âƒ£ Recalcular pagos
     const payments = await prisma.invoicePayment.findMany({
       where: { invoiceId },
@@ -120,4 +157,3 @@ export async function POST(req, { params }) {
     return NextResponse.json({ error: "Payment failed" }, { status: 500 });
   }
 }
-

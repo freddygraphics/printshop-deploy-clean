@@ -48,9 +48,12 @@ export async function GET() {
     const jobs = await prisma.job.findMany({
       where: {
         archived: false,
+
         status: {
           not: "Cancelled",
         },
+
+        pickedUpAt: null,
       },
 
       orderBy: [{ status: "asc" }, { createdAt: "desc" }],

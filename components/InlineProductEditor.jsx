@@ -449,6 +449,8 @@ function InlineProductEditor({ product, data, onChange, onClose }) {
                     onChange({
                       ...data,
 
+                      name: local.description,
+
                       qty: local.qty,
                       unitPrice: local.unitPrice,
                       total: local.total,

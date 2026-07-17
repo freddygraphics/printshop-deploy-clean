@@ -1427,7 +1427,10 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                     {/* RIGHT */}
                     <div className="text-right space-y-1">
                       <p className="text-sm font-semibold">
-                        Total Charged: ${p.amount.toFixed(2)}
+                        Total Charged: $
+                        {(
+                          Number(p.amount) + Number(p.processingFee || 0)
+                        ).toFixed(2)}
                       </p>
                     </div>
                   </div>

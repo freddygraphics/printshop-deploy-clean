@@ -49,12 +49,14 @@ export async function PATCH(req, { params }) {
       );
     }
 
+    const now = new Date();
+
     const updatedJob = await prisma.job.update({
-      where: {
-        id: jobId,
-      },
+      where: { id: jobId },
       data: {
-        pickedUpAt: new Date(),
+        pickedUpAt: now,
+        status: "Delivered",
+        deliveredAt: now,
       },
     });
 

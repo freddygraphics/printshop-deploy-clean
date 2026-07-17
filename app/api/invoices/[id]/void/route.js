@@ -27,6 +27,9 @@ export async function PATCH(req, { params }) {
   }
 
   await prisma.$transaction(async (tx) => {
+    console.log("cancelJob:", cancelJob);
+    console.log("invoice.job:", invoice.job);
+
     // Void Invoice
     await tx.invoice.update({
       where: { id: invoiceId },
@@ -36,14 +39,17 @@ export async function PATCH(req, { params }) {
       },
     });
 
-    // Cancel Job (opcional)
     if (cancelJob && invoice.job) {
+      console.log("➡️ Cancelando Job:", invoice.job.id);
+
       await tx.job.update({
         where: {
           id: invoice.job.id,
         },
         data: {
           status: "Cancelled",
+          archived: true,
+          archivedAt: new Date(),
         },
       });
     }

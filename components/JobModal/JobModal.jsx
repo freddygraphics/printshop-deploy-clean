@@ -94,7 +94,6 @@ export default function JobModal({ job, onClose }) {
   async function completePickup() {
     setShowConfirmPickup(false);
 
-    // 1. Validar pago
     const pickupRes = await fetch(`/api/jobs/${job.id}/pickup`, {
       method: "PATCH",
     });
@@ -116,24 +115,7 @@ export default function JobModal({ job, onClose }) {
       return;
     }
 
-    // 2. Cambiar estado
-    const statusRes = await fetch(`/api/jobs/${job.id}/status`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        status: "Delivered",
-      }),
-    });
-
-    if (!statusRes.ok) {
-      alert("Failed to update job status.");
-      return;
-    }
-
     onClose();
-    window.location.reload();
   }
   return (
     <>

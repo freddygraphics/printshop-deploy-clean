@@ -156,11 +156,10 @@ export default function ProductionBoardPage() {
         <SearchBar value={search} onChange={setSearch} />
         {selectedJob && (
           <JobModal
-            job={selectedJob}
+            job={jobs.find((j) => j.id === selectedJob?.id) || selectedJob}
             onClose={() => {
               setSelectedJob(null);
 
-              // 🔥 refresca jobs para que entren los files
               fetch("/api/jobs")
                 .then((r) => r.json())
                 .then((data) => {
