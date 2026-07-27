@@ -19,10 +19,23 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - name: Install PostgreSQL tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes postgresql-client
+      - name: Install PostgreSQL 17 tools
+  run: |
+    sudo apt-get update
+    sudo apt-get install --yes curl ca-certificates
+
+    sudo install -d /usr/share/postgresql-common/pgdg
+    sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+      --fail \
+      https://www.postgresql.org/media/keys/ACCC4CF8.asc
+
+    echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo "$VERSION_CODENAME")-pgdg main" \
+      | sudo tee /etc/apt/sources.list.d/pgdg.list
+
+    sudo apt-get update
+    sudo apt-get install --yes postgresql-client-17
+
+    /usr/lib/postgresql/17/bin/pg_dump --version
 
       - name: Create backup
         env:
@@ -33,7 +46,7 @@ jobs:
           BACKUP_DATE=$(date -u +"%Y-%m-%d_%H-%M-%S")
           BACKUP_FILE="backups/printshop_${BACKUP_DATE}.backup"
 
-          pg_dump "$DATABASE_URL" \
+    /usr/lib/postgresql/17/bin/pg_dump "$DATABASE_URL" \
             --format=custom \
             --compress=9 \
             --no-owner \
@@ -42,7 +55,7 @@ jobs:
 
           test -s "$BACKUP_FILE"
 
-          pg_restore \
+       /usr/lib/postgresql/17/bin/pg_restore \
             --list "$BACKUP_FILE" \
             > backups/backup_contents.txt
 
