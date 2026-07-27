@@ -1,0 +1,61 @@
+name: Neon Database Backup
+
+on:
+  schedule:
+    # Todos los días a las 7:00 UTC
+    # Aproximadamente 2:00–3:00 a. m. en New Jersey
+    - cron: "0 7 * * *"
+
+  # Permite ejecutar el respaldo manualmente
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    name: Create Neon Backup
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Install PostgreSQL tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+
+      - name: Create backup
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: |
+          mkdir -p backups
+
+          BACKUP_DATE=$(date -u +"%Y-%m-%d_%H-%M-%S")
+          BACKUP_FILE="backups/printshop_${BACKUP_DATE}.backup"
+
+          pg_dump "$DATABASE_URL" \
+            --format=custom \
+            --compress=9 \
+            --no-owner \
+            --no-privileges \
+            --file="$BACKUP_FILE"
+
+          test -s "$BACKUP_FILE"
+
+          pg_restore \
+            --list "$BACKUP_FILE" \
+            > backups/backup_contents.txt
+
+          echo "BACKUP_FILE=$BACKUP_FILE" >> "$GITHUB_ENV"
+          echo "BACKUP_DATE=$BACKUP_DATE" >> "$GITHUB_ENV"
+
+      - name: Upload backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: printshop-backup-${{ env.BACKUP_DATE }}
+          path: |
+            ${{ env.BACKUP_FILE }}
+            backups/backup_contents.txt
+          retention-days: 30
+          if-no-files-found: error
+          compression-level: 0
