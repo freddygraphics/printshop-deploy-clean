@@ -2,11 +2,8 @@ name: Neon Database Backup
 
 on:
   schedule:
-    # Todos los días a las 7:00 UTC
-    # Aproximadamente 2:00–3:00 a. m. en New Jersey
+    # Diario a las 7:00 UTC
     - cron: "0 7 * * *"
-
-  # Permite ejecutar el respaldo manualmente
   workflow_dispatch:
 
 permissions:
@@ -20,22 +17,24 @@ jobs:
 
     steps:
       - name: Install PostgreSQL 17 tools
-  run: |
-    sudo apt-get update
-    sudo apt-get install --yes curl ca-certificates
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes curl ca-certificates
 
-    sudo install -d /usr/share/postgresql-common/pgdg
-    sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
-      --fail \
-      https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          sudo install -d /usr/share/postgresql-common/pgdg
 
-    echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo "$VERSION_CODENAME")-pgdg main" \
-      | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo curl \
+            --fail \
+            --output /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
 
-    sudo apt-get update
-    sudo apt-get install --yes postgresql-client-17
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo "$VERSION_CODENAME")-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list
 
-    /usr/lib/postgresql/17/bin/pg_dump --version
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client-17
+
+          /usr/lib/postgresql/17/bin/pg_dump --version
 
       - name: Create backup
         env:
@@ -46,7 +45,7 @@ jobs:
           BACKUP_DATE=$(date -u +"%Y-%m-%d_%H-%M-%S")
           BACKUP_FILE="backups/printshop_${BACKUP_DATE}.backup"
 
-    /usr/lib/postgresql/17/bin/pg_dump "$DATABASE_URL" \
+          /usr/lib/postgresql/17/bin/pg_dump "$DATABASE_URL" \
             --format=custom \
             --compress=9 \
             --no-owner \
@@ -55,7 +54,7 @@ jobs:
 
           test -s "$BACKUP_FILE"
 
-       /usr/lib/postgresql/17/bin/pg_restore \
+          /usr/lib/postgresql/17/bin/pg_restore \
             --list "$BACKUP_FILE" \
             > backups/backup_contents.txt
 
