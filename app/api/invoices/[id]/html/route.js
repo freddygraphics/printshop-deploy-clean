@@ -33,6 +33,7 @@ export async function GET(req, { params }) {
 
     // ðŸ‘‡ SI ES async, ESTO LO ARREGLA
     const html = await buildInvoiceHtml({
+      invoiceId: invoice.id,
       invoiceNumber: invoice.invoiceNumber,
       issuedAt: invoice.issuedAt,
       dueDate: invoice.dueDate,

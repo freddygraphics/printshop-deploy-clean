@@ -9,7 +9,8 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
-    "import:clients": "node prisma/importClients.js"
+    "import:clients": "node prisma/importClients.js",
+    "import:sanmar": "node prisma/importSanMar.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
@@ -40,6 +41,7 @@
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.9.0",
     "clsx": "^2.1.1",
+    "csv-parse": "^7.0.1",
     "date-fns": "^4.1.0",
     "html-pdf-node": "^1.0.8",
     "html2canvas": "^1.4.1",

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
-
+import RaffleTicketCalculator from "@/components/RaffleTicketCalculator";
 // Modal wrapper
 import ModalPortal from "./ModalPortal";
 import ProductBuilder from "@/components/products/ProductBuilder";
@@ -110,8 +110,9 @@ export default function ProductModal({
         return <LargeFormatTemplate {...props} />;
 
       case "signs":
-        return <ProductBuilder />;
-
+        return <ProductBuilder {...props} />;
+      case "raffle-tickets":
+        return <RaffleTicketCalculator {...props} />;
       default:
         return (
           <p className="text-gray-500 text-center">Select a product template</p>

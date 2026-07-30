@@ -1,240 +1,153 @@
 "use client";
 
 export const dynamic = "force-dynamic";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Plus, Search, Pencil, Trash2, Eye } from "lucide-react";
-import ProductTemplateSelector from "@/components/ProductTemplateSelector";
-import ProductModal from "@/components/ProductModal";
+import { Search, PackageOpen } from "lucide-react";
 
-export default function ProductsPage() {
+export default function ProductsCatalogPage() {
   const [products, setProducts] = useState([]);
-  const [filtered, setFiltered] = useState([]);
   const [search, setSearch] = useState("");
-  const [editingProduct, setEditingProduct] = useState(null);
-
-  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
-  const [showProductModal, setShowProductModal] = useState(false);
-  const [selectedTemplateType, setSelectedTemplateType] = useState(null);
-
-  const [success, setSuccess] = useState(""); // ⭐ mensaje éxito
-  const router = useRouter();
-  // ==========================================================
-  // Cargar productos
-  // ==========================================================
-  const loadProducts = async () => {
-    try {
-      const res = await fetch("/api/products");
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setProducts(data);
-        setFiltered(data);
-      }
-    } catch (err) {
-      console.error("❌ Error loading products:", err);
-    }
-  };
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     loadProducts();
   }, []);
 
-  // ==========================================================
-  // Filtrar productos
-  // ==========================================================
-  useEffect(() => {
-    if (!search.trim()) {
-      setFiltered(products);
-      return;
+  async function loadProducts() {
+    try {
+      setLoading(true);
+      setError("");
+
+      const res = await fetch("/api/products", {
+        cache: "no-store",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Error loading products");
+      }
+
+      setProducts(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Error loading products:", err);
+      setError("Products could not be loaded.");
+    } finally {
+      setLoading(false);
     }
-
-    const s = search.toLowerCase();
-    setFiltered(products.filter((p) => p.name.toLowerCase().includes(s)));
-  }, [search, products]);
-
-  // ==========================================================
-  // Abrir creación producto con template
-  // ==========================================================
-  function handleSelectTemplate(templateType) {
-    setSelectedTemplateType(templateType);
-    setShowTemplateSelector(false);
-    setShowProductModal(true);
   }
 
-  // ==========================================================
-  // 🔥 Recibir producto guardado
-  // ==========================================================
-  const handleSaveProduct = async () => {
-    setShowProductModal(false);
+  const filteredProducts = useMemo(() => {
+    const term = search.trim().toLowerCase();
 
-    setSuccess("✅ Producto guardado con éxito");
-    setTimeout(() => setSuccess(""), 2500);
+    if (!term) return products;
 
-    await loadProducts();
-  };
+    return products.filter((product) => {
+      const searchableText = [
+        product.name,
+        product.description,
+        product.category,
+        product.sku,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return searchableText.includes(term);
+    });
+  }, [products, search]);
 
   return (
-    <main className="max-w-6xl mx-auto px-6 py-10">
-      {/* ÉXITO */}
-      {success && (
-        <p className="text-green-600 bg-green-100 border border-green-300 px-4 py-2 rounded mb-4 text-sm">
-          {success}
+    <main className="mx-auto max-w-7xl px-6 py-10">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Products</h1>
+
+        <p className="mt-2 text-gray-500">
+          Browse products and view their available options and prices.
         </p>
+      </div>
+
+      {error && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
       )}
 
-      {/* HEADER */}
-
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold text-[#1E293B]">Products</h1>
-
-        <Link href="/products/new">
-          <button className="flex items-center gap-2 bg-[#0051A8] hover:bg-[#00418A] text-white px-4 py-2 rounded-lg text-sm font-medium shadow">
-            <Plus size={18} />
-            New Product
-          </button>
-        </Link>
-      </div>
-
-      {/* TARJETAS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <SummaryCard title="Total Products" value={products.length} />
-        <SummaryCard
-          title="Templates"
-          value={products.filter((p) => p.templateType).length}
-        />
-
-        <SummaryCard
-          title="Without Template"
-          value={products.filter((p) => !p.templateType).length}
-        />
-      </div>
-
-      {/* SEARCH */}
-      <div className="relative mb-5">
+      <div className="relative mb-8 max-w-xl">
         <Search
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-          size={18}
+          size={19}
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
         />
+
         <input
           type="text"
-          placeholder="Search products..."
-          className="w-full border rounded-lg pl-10 pr-4 py-2 shadow-sm text-sm"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search products..."
+          className="h-12 w-full rounded-xl border border-gray-200 bg-white pl-12 pr-4 text-sm shadow-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
         />
       </div>
 
-      {/* TABLA */}
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-        {filtered.length === 0 ? (
-          <p className="text-center text-gray-500 py-6">No products found.</p>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-[#F5F7F9] border-b">
-              <tr>
-                <th className="p-3 text-left">Product</th>
-                {/* OCULTO ⛔ */}
-                {/* <th>SKU</th> */}
-                {/* <th>Price</th> */}
-                {/* <th>Template</th> */}
-                <th className="p-3 text-right">Actions</th>
-              </tr>
-            </thead>
+      {loading ? (
+        <div className="py-16 text-center text-gray-500">
+          Loading products...
+        </div>
+      ) : filteredProducts.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-gray-300 bg-white py-16 text-center">
+          <PackageOpen className="mx-auto mb-3 text-gray-400" size={38} />
 
-            <tbody>
-              {filtered.map((p) => (
-                <tr key={p.id} className="border-b hover:bg-gray-50">
-                  <td className="p-3">
-                    <div className="flex items-center gap-3">
-                      {p.image && (
-                        <img
-                          src={p.image}
-                          alt={p.name}
-                          className="w-12 h-12 rounded-lg object-cover border"
-                        />
-                      )}
+          <p className="font-medium text-gray-700">No products found</p>
 
-                      <div>
-                        <p className="font-medium">{p.name}</p>
-                      </div>
-                    </div>
-                  </td>
+          <p className="mt-1 text-sm text-gray-500">
+            Try searching with another product name.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filteredProducts.map((product) => (
+            <Link
+              key={product.id}
+              href={`/products/${product.id}`}
+              className="group block overflow-hidden rounded-xl border border-gray-200 bg-white text-left shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-lg"
+            >
+              <div className="aspect-[4/3] overflow-hidden bg-gray-100">
+                {product.image || product.imageUrl ? (
+                  <img
+                    src={product.image || product.imageUrl}
+                    alt={product.name}
+                    className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-gray-400">
+                    <PackageOpen size={42} />
+                  </div>
+                )}
+              </div>
 
-                  <td className="p-3">
-                    <div className="flex justify-end gap-3">
-                      <Link href={`/products/${p.id}`}>
-                        <button className="text-gray-600 hover:text-blue-600">
-                          <Eye size={18} />
-                        </button>
-                      </Link>
+              <div className="p-5">
+                <h2 className="line-clamp-1 text-base font-semibold text-gray-900">
+                  {product.name}
+                </h2>
 
-                      <button
-                        className="text-gray-600 hover:text-green-600"
-                        title="Edit product"
-                        onClick={() => router.push(`/products/${p.id}/edit`)}
-                      >
-                        <Pencil size={18} />
-                      </button>
+                {product.description && (
+                  <p className="mt-2 line-clamp-2 min-h-10 text-sm leading-5 text-gray-500">
+                    {product.description}
+                  </p>
+                )}
 
-                      <button
-                        className="text-gray-600 hover:text-red-600"
-                        onClick={() => {
-                          if (confirm("Delete this product?")) {
-                            fetch(`/api/products/${p.id}`, {
-                              method: "DELETE",
-                            }).then(() => loadProducts());
-                          }
-                        }}
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* SELECTOR DE TEMPLATE */}
-      {showTemplateSelector && (
-        <ProductTemplateSelector
-          open={showTemplateSelector}
-          onClose={() => setShowTemplateSelector(false)}
-          onSelect={handleSelectTemplate}
-        />
-      )}
-
-      {/* MODAL PRODUCTO */}
-      {showProductModal && (
-        <ProductModal
-          open={showProductModal}
-          onClose={() => {
-            setShowProductModal(false);
-            setEditingProduct(null);
-          }}
-          product={
-            editingProduct
-              ? editingProduct // ✏️ EDIT
-              : { templateType: selectedTemplateType } // ➕ NEW
-          }
-          mode={editingProduct ? "edit" : "new"}
-          onSave={handleSaveProduct}
-        />
+                <div className="mt-4 border-t border-gray-100 pt-4">
+                  <span className="text-sm font-semibold text-blue-600">
+                    View options
+                  </span>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
       )}
     </main>
-  );
-}
-
-/* -------------------------------------------------------------- */
-
-function SummaryCard({ title, value }) {
-  return (
-    <div className="bg-white shadow-sm border rounded-lg p-4">
-      <p className="text-sm text-gray-500">{title}</p>
-      <p className="text-2xl font-bold text-[#0051A8] mt-1">{value}</p>
-    </div>
   );
 }

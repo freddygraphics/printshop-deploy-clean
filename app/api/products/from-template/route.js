@@ -46,10 +46,13 @@ export async function POST(req) {
     // 🔎 Si no existe, buscar por TYPE
     if (!template && templateType) {
       template = await prisma.template.findFirst({
-        where: { type: templateType },
+        where: {
+          OR: [{ slug: templateType }, { type: templateType }],
+        },
       });
     }
-
+    const resolvedTemplateType =
+      body.templateSlug || template.slug || template.type || templateType;
     if (!template) {
       return Response.json({ error: "Template not found" }, { status: 400 });
     }
@@ -72,7 +75,7 @@ export async function POST(req) {
         description: description ?? "",
         basePrice: Number(basePrice ?? 0),
 
-        templateType: body.templateSlug ?? template.slug,
+        templateType: resolvedTemplateType,
 
         template: {
           connect: { id: template.id },

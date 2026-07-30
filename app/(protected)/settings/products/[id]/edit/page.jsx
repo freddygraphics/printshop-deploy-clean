@@ -62,14 +62,17 @@ export default function EditProductPage() {
         body: JSON.stringify(updatedProduct),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        throw new Error("Error updating product");
+        throw new Error(data.error || "Error updating product");
       }
 
-      router.push("/products");
+      router.push("/settings/products");
+      router.refresh();
     } catch (err) {
       console.error(err);
-      alert("Error updating product.");
+      alert(err.message || "Error updating product.");
     }
   }
 

@@ -39,7 +39,10 @@ export default function ProductViewPage({ params }) {
     <main className="max-w-4xl mx-auto px-8 py-10">
       <div className="flex justify-between mb-6">
         <h1 className="text-3xl font-bold">{product.name}</h1>
-        <Link href="/products" className="text-blue-600">
+        <Link
+          href="/settings/products"
+          className="inline-flex items-center text-blue-600 hover:text-blue-800"
+        >
           <ArrowLeft className="inline mr-1" /> Back
         </Link>
       </div>

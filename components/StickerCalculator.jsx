@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-export default function StickerCalculator() {
+export default function StickerCalculator({ onChange }) {
   const [pricing, setPricing] = useState([]);
   const [type, setType] = useState("");
   const [width, setWidth] = useState(2);

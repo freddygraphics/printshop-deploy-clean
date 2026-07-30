@@ -39,6 +39,43 @@ model StickerSheetPricing {
   createdAt    DateTime @default(now())
 }
 
+model RaffleTicketPricing {
+  id String @id @default(cuid())
+
+  // Impresión
+  paperCostPerSheet    Float @default(0.45)
+  printingCostPerSheet Float @default(0.55)
+  cutCostPerSheet      Float @default(0.20)
+  ticketsPerSheet      Int   @default(8)
+  wastePercent         Float @default(10)
+
+  // Preparación
+  setupFee Float @default(10)
+
+  // Numeración
+  numberingSetupFee      Float @default(10)
+  numberingCostPerTicket Float @default(0.02)
+
+  // Perforación
+  perforationSetupFee      Float @default(10)
+  perforationCostPerTicket Float @default(0.03)
+
+  // Talonarios
+  bookletCost           Float @default(2)
+  defaultTicketsPerBook Int   @default(50)
+
+  // Diseño
+  printReadyDesignFee Float @default(0)
+  basicDesignFee      Float @default(25)
+  fullDesignFee       Float @default(50)
+
+  // Ganancia
+  profitMargin Float @default(50)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model PrintProduct {
   id         String   @id @default(cuid())
   name       String
@@ -268,7 +305,7 @@ model Template {
   category      String?
   configuration Json?
   description   String?
-  measurements Json?
+  measurements  Json?
   icon          String?
   slug          String?   @unique
   products      Product[]
@@ -290,20 +327,20 @@ model Job {
   invoiceId           Int       @unique
   position            Int       @default(0)
 
-  pickupToken         String?   @unique
-  pickedUpAt          DateTime?
-  pickedUpBy          String?
+  pickupToken String?   @unique
+  pickedUpAt  DateTime?
+  pickedUpBy  String?
 
   deliveredAt DateTime?
 
   // ✅ NUEVO
-  archived            Boolean   @default(false)
-  archivedAt          DateTime?
+  archived   Boolean   @default(false)
+  archivedAt DateTime?
 
-  client              Client    @relation(fields: [clientId], references: [id])
-  invoice             Invoice   @relation(fields: [invoiceId], references: [id])
-  files               JobFile[]
-  items               JobItem[]
+  client  Client    @relation(fields: [clientId], references: [id])
+  invoice Invoice   @relation(fields: [invoiceId], references: [id])
+  files   JobFile[]
+  items   JobItem[]
 }
 
 model JobItem {
@@ -542,6 +579,96 @@ model ProductOptionLibrary {
   values    Json
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ApparelProduct {
+  id            Int       @id @default(autoincrement())
+  supplier      String    @default("SanMar")
+  supplierStyle String
+  name          String
+  description   String?
+  brand         String?
+  category      String?
+  subcategory   String?
+  imageUrl      String?
+  active        Boolean   @default(true)
+  lastSyncedAt  DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  variants ApparelVariant[]
+
+  @@unique([supplier, supplierStyle])
+  @@index([name])
+  @@index([brand])
+  @@index([category])
+}
+
+model ApparelVariant {
+  id              Int       @id @default(autoincrement())
+  productId       Int
+  supplierSku     String    @unique
+  color           String
+  colorCode       String?
+  size            String
+  supplierPrice   Float     @default(0)
+  inventory       Int       @default(0)
+  warehouseData   Json?
+  active          Boolean   @default(true)
+  lastInventoryAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  product ApparelProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([color])
+  @@index([size])
+}
+
+model ApparelPricingSettings {
+  id String @id @default(cuid())
+
+  supplier         String @default("SanMar")
+  decorationMethod String @default("DTF")
+
+  // DTF
+  dtfPricingMethod String @default("GANG_SHEET")
+  dtfCostPerSqft   Float  @default(4)
+  dtfRollWidth     Float  @default(22)
+  dtfGap           Float  @default(0.25)
+  gangSheets       Json   @default("[]")
+
+  // Default print locations and sizes
+  defaultPrintLocations Json @default("[{\"key\":\"front\",\"name\":\"Front\",\"width\":3.5,\"height\":3.5,\"enabled\":true},{\"key\":\"back\",\"name\":\"Back\",\"width\":10.5,\"height\":11,\"enabled\":true},{\"key\":\"leftSleeve\",\"name\":\"Left Sleeve\",\"width\":3,\"height\":3,\"enabled\":false},{\"key\":\"rightSleeve\",\"name\":\"Right Sleeve\",\"width\":3,\"height\":3,\"enabled\":false},{\"key\":\"longLeftSleeve\",\"name\":\"Long Left Sleeve\",\"width\":2.5,\"height\":17,\"enabled\":false},{\"key\":\"longRightSleeve\",\"name\":\"Long Right Sleeve\",\"width\":2.5,\"height\":17,\"enabled\":false}]")
+
+  // Labor and setup
+  laborPerLocation    Float @default(2)
+  setupFeePerLocation Float @default(0)
+  minimumSetupFee     Float @default(0)
+
+  // Shipping
+  supplierShippingFlat Float @default(0)
+  dtfShippingFlat      Float @default(0)
+  shippingPercent      Float @default(0)
+
+  // Waste
+  wastePercent Float @default(5)
+
+  // Profit
+  pricingMode         String @default("MARKUP")
+  defaultProfitMargin Float  @default(50)
+  quantityMargins     Json   @default("[]")
+
+  // Minimums
+  minimumUnitPrice  Float @default(0)
+  minimumOrderPrice Float @default(0)
+
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([supplier, decorationMethod])
 }
 
 enum InvoiceStatus {

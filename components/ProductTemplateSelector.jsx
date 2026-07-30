@@ -1,8 +1,16 @@
 "use client";
 
-import ProductTemplateCard from "./ProductTemplateCard";
-import { X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { X } from "lucide-react";
+import ProductTemplateCard from "./ProductTemplateCard";
+
+const RAFFLE_TICKET_TEMPLATE = {
+  id: "raffle-tickets",
+  name: "Raffle Tickets",
+  slug: "raffle-tickets",
+  templateType: "raffle-tickets",
+  description: "Custom numbered, perforated and booklet raffle tickets.",
+};
 
 export default function ProductTemplateSelector({
   open = true,
@@ -10,8 +18,6 @@ export default function ProductTemplateSelector({
   onSelect,
   embedded = false,
 }) {
-  if (!embedded && !open) return null;
-
   const [templates, setTemplates] = useState([]);
 
   useEffect(() => {
@@ -20,29 +26,50 @@ export default function ProductTemplateSelector({
 
   async function loadTemplates() {
     try {
-      const res = await fetch("/api/templates");
+      const res = await fetch("/api/templates", {
+        cache: "no-store",
+      });
 
       const data = await res.json();
+      const loadedTemplates = Array.isArray(data) ? data : [];
 
-      setTemplates(Array.isArray(data) ? data : []);
+      const raffleExists = loadedTemplates.some(
+        (template) =>
+          template.slug === "raffle-tickets" ||
+          template.templateType === "raffle-tickets",
+      );
+
+      setTemplates(
+        raffleExists
+          ? loadedTemplates
+          : [...loadedTemplates, RAFFLE_TICKET_TEMPLATE],
+      );
     } catch (err) {
-      console.error(err);
+      console.error("Error loading templates:", err);
+
+      // Raffle Tickets seguirá visible aunque falle la API
+      setTemplates([RAFFLE_TICKET_TEMPLATE]);
     }
   }
 
-  // ===== MODO PÁGINA =====
+  // Debe estar después de los hooks
+  if (!embedded && !open) return null;
+
+  // ==========================================================
+  // MODO PÁGINA
+  // ==========================================================
   if (embedded) {
     return (
-      <div className="bg-white border rounded-xl p-6">
-        <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+      <div className="rounded-xl border bg-white p-6">
+        <h2 className="mb-2 text-2xl font-semibold text-gray-900">
           Select Product Template
         </h2>
 
-        <p className="text-gray-500 mb-6">
+        <p className="mb-6 text-gray-500">
           Choose the template that best matches the product you want to create.
         </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {templates.map((template) => (
             <ProductTemplateCard
               key={template.id}
@@ -55,29 +82,33 @@ export default function ProductTemplateSelector({
     );
   }
 
-  // ===== MODO MODAL (actual) =====
+  // ==========================================================
+  // MODO MODAL
+  // ==========================================================
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[9999]">
-      <div className="bg-white rounded-xl shadow-xl w-[95%] max-w-3xl p-6 border">
-        <div className="flex justify-between items-center mb-4">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="w-[95%] max-w-3xl rounded-xl border bg-white p-6 shadow-xl">
+        <div className="mb-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-900">
             Select Template
           </h2>
 
           <button
+            type="button"
             onClick={onClose}
             className="text-gray-500 hover:text-red-500"
+            aria-label="Close template selector"
           >
             <X size={22} />
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {templates.map((t) => (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {templates.map((template) => (
             <ProductTemplateCard
-              key={t.id}
-              template={t}
-              onSelect={() => onSelect(t.id)}
+              key={template.id}
+              template={template}
+              onSelect={() => onSelect(template)}
             />
           ))}
         </div>

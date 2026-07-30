@@ -88,7 +88,8 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   // ----------------------------------------
   const [productSearch, setProductSearch] = useState("");
   const [productResults, setProductResults] = useState([]);
-
+  const [productCatalog, setProductCatalog] = useState("products");
+  const [isSearchingProducts, setIsSearchingProducts] = useState(false);
   const [isRecordingPayment, setIsRecordingPayment] = useState(false);
 
   // ----------------------------------------
@@ -453,33 +454,104 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   // ----------------------------------------
   // PRODUCT AUTOCOMPLETE
   // ----------------------------------------
+  // ----------------------------------------
+  // PRODUCT AUTOCOMPLETE
+  // ----------------------------------------
   useEffect(() => {
+    const controller = new AbortController();
+
     const delay = setTimeout(async () => {
-      if (productSearch.length < 2) return setProductResults([]);
+      const query = productSearch.trim();
 
-      const res = await fetch(`/api/products/search?q=${productSearch}`);
-      const data = await res.json();
-
-      const results = Array.isArray(data) ? data : [];
-
-      // 🔥 STICKER CALCULATOR
-      if (productSearch.toLowerCase().includes("sticker")) {
-        results.unshift({
-          id: "sticker-calculator",
-
-          name: "Sticker Calculator",
-
-          category: "stickers",
-
-          basePrice: 0,
-        });
+      if (query.length < 2) {
+        setProductResults([]);
+        setIsSearchingProducts(false);
+        return;
       }
 
-      setProductResults(results);
+      try {
+        setIsSearchingProducts(true);
+
+        const endpoint =
+          productCatalog === "apparel"
+            ? `/api/apparel/search?q=${encodeURIComponent(query)}&limit=20`
+            : `/api/products/search?q=${encodeURIComponent(query)}`;
+
+        const res = await fetch(endpoint, {
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          throw new Error("Product search failed");
+        }
+
+        const data = await res.json();
+
+        let results = [];
+
+        if (productCatalog === "apparel") {
+          results = Array.isArray(data.products)
+            ? data.products.map((product) => ({
+                ...product,
+                productType: "apparel",
+              }))
+            : [];
+        } else {
+          results = Array.isArray(data)
+            ? data.map((product) => ({
+                ...product,
+                productType: "product",
+              }))
+            : [];
+
+          // STICKER CALCULATOR
+          if (query.toLowerCase().includes("sticker")) {
+            results.unshift({
+              id: "sticker-calculator",
+              name: "Sticker Calculator",
+              category: "stickers",
+              basePrice: 0,
+              productType: "calculator",
+            });
+          }
+        }
+        // RAFFLE TICKET CALCULATOR
+        const normalizedQuery = query.toLowerCase();
+
+        if (
+          normalizedQuery.includes("raffle") ||
+          normalizedQuery.includes("ticket") ||
+          normalizedQuery.includes("boleto")
+        ) {
+          results.unshift({
+            id: "raffle-tickets-calculator",
+            name: "Raffle Tickets",
+            description: "Custom numbered raffle tickets",
+            category: "raffle-tickets",
+            templateType: "raffle-tickets",
+            basePrice: 0,
+            productType: "calculator",
+            isVirtual: true,
+          });
+        }
+        setProductResults(results);
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          console.error("Error searching products:", error);
+          setProductResults([]);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsSearchingProducts(false);
+        }
+      }
     }, 300);
 
-    return () => clearTimeout(delay);
-  }, [productSearch]);
+    return () => {
+      clearTimeout(delay);
+      controller.abort();
+    };
+  }, [productSearch, productCatalog]);
 
   // ----------------------------------------
   // CALCULOS
@@ -631,6 +703,113 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
       return;
     }
 
+    // RAFFLE TICKET CALCULATOR
+    if (p.id === "raffle-tickets-calculator") {
+      const newLine = {
+        id: crypto.randomUUID(),
+        productId: null,
+
+        product: {
+          id: "raffle-tickets-calculator",
+          name: "Raffle Tickets",
+          description: "Custom numbered raffle tickets",
+          category: "raffle-tickets",
+          templateType: "raffle-tickets",
+          productType: "calculator",
+          isVirtual: true,
+        },
+
+        name: "Raffle Tickets",
+        description: "",
+        qty: 1,
+        unitPrice: 0,
+        total: 0,
+        customFields: null,
+        options: {},
+        _expanded: true,
+      };
+
+      setItems((prev) =>
+        prev
+          .map((item) => ({
+            ...item,
+            _expanded: false,
+          }))
+          .concat(newLine),
+      );
+
+      setProductSearch("");
+      setProductResults([]);
+      setShowAddCard(false);
+
+      return;
+    }
+    // SANMAR APPAREL
+    if (p.productType === "apparel") {
+      try {
+        const res = await fetch(`/api/apparel/${p.id}`);
+
+        if (!res.ok) {
+          throw new Error("No se pudo cargar el producto SanMar.");
+        }
+
+        const apparelData = await res.json();
+        const apparelProduct = apparelData.product;
+
+        const newLine = {
+          id: crypto.randomUUID(),
+
+          // No usamos este campo porque pertenece a la tabla Product normal.
+          productId: null,
+
+          product: {
+            ...apparelProduct,
+            productType: "apparel",
+            colors: apparelData.colors || [],
+          },
+
+          name: `${apparelProduct.brand || "SanMar"} ${apparelProduct.supplierStyle} - ${apparelProduct.name}`,
+
+          qty: 1,
+          unitPrice: 0,
+          total: 0,
+          customFields: null,
+
+          options: {
+            productType: "apparel",
+            apparelProductId: apparelProduct.id,
+            supplier: apparelProduct.supplier,
+            supplierStyle: apparelProduct.supplierStyle,
+            brand: apparelProduct.brand,
+            color: null,
+            sizes: [],
+            printLocations: [],
+            dtf: null,
+          },
+
+          _expanded: true,
+        };
+
+        setItems((prev) =>
+          prev
+            .map((item) => ({
+              ...item,
+              _expanded: false,
+            }))
+            .concat(newLine),
+        );
+
+        setProductSearch("");
+        setProductResults([]);
+        setShowAddCard(false);
+
+        return;
+      } catch (error) {
+        console.error("Error selecting SanMar product:", error);
+        alert("No se pudo cargar el producto SanMar.");
+        return;
+      }
+    }
     // 🔥 PRODUCTOS NORMALES
     const res = await fetch(`/api/products/${p.id}`);
 
@@ -1144,6 +1323,39 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                 </div>
 
                 <div className="space-y-4">
+                  <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProductCatalog("products");
+                        setProductSearch("");
+                        setProductResults([]);
+                      }}
+                      className={`rounded-md px-4 py-2 text-sm font-medium transition ${
+                        productCatalog === "products"
+                          ? "bg-blue-600 text-white shadow-sm"
+                          : "text-gray-600 hover:bg-gray-100"
+                      }`}
+                    >
+                      Products
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProductCatalog("apparel");
+                        setProductSearch("");
+                        setProductResults([]);
+                      }}
+                      className={`rounded-md px-4 py-2 text-sm font-medium transition ${
+                        productCatalog === "apparel"
+                          ? "bg-blue-600 text-white shadow-sm"
+                          : "text-gray-600 hover:bg-gray-100"
+                      }`}
+                    >
+                      SanMar Apparel
+                    </button>
+                  </div>
                   {/* ADD ITEM ROW */}
                   <div className="grid grid-cols-12 gap-4 items-end">
                     {/* SEARCH */}
@@ -1158,10 +1370,19 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                         />
                         <input
                           className="border rounded-lg pl-9 px-3 py-2.5 w-full"
-                          placeholder="Search..."
+                          placeholder={
+                            productCatalog === "apparel"
+                              ? "Search brand, style or garment..."
+                              : "Search products..."
+                          }
                           value={productSearch}
                           onChange={(e) => setProductSearch(e.target.value)}
                         />
+                        {isSearchingProducts && (
+                          <p className="mt-2 text-xs text-gray-500">
+                            Searching...
+                          </p>
+                        )}
                       </div>
 
                       {productResults.length > 0 && (
@@ -1184,24 +1405,48 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                         >
                           {productResults.map((p) => (
                             <button
-                              key={p.id}
+                              key={`${p.productType}-${p.id}`}
                               type="button"
                               onClick={() => handleSelectProduct(p)}
-                              className="
-          w-full
-          text-left
-          px-4
-          py-3
-          hover:bg-gray-50
-          transition
-          border-b
-          border-gray-100
-          last:border-0
-        "
+                              className="w-full border-b border-gray-100 px-4 py-3 text-left transition last:border-0 hover:bg-gray-50"
                             >
-                              <p className="font-medium text-gray-900 truncate">
-                                {p.name}
-                              </p>
+                              <div className="flex items-center gap-3">
+                                {p.productType === "apparel" && (
+                                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border bg-gray-50">
+                                    {p.imageUrl ? (
+                                      <img
+                                        src={p.imageUrl}
+                                        alt={p.name}
+                                        className="h-full w-full object-contain"
+                                      />
+                                    ) : (
+                                      <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">
+                                        No image
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                <div className="min-w-0">
+                                  <p className="truncate font-medium text-gray-900">
+                                    {p.name}
+                                  </p>
+
+                                  {p.productType === "apparel" && (
+                                    <>
+                                      <p className="mt-0.5 text-xs font-medium text-blue-600">
+                                        {p.brand || "SanMar"} · Style{" "}
+                                        {p.supplierStyle}
+                                      </p>
+
+                                      <p className="mt-1 text-xs text-gray-500">
+                                        {p.category || "Apparel"} ·{" "}
+                                        {p._count?.variants || 0} variants
+                                      </p>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
                             </button>
                           ))}
                         </div>
@@ -1209,7 +1454,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                     </div>
 
                     {/* DESCRIPTION */}
-                    <div className="col-span-3">
+                    <div className="col-span-3 relative">
                       <label className="text-xs font-semibold text-gray-500">
                         Description
                       </label>
