@@ -2,13 +2,15 @@
 export const dynamic = "force-dynamic";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Receipt, Loader2, Calendar, Plus, ChevronDown } from "lucide-react";
+import { Receipt } from "lucide-react";
 import { formatCurrency } from "@/lib/formatCurrency";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getInvoiceStatus } from "@/lib/invoiceStatus";
-import { Listbox } from "@headlessui/react";
+
+import DocumentListPage, {
+  DocumentStatusBadge,
+} from "@/components/documents/DocumentListPage";
 
 export default function InvoicesPage() {
   const router = useRouter();
@@ -37,20 +39,6 @@ export default function InvoicesPage() {
     loadInvoices();
   }, []);
 
-  function Option({ value, label }) {
-    return (
-      <Listbox.Option
-        value={value}
-        className={({ active, selected }) =>
-          `cursor-pointer px-4 py-2 ${
-            active ? "bg-blue-50 text-blue-700" : "text-gray-700"
-          } ${selected ? "font-semibold" : ""}`
-        }
-      >
-        {label}
-      </Listbox.Option>
-    );
-  }
   function getFilterLabel(filter, last3Months) {
     if (filter === "today") return "Today";
     if (filter === "last7") return "Last 7 Days";
@@ -60,10 +48,6 @@ export default function InvoicesPage() {
 
     const month = last3Months.find((m) => m.value === filter);
     return month?.label || "Select";
-  }
-
-  function Divider() {
-    return <div className="h-px bg-gray-200 my-1" />;
   }
 
   // --------------------------
@@ -78,12 +62,15 @@ export default function InvoicesPage() {
       const invoiceYear = invoiceDate.getUTCFullYear();
       const invoiceMonth = invoiceDate.getUTCMonth();
 
-      if (filter === "today") return isToday(date);
+      if (filter === "today") {
+        return isToday(invoiceDate);
+      }
 
       if (filter === "last7") {
         const last7 = new Date();
         last7.setDate(now.getDate() - 7);
-        return date >= last7 && date <= now;
+
+        return invoiceDate >= last7 && invoiceDate <= now;
       }
       if (filter === "thismonth") {
         return (
@@ -232,207 +219,129 @@ export default function InvoicesPage() {
         .length,
     },
   ];
-  return (
-    <div className="space-y-6 animate-fadeIn">
-      <div className="max-w-7xl mx-auto">
-        {/* SUMMARY CARDS */}
-        <div className="grid grid-cols-1 mt-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <SummaryCard title="Total Invoices" value={formatCurrency(total)} />
-          <SummaryCard title="Paid Invoices" value={formatCurrency(paid)} />
-          <SummaryCard
-            title="Pending Invoices"
-            value={formatCurrency(pending)}
-          />
-          <SummaryCard
-            title="Overdue Invoices"
-            value={formatCurrency(overdue)}
-          />
-        </div>
-        {/* HEADER */}
-        <div className="flex flex-wrap items-center mt-10 justify-between gap-4">
-          <h1 className="text-2xl font-semibold flex items-center gap-2">
-            <Receipt className="text-green-600" /> Invoices
-          </h1>
-
-          <div className="flex items-center gap-3">
-            <Link href="/invoices/new">
-              <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm shadow">
-                <Plus size={16} />
-                New Invoice
-              </button>
-            </Link>
-
-            <Listbox value={filter} onChange={setFilter}>
-              <div className="relative">
-                <Listbox.Button className="flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-xl px-4 py-2 shadow-sm hover:shadow-md transition text-sm font-medium text-gray-700 min-w-[170px]">
-                  <div className="flex items-center gap-2">
-                    <Calendar size={16} className="text-gray-400" />
-                    <span>{getFilterLabel(filter, last3Months)}</span>
-                  </div>
-
-                  <ChevronDown size={16} className="text-gray-400" />
-                </Listbox.Button>
-
-                <Listbox.Options className="absolute z-50 mt-2 w-56 bg-white rounded-xl shadow-lg overflow-hidden text-sm focus:outline-none">
-                  {/* FIXED OPTIONS */}
-                  <Option value="today" label="Today" />
-                  <Option value="last7" label="Last 7 Days" />
-                  <Option value="thismonth" label="This Month" />
-
-                  <Divider />
-
-                  {/* MONTHS */}
-                  {last3Months.map((m) => (
-                    <Option key={m.value} value={m.value} label={m.label} />
-                  ))}
-
-                  <Divider />
-
-                  <Option value="lastyear" label="Last Year" />
-                  <Option value="all" label="All Time" />
-                </Listbox.Options>
-              </div>
-            </Listbox>
-          </div>
-        </div>
-
-        {/* SEARCH */}
-        <input
-          type="text"
-          placeholder="Search by invoice # or customer..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full mt-5 md:w-1/3 px-4 py-2 border rounded-md"
-        />
-        <div className="mt-5 border-b border-gray-200">
-          <nav className="flex gap-8 overflow-x-auto">
-            {statusTabs.map((tab) => (
-              <button
-                key={tab.label}
-                onClick={() => setStatusFilter(tab.label)}
-                className={`pb-3 text-sm font-medium whitespace-nowrap transition
-
-      ${
-        statusFilter === tab.label
-          ? "text-blue-600 border-b-2 border-blue-600"
-          : "text-gray-500 hover:text-gray-700"
-      }
-    `}
-              >
-                {tab.label} ({tab.count})
-              </button>
-            ))}
-          </nav>
-        </div>
-        {/* TABLE */}
-        <div className="rounded-xl mt-5 border bg-white shadow-sm overflow-hidden">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-gray-50 text-sm text-gray-600 text-left">
-                <th className="px-6 py-3">Invoice #</th>
-                <th className="px-6 py-3">Customer</th>
-                <th className="px-6 py-3">Company</th>
-                <th className="px-6 py-3">Date</th>
-                <th className="px-6 py-3">Invoice Total</th>
-                <th className="px-6 py-3">Payments</th>
-                <th className="px-6 py-3">Balance</th>
-                <th className="px-6 py-3">Status</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {searchedInvoices.length > 0 ? (
-                searchedInvoices.map((i) => {
-                  const status = getInvoiceStatus(i);
-
-                  return (
-                    <tr
-                      key={i.id}
-                      onClick={() => router.push(`/invoices/${i.id}`)}
-                      className="border-t text-sm font-medium  hover:bg-blue-50 cursor-pointer transition"
-                    >
-                      <td className="px-6 py-3">
-                        {i.invoiceNumber ?? `IN-${i.id}`}
-                      </td>
-
-                      <td className="px-6 py-3">
-                        {i.client?.name || "No Client"}
-                      </td>
-                      <td className="px-6 py-3 text-gray-600">
-                        {i.client?.company || "—"}
-                      </td>
-
-                      <td className="px-6 py-3">
-                        {new Date(i.createdAt).toLocaleDateString()}
-                      </td>
-
-                      <td className="px-6 py-3">
-                        {formatCurrency(i.invoiceTotal)}
-                      </td>
-
-                      <td className="px-6 py-3">
-                        {formatCurrency(i.paymentsTotal)}
-                      </td>
-
-                      <td className="px-6 py-3">{formatCurrency(i.balance)}</td>
-
-                      <td className="px-6 py-3">
-                        <StatusBadge status={status} />
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan="8" className="text-center py-6 text-gray-400">
-                    No invoices found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-// --------------------------
-// SUMMARY CARD
-// --------------------------
-function SummaryCard({ title, value, color }) {
-  return (
-    <div className="bg-white border rounded-xl p-5 shadow-sm">
-      <div className="text-sm text-gray-500">{title}</div>
-      <div className={`mt-2 text-2xl font-semibold ${color}`}>{value}</div>
-    </div>
-  );
-}
-
-// --------------------------
-// STATUS BADGE
-// --------------------------
-function StatusBadge({ status }) {
-  const colors = {
-    Draft: "bg-gray-100 text-gray-600",
-    Issued: "bg-blue-100 text-blue-700",
-
-    "Partially Paid": "bg-yellow-100 text-yellow-700",
-    Paid: "bg-green-100 text-green-700",
-    Overdue: "bg-red-100 text-red-700",
-    Void: "bg-gray-300 text-gray-700",
-  };
 
   return (
-    <span
-      className={`px-3 py-1  text-xs font-semibold ${
-        colors[status] || "bg-gray-100 text-gray-600"
-      }`}
-    >
-      {status}
-    </span>
+    <DocumentListPage
+      title="Invoices"
+      icon={Receipt}
+      iconClassName="text-green-600"
+      summaryCards={[
+        {
+          key: "total",
+          title: "Total Invoices",
+          value: formatCurrency(total),
+        },
+        {
+          key: "paid",
+          title: "Paid Invoices",
+          value: formatCurrency(paid),
+        },
+        {
+          key: "pending",
+          title: "Pending Invoices",
+          value: formatCurrency(pending),
+        },
+        {
+          key: "overdue",
+          title: "Overdue Invoices",
+          value: formatCurrency(overdue),
+        },
+      ]}
+      createHref="/invoices/new"
+      createLabel="New Invoice"
+      filter={filter}
+      onFilterChange={setFilter}
+      filterLabel={getFilterLabel(filter, last3Months)}
+      filterOptions={[
+        {
+          value: "today",
+          label: "Today",
+        },
+        {
+          value: "last7",
+          label: "Last 7 Days",
+        },
+        {
+          value: "thismonth",
+          label: "This Month",
+        },
+        {
+          value: "lastyear",
+          label: "Last Year",
+          dividerBefore: true,
+        },
+        {
+          value: "all",
+          label: "All Time",
+        },
+      ]}
+      previousMonths={last3Months}
+      search={search}
+      onSearchChange={setSearch}
+      searchPlaceholder="Search by invoice # or customer..."
+      tabs={statusTabs.map((tab) => ({
+        value: tab.label,
+        label: tab.label,
+        count: tab.count,
+      }))}
+      activeTab={statusFilter}
+      onTabChange={setStatusFilter}
+      columns={[
+        {
+          key: "invoiceNumber",
+          label: "Invoice #",
+          render: (invoice) => invoice.invoiceNumber ?? `IN-${invoice.id}`,
+        },
+        {
+          key: "customer",
+          label: "Customer",
+          render: (invoice) => invoice.client?.name || "No Client",
+        },
+        {
+          key: "company",
+          label: "Company",
+          className: "px-6 py-3 text-gray-600",
+          render: (invoice) => invoice.client?.company || "—",
+        },
+        {
+          key: "date",
+          label: "Date",
+          render: (invoice) =>
+            new Date(
+              invoice.issuedAt || invoice.createdAt,
+            ).toLocaleDateString(),
+        },
+        {
+          key: "total",
+          label: "Invoice Total",
+          render: (invoice) => formatCurrency(invoice.invoiceTotal),
+        },
+        {
+          key: "payments",
+          label: "Payments",
+          render: (invoice) => formatCurrency(invoice.paymentsTotal),
+        },
+        {
+          key: "balance",
+          label: "Balance",
+          render: (invoice) => formatCurrency(invoice.balance),
+        },
+        {
+          key: "status",
+          label: "Status",
+          render: (invoice) => (
+            <DocumentStatusBadge status={getInvoiceStatus(invoice)} />
+          ),
+        },
+      ]}
+      rows={searchedInvoices}
+      onRowClick={(invoice) => {
+        router.push(`/invoices/${invoice.id}`);
+      }}
+      emptyMessage="No invoices found."
+    />
   );
 }
-
 // --------------------------
 // DATE HELPERS
 // --------------------------

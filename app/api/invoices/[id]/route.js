@@ -63,43 +63,66 @@ export async function PATCH(req, { params }) {
     const id = Number(params.id);
     const body = await req.json();
 
-    if (isNaN(id)) {
+    if (!Number.isInteger(id) || id <= 0) {
       return NextResponse.json(
         { error: "Invalid invoice id" },
         { status: 400 },
       );
     }
 
-    const toNumber = (v) => {
-      const n = Number(v);
-      return Number.isFinite(n) ? n : undefined;
+    const toNumber = (value) => {
+      const number = Number(value);
+
+      return Number.isFinite(number) ? number : undefined;
     };
 
-    const updated = await prisma.invoice.update({
-      where: { id },
+    const clientId = Number(body.clientId);
+
+    const updatedInvoice = await prisma.invoice.update({
+      where: {
+        id,
+      },
+
       data: {
+        // Guardar el nuevo cliente
+        clientId:
+          Number.isInteger(clientId) && clientId > 0 ? clientId : undefined,
+
         issuedAt: body.issuedAt ? new Date(body.issuedAt) : undefined,
-        dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
+
+        dueDate: Object.prototype.hasOwnProperty.call(body, "dueDate")
+          ? body.dueDate
+            ? new Date(body.dueDate)
+            : null
+          : undefined,
 
         taxEnabled:
           typeof body.taxEnabled === "boolean" ? body.taxEnabled : undefined,
-        taxRate: toNumber(body.taxRate),
 
-        // ðŸ”¥ EL ARREGLO
+        taxRate: toNumber(body.taxRate),
         subtotal: toNumber(body.subtotal),
         tax: toNumber(body.tax),
         total: toNumber(body.total),
         balance: toNumber(body.balance),
       },
+
+      include: {
+        client: true,
+      },
     });
 
-    return NextResponse.json(updated);
+    return NextResponse.json(updatedInvoice);
   } catch (error) {
-    console.error("âŒ PATCH /api/invoices/[id] ERROR:", error);
+    console.error("❌ PATCH /api/invoices/[id] ERROR:", error);
+
     return NextResponse.json(
-      { error: "Server error", details: error.message },
-      { status: 500 },
+      {
+        error: "Server error",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      {
+        status: 500,
+      },
     );
   }
 }
-

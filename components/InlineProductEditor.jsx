@@ -511,6 +511,7 @@ function InlineProductEditor({
                       ...data,
 
                       name: local.description,
+                      description: local.description,
 
                       qty: local.qty,
                       unitPrice: local.unitPrice,
@@ -584,6 +585,7 @@ function InlineProductEditor({
                       qty: local.qty,
 
                       name: local.description,
+                      description: local.description,
 
                       unitPrice: local.unitPrice,
 

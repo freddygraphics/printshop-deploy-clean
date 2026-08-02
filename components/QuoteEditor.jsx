@@ -1,16 +1,31 @@
 "use client";
 
-import { Trash2, Search } from "lucide-react";
-import InlineProductEditor from "@/components/InlineProductEditor";
+import DocumentProductsSection from "@/components/document/DocumentProductsSection";
+import DocumentDetailsCard from "@/components/document/DocumentDetailsCard";
+import { createManualDocumentItem } from "@/lib/document-items/createManualDocumentItem";
+import { updateDocumentItem } from "@/lib/document-items/updateDocumentItem";
+import DocumentTotalsSection from "@/components/document/DocumentTotalsSection";
+import {
+  removeDocumentItem,
+  toggleDocumentItemExpanded,
+} from "@/lib/document-items/documentItemActions";
+import DocumentHeader from "@/components/document/DocumentHeader";
+import DocumentEditorLayout from "@/components/document/DocumentEditorLayout";
 import CustomerSearchModal from "@/components/CustomerSearchModal";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useQuotePersistence } from "@/hooks/useQuotePersistence";
 import AssignTeamMemberModal from "@/components/AssignTeamMemberModal";
 import CreateJobModal from "@/components/CreateJobModal";
-
-export default function QuoteEditor({ mode = "new", quoteId: editQuoteId = null }) {
+import { searchDocumentProducts } from "@/lib/document-items/searchDocumentProducts";
+import { createDocumentItem } from "@/lib/document-items/createDocumentItem";
+export default function QuoteEditor({
+  mode = "new",
+  quoteId: editQuoteId = null,
+}) {
   // ----------------------------------------
   // CUSTOMER (antes client)
   // ----------------------------------------
+  const [taxEnabled, setTaxEnabled] = useState(true);
   const [selectedClient, setSelectedClient] = useState(null);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
 
@@ -19,9 +34,11 @@ export default function QuoteEditor({ mode = "new", quoteId: editQuoteId = null 
   // ----------------------------------------
   const [productSearch, setProductSearch] = useState("");
   const [productResults, setProductResults] = useState([]);
-  const [isSaving, setIsSaving] = useState(false);
-  const [lastSavedHash, setLastSavedHash] = useState(null);
+  const [productCatalog, setProductCatalog] = useState("products");
+  const [isSearchingProducts, setIsSearchingProducts] = useState(false);
 
+  const savingRef = useRef(false);
+  const quoteHydratedRef = useRef(false);
   // ----------------------------------------
   // ITEMS
   // ----------------------------------------
@@ -32,7 +49,7 @@ export default function QuoteEditor({ mode = "new", quoteId: editQuoteId = null 
   // QUOTE FIELDS
   // ----------------------------------------
   const [quoteDate, setQuoteDate] = useState(
-    new Date().toISOString().split("T")[0]
+    new Date().toISOString().split("T")[0],
   );
   const [expiryDate, setExpiryDate] = useState("");
 
@@ -46,15 +63,21 @@ export default function QuoteEditor({ mode = "new", quoteId: editQuoteId = null 
   const [quoteNumber, setQuoteNumber] = useState(null);
 
   const [showCreateJobModal, setShowCreateJobModal] = useState(false);
-
+  const { saveItems, scheduleAutosave, persistQuote } = useQuotePersistence({
+    quoteId,
+  });
   // ----------------------------------------
   // MANUAL ITEM FIELDS
   // ----------------------------------------
   const [manualDesc, setManualDesc] = useState("");
-  const [manualQty, setManualQty] = useState(1);
-  const [manualUnit, setManualUnit] = useState(0);
-  const [manualTotal, setManualTotal] = useState(0);
 
+  const [manualQtyInput, setManualQtyInput] = useState("1");
+  const [manualQty, setManualQty] = useState(1);
+
+  const [manualUnitInput, setManualUnitInput] = useState("0");
+  const [manualUnit, setManualUnit] = useState(0);
+
+  const manualTotal = manualQty * manualUnit;
   // -----------------------------
   // TEAM ASSIGNMENTS
   // -----------------------------
@@ -67,17 +90,6 @@ export default function QuoteEditor({ mode = "new", quoteId: editQuoteId = null 
     projectManager: null,
   });
 
-  // SUMMARY BUILDER
-  const buildOptionSummary = (item) => {
-    const fields = [];
-    if (item.qty) fields.push(`Qty: ${item.qty}`);
-    if (item.finish) fields.push(`Finish: ${item.finish}`);
-    if (item.design) fields.push(`Design: ${item.design}`);
-    if (item.sides) fields.push(`Sides: ${item.sides}`);
-    if (item.corners) fields.push(`Corners: ${item.corners}`);
-    return fields.join(" • ");
-  };
-
   // ======================================================
   // ✅ LOAD QUOTE (EDIT MODE) - SOLO UNO (sin duplicar)
   // ======================================================
@@ -86,7 +98,14 @@ export default function QuoteEditor({ mode = "new", quoteId: editQuoteId = null 
 
     const loadQuote = async () => {
       try {
+        quoteHydratedRef.current = false;
+
         const res = await fetch(`/api/quotes/${editQuoteId}`);
+
+        if (!res.ok) {
+          throw new Error("Could not load quote");
+        }
+
         const data = await res.json();
 
         setQuoteId(data.id);
@@ -106,25 +125,23 @@ export default function QuoteEditor({ mode = "new", quoteId: editQuoteId = null 
               const pRes = await fetch(`/api/products/${i.productId}`);
               productData = await pRes.json();
             }
-
             const defaults = productData?.defaultOptions || {};
+
+            const itemName = i.name || productData?.name || "Item";
 
             return {
               id: crypto.randomUUID(),
               productId: i.productId || null,
 
-              // ✅ ESTO ES LO CRÍTICO: el editor necesita el producto completo
               product: productData,
 
-              // display
-              name: productData?.name || i.description || "Item",
+              name: itemName,
+              description: itemName,
 
               qty: i.qty || 1,
               unitPrice: i.unitPrice || 0,
               total: i.total || 0,
 
-              // ✅ si el quoteItem guardó customFields/options, respétalos.
-              // si no existen, usa los del producto/template
               customFields:
                 i.customFields ||
                 productData?.customFields ||
@@ -135,20 +152,24 @@ export default function QuoteEditor({ mode = "new", quoteId: editQuoteId = null 
                 i.options ||
                 productData?.defaultOptions ||
                 productData?.template?.options ||
-                [],
+                {},
 
-              finish: i.finish || defaults.finish || "",
-              design: i.design || defaults.design || "",
-              sides: i.sides || defaults.sides || "",
-              corners: i.corners || defaults.corners || "",
+              finish: i.options?.finish || defaults.finish || "",
 
-              _expanded: true,
+              design: i.options?.design || defaults.design || "",
+
+              sides: i.options?.sides || defaults.sides || "",
+
+              corners: i.options?.corners || defaults.corners || "",
+
+              _expanded: false,
             };
-          })
+          }),
         );
-
         setItems(enrichedItems);
+        quoteHydratedRef.current = true;
       } catch (err) {
+        quoteHydratedRef.current = false;
         console.error("❌ Error loading quote", err);
       }
     };
@@ -160,179 +181,274 @@ export default function QuoteEditor({ mode = "new", quoteId: editQuoteId = null 
   // PRODUCT AUTOCOMPLETE
   // ----------------------------------------
   useEffect(() => {
+    const controller = new AbortController();
+
     const delay = setTimeout(async () => {
-      if (productSearch.length < 2) return setProductResults([]);
+      const query = productSearch.trim();
 
-      const res = await fetch(`/api/products/search?q=${productSearch}`);
-      const data = await res.json();
+      if (query.length < 2) {
+        setProductResults([]);
+        setIsSearchingProducts(false);
+        return;
+      }
 
-      setProductResults(Array.isArray(data) ? data : []);
+      try {
+        setIsSearchingProducts(true);
+
+        const results = await searchDocumentProducts({
+          query,
+          catalog: productCatalog,
+          signal: controller.signal,
+        });
+
+        setProductResults(results);
+      } catch (error) {
+        if (error?.name !== "AbortError") {
+          console.error("Error searching quote products:", error);
+
+          setProductResults([]);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsSearchingProducts(false);
+        }
+      }
     }, 300);
 
-    return () => clearTimeout(delay);
-  }, [productSearch]);
+    return () => {
+      clearTimeout(delay);
+      controller.abort();
+    };
+  }, [productSearch, productCatalog]);
 
   // ----------------------------------------
   // CALCULOS
   // ----------------------------------------
   const subtotal = items.reduce((t, i) => t + (i.total || 0), 0);
-  const tax = subtotal * (taxRate / 100);
+  const tax = taxEnabled ? subtotal * (taxRate / 100) : 0;
   const total = subtotal + tax;
-
-  // ----------------------------------------
-  // SAVE QUOTE (AUTOSAVE)
-  // ----------------------------------------
-  const buildQuoteHash = () => {
-    return JSON.stringify({
-      customerId: selectedClient?.id || null,
-      quoteDate,
-      expiryDate,
-      status,
-      
-      customerNotes,
-      items,
-      subtotal,
-      tax,
-      total,
-      paymentOption,
-    });
-  };
-
-  const autoSaveQuote = async () => {
-    if (!quoteId || !selectedClient || isSaving) return;
-
-    const currentHash = buildQuoteHash();
-    if (currentHash === lastSavedHash) return;
-
-    setIsSaving(true);
-
-    try {
-      await fetch(`/api/quotes/${quoteId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customerId: selectedClient.id,
-          quoteDate,
-          expiryDate,
-          status,
-         
-          customerNotes,
-          items,
-          subtotal,
-          tax,
-          total,
-          paymentOption,
-        }),
-      });
-
-      setLastSavedHash(currentHash);
-    } catch (err) {
-      console.error("❌ Auto-save error:", err);
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   useEffect(() => {
     if (!quoteId) return;
+    if (!selectedClient) return;
+    if (!quoteHydratedRef.current) return;
 
-    const delay = setTimeout(() => {
-      autoSaveQuote();
-    }, 800);
+    const timeoutId = setTimeout(() => {
+      persistQuote({
+        clientId: selectedClient.id,
+        quoteDate,
+        expiryDate,
+        status,
+        customerNotes,
+        subtotal,
+        tax,
+        total,
+        paymentOption,
+      }).catch((error) => {
+        console.error("❌ Error saving quote details:", error);
+      });
+    }, 700);
 
-    return () => clearTimeout(delay);
-  }, [items, status, quoteDate, expiryDate, customerNotes, quoteId]);
-
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [
+    quoteId,
+    selectedClient,
+    quoteDate,
+    expiryDate,
+    status,
+    customerNotes,
+    subtotal,
+    tax,
+    total,
+    paymentOption,
+    persistQuote,
+  ]);
   // ----------------------------------------
   // SELECT PRODUCT
   // ----------------------------------------
-  const handleSelectProduct = async (p) => {
-    const res = await fetch(`/api/products/${p.id}`);
-    const full = await res.json();
-    const defaults = full.defaultOptions || {};
+  const handleSelectProduct = async (productResult) => {
+    try {
+      const createdItem = await createDocumentItem(productResult);
 
-    const newLine = {
-      id: crypto.randomUUID(),
-      productId: full.id,
+      const description =
+        String(
+          createdItem.description ||
+            createdItem.name ||
+            createdItem.product?.name ||
+            productResult?.name ||
+            "Item",
+        ).trim() || "Item";
 
-      // ✅ PASAR PRODUCT COMPLETO PARA CONFIGURAR
-      product: full,
+      const newItem = {
+        ...createdItem,
+        name: description,
+        description,
+        _expanded: true,
+      };
 
-      name: full.name,
-      qty: 1,
-      unitPrice: 0,
-      total: 0,
+      const nextItems = [
+        ...items.map((item) => ({
+          ...item,
+          _expanded: false,
+        })),
+        newItem,
+      ];
 
-      customFields: full.customFields || full.template?.fields || null,
-      options: full.defaultOptions || full.template?.options || [],
+      setItems(nextItems);
 
-      finish: defaults.finish || "",
-      design: defaults.design || "",
-      sides: defaults.sides || "",
-      corners: defaults.corners || "",
+      if (quoteId) {
+        await saveItems(nextItems);
+      }
 
-      _expanded: true,
-    };
+      setProductSearch("");
+      setProductResults([]);
+      setShowAddCard(false);
+    } catch (error) {
+      console.error("❌ Error selecting quote product:", error);
 
-    setItems((prev) => [...prev, newLine]);
-    setProductSearch("");
-    setProductResults([]);
-    setShowAddCard(false);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "No se pudo guardar el producto.",
+      );
+    }
   };
 
   // ----------------------------------------
   // ADD MANUAL ITEM
   // ----------------------------------------
-  const addManualItem = () => {
-    if (!manualDesc.trim()) return alert("Enter description");
+  const addManualItem = async () => {
+    try {
+      const newItem = createManualDocumentItem({
+        description: manualDesc,
+        quantity: manualQty,
+        unitPrice: manualUnit,
+      });
 
-    const newLine = {
-      id: crypto.randomUUID(),
-      productId: null,
-      product: null, // manual no tiene product
+      const description =
+        String(newItem.description || newItem.name || manualDesc).trim() ||
+        "Item";
 
-      name: manualDesc,
-      qty: Number(manualQty),
-      unitPrice: Number(manualUnit),
-      total: Number(manualTotal) || Number(manualQty) * Number(manualUnit),
+      const normalizedItem = {
+        ...newItem,
+        name: description,
+        description,
+      };
 
-      customFields: null,
-      options: [],
+      const nextItems = [...items, normalizedItem];
 
-      _expanded: false,
-      finish: "",
-      design: "",
-      sides: "",
-      corners: "",
-    };
+      setItems(nextItems);
+      setShowAddCard(false);
 
-    setItems((prev) => [...prev, newLine]);
+      if (quoteId) {
+        await saveItems(nextItems);
+      }
 
-    setManualDesc("");
-    setManualQty(1);
-    setManualUnit(0);
-    setManualTotal(0);
-    setShowAddCard(false);
+      setManualDesc("");
+
+      setManualQty(1);
+      setManualQtyInput("1");
+
+      setManualUnit(0);
+      setManualUnitInput("0");
+    } catch (error) {
+      console.error("❌ Could not add quote item:", error);
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Could not add the manual item.",
+      );
+    }
   };
 
   // ----------------------------------------
   // UPDATE ITEM
   // ----------------------------------------
-  const updateItem = (index, fields) => {
-    const updated = [...items];
-    const merged = { ...updated[index], ...fields };
+  const handleItemChange = useCallback(
+    (index, fields) => {
+      setItems((previousItems) => {
+        const normalizedFields = {
+          ...fields,
+        };
 
-    merged.total =
-      fields.total !== undefined
-        ? fields.total
-        : (merged.qty || 1) * (merged.unitPrice || 0);
+        if (Object.prototype.hasOwnProperty.call(fields, "name")) {
+          normalizedFields.description = fields.name;
+        }
 
-    updated[index] = merged;
-    setItems(updated);
+        if (Object.prototype.hasOwnProperty.call(fields, "description")) {
+          normalizedFields.name = fields.description;
+        }
+
+        const nextItems = updateDocumentItem(
+          previousItems,
+          index,
+          normalizedFields,
+        );
+
+        const updatedItem = nextItems[index];
+
+        const isManualItem =
+          !updatedItem?.productId &&
+          !updatedItem?.product &&
+          !updatedItem?.options?.productType;
+
+        if (fields.__commit === true && !savingRef.current) {
+          savingRef.current = true;
+
+          Promise.resolve()
+            .then(() => saveItems(nextItems))
+            .catch((error) => {
+              console.error("❌ Error saving quote item:", error);
+
+              alert(error.message);
+            })
+            .finally(() => {
+              savingRef.current = false;
+            });
+        } else if (!isManualItem) {
+          scheduleAutosave(nextItems);
+        }
+
+        return nextItems;
+      });
+    },
+    [saveItems, scheduleAutosave],
+  );
+
+  const getItemChangeHandler = useCallback(
+    (index) => {
+      return (fields) => {
+        handleItemChange(index, fields);
+      };
+    },
+    [handleItemChange],
+  );
+  const removeItem = async (index) => {
+    const previousItems = items;
+
+    const nextItems = removeDocumentItem(previousItems, index);
+
+    setItems(nextItems);
+
+    if (!quoteId) return;
+
+    try {
+      await saveItems(nextItems);
+    } catch (error) {
+      console.error("❌ Error removing quote item:", error);
+
+      setItems(previousItems);
+
+      alert("Could not remove the product.");
+    }
   };
-
-  const removeItem = (index) => {
-    setItems(items.filter((_, i) => i !== index));
+  const handleToggleItemExpanded = (index) => {
+    setItems((previousItems) =>
+      toggleDocumentItemExpanded(previousItems, index),
+    );
   };
 
   // ======================================================
@@ -350,7 +466,8 @@ export default function QuoteEditor({ mode = "new", quoteId: editQuoteId = null 
       };
 
       if (open) document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
     }, [open]);
 
     return (
@@ -365,33 +482,31 @@ export default function QuoteEditor({ mode = "new", quoteId: editQuoteId = null 
         {open && (
           <div className="absolute right-0 mt-2 w-48 bg-white border rounded-xl shadow-lg z-50">
             <button
-  onClick={async () => {
-    try {
-      const res = await fetch(`/api/quotes/${quoteId}/convert`, {
-        method: "POST",
-      });
+              onClick={async () => {
+                try {
+                  const res = await fetch(`/api/quotes/${quoteId}/convert`, {
+                    method: "POST",
+                  });
 
-      if (res.status === 409) {
-        alert("This quote already has an invoice");
-        return;
-      }
+                  if (res.status === 409) {
+                    alert("This quote already has an invoice");
+                    return;
+                  }
 
-      if (!res.ok) throw new Error();
+                  if (!res.ok) throw new Error();
 
-      const invoice = await res.json();
+                  const invoice = await res.json();
 
-      // 🔥 ESTE ES EL FIX
-      window.location.href = `/invoices/${invoice.id}`;
-    } catch (err) {
-      console.error(err);
-      alert("Error converting quote");
-    }
-  }}
->
-  Convert to Invoice
-</button>
-
-
+                  // 🔥 ESTE ES EL FIX
+                  window.location.href = `/invoices/${invoice.id}`;
+                } catch (err) {
+                  console.error(err);
+                  alert("Error converting quote");
+                }
+              }}
+            >
+              Convert to Invoice
+            </button>
 
             <button
               className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
@@ -405,37 +520,36 @@ export default function QuoteEditor({ mode = "new", quoteId: editQuoteId = null 
 
             <div className="border-t my-1" />
 
-           <button
-  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-  onClick={async () => {
-    setOpen(false);
+            <button
+              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+              onClick={async () => {
+                setOpen(false);
 
-    if (!quoteId) return;
+                if (!quoteId) return;
 
-    const confirmDelete = confirm(
-      "Are you sure you want to void this quote? This action cannot be undone."
-    );
+                const confirmDelete = confirm(
+                  "Are you sure you want to void this quote? This action cannot be undone.",
+                );
 
-    if (!confirmDelete) return;
+                if (!confirmDelete) return;
 
-    try {
-      const res = await fetch(`/api/quotes/${quoteId}`, {
-        method: "DELETE",
-      });
+                try {
+                  const res = await fetch(`/api/quotes/${quoteId}`, {
+                    method: "DELETE",
+                  });
 
-      if (!res.ok) throw new Error("Failed to delete quote");
+                  if (!res.ok) throw new Error("Failed to delete quote");
 
-      // 👉 regresar a la lista
-      window.location.href = "/quotes";
-    } catch (err) {
-      console.error("❌ Void quote error:", err);
-      alert("Error voiding quote");
-    }
-  }}
->
-  Void
-</button>
-
+                  // 👉 regresar a la lista
+                  window.location.href = "/quotes";
+                } catch (err) {
+                  console.error("❌ Void quote error:", err);
+                  alert("Error voiding quote");
+                }
+              }}
+            >
+              Void
+            </button>
           </div>
         )}
       </div>
@@ -446,452 +560,111 @@ export default function QuoteEditor({ mode = "new", quoteId: editQuoteId = null 
   // RENDER UI (TU UI COMPLETA)
   // ======================================================
   return (
-    <main className="min-h-screen bg-[#F5F7F9] py-12 px-4 space-y-10">
-      <div className="mx-auto max-w-[1240px] mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-700">
-          QT #{quoteNumber ?? ""}
-        </h1>
-
-        <QuoteActionsMenu />
-      </div>
-
-      {/* CARD 1 — QUOTE DETAILS */}
-      <div className="mx-auto max-w-[1240px] bg-white border rounded-xl shadow-md">
-        <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50 rounded-t-xl">
-          <div className="flex items-center gap-3">
-           
-            <h2 className="text-xl font-bold">Quote Details</h2>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="text-sm">
-              {isSaving ? (
-                <span className="text-yellow-600 font-medium">Saving…</span>
-              ) : (
-                <span className="text-green-600 font-medium">Saved</span>
-              )}
-            </div>
-
+    <DocumentEditorLayout>
+      <DocumentHeader
+        title={`QT #${quoteNumber ?? ""}`}
+        actions={
+          <>
             <button
-              onClick={() => setShowCustomerModal(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg shadow"
+              type="button"
+              disabled={!quoteId}
+              onClick={() => {
+                window.open(`/api/quotes/${quoteId}/pdf`, "_blank");
+              }}
+              className="rounded-lg border bg-white px-4 py-2 font-semibold disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {selectedClient ? "Change Customer" : "+ Add Customer"}
-            </button>
-          </div>
-        </div>
-
-        <div className="px-6 py-6">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {/* CUSTOMER */}
-            <div className="space-y-4">
-              <h4 className="text-base font-semibold text-black-700">Customer</h4>
-
-              {selectedClient ? (
-                <>
-                  <div className="flex items-center gap-3">
-                    
-                    <div>
-                      <p className="text-base font-semibold text-black-700">
-                        {selectedClient.name}
-                      </p>
-                      <p className="text-sm text-#9DA6AF-500">Customer</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                   
-                    <div>
-                      <p className="text-base font-semibold text-black-700">
-                        {selectedClient.company || "Primary Contact"}
-                      </p>
-                      <p className="text-sm text-#9DA6AF-500">Primary Contact</p>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <p className="text-sm text-black-400">No customer selected</p>
-              )}
-            </div>
-
-            {/* STATUS */}
-            <div className="space-y-4">
-              <h4 className="text-dase font-semibold text-black-700">Status</h4>
-
-              <div>
-                <p className="text-xs text-black-500">Status</p>
-                <select
-                  className="mt-1 border rounded-lg px-4 py-2.5 w-full"
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                >
-                  <option value="Pending">Pending</option>
-                  <option value="Approved">Approved</option>
-                  <option value="Rejected">Rejected</option>
-                  <option value="Converted to Invoice">Converted to Invoice</option>
-                </select>
-              </div>
-
-              <div>
-                <p className="text-xs text-black-500">Ordered / Invoiced</p>
-                <p className="text-sm font-semibold text-black-800">No / No</p>
-              </div>
-            </div>
-
-            {/* TEAM ASSIGNMENTS */}
-            <div className="space-y-4">
-              <h4 className="text-dase font-bold text-black-700">
-                Team Assignments
-              </h4>
-
-              {[
-                { label: "Sales Rep", key: "salesRep" },
-                { label: "Production Manager", key: "productionManager" },
-                { label: "Project Manager", key: "projectManager" },
-              ].map((role) => (
-                <div key={role.key} className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-black-700">{role.label}</p>
-                    {team[role.key] && (
-                      <p className="text-xs text-black-500">
-                        {team[role.key].name}
-                      </p>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setActiveRole(role.key);
-                      setShowAssignModal(true);
-                    }}
-                    className="text-blue-600 hover:text-blue-800"
-                  >
-                    ✏️
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            {/* DATES */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-semibold text-gray-900">Dates</h4>
-
-              <div>
-                <p className="text-xs text-gray-500">Quote Date</p>
-                <input
-                  type="date"
-                  className="mt-1 border rounded-lg px-4 py-2.5 w-full"
-                  value={quoteDate}
-                  onChange={(e) => setQuoteDate(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <p className="text-xs text-gray-500">Due Date</p>
-                <input
-                  type="date"
-                  className="mt-1 border rounded-lg px-4 py-2.5 w-full"
-                  value={expiryDate}
-                  onChange={(e) => setExpiryDate(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* PRODUCTS */}
-      <div className="mx-auto max-w-[1240px] bg-white border rounded-xl shadow-md">
-        <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50 rounded-t-xl">
-          <div className="flex items-center gap-3">
-           
-            <h2 className="text-xl font-bold">Products</h2>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowCreateJobModal(true)}
-              className="bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 px-5 py-2 rounded-lg shadow-sm text-sm font-medium"
-            >
-              + Create Job
+              View PDF
             </button>
 
-            <button
-              onClick={() => setShowAddCard(!showAddCard)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg shadow text-sm font-medium"
-            >
-              + Add New Item
-            </button>
-          </div>
-        </div>
-
-        <div className="px-6 py-6 space-y-10">
-          {/* ADD ITEM CARD */}
-          {showAddCard && (
-            <div className="bg-gray-50 border rounded-xl p-5 shadow-sm relative">
-              <div className="flex justify-end mb-2">
-                <button
-                  onClick={() => setShowAddCard(false)}
-                  className="text-gray-500 hover:text-gray-700 text-xl font-bold"
-                >
-                  ×
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                {/* PRODUCT SEARCH */}
-                <div className="relative">
-                  <label className="text-sm font-semibold">Search</label>
-                  <div className="relative mt-1">
-                    <Search
-                      className="absolute left-3 top-3 text-gray-400"
-                      size={18}
-                    />
-                    <input
-                      className="border rounded-lg pl-10 px-3 py-2.5 w-full"
-                      placeholder="Search..."
-                      value={productSearch}
-                      onChange={(e) => setProductSearch(e.target.value)}
-                    />
-                  </div>
-
-                  {productResults.length > 0 && (
-                    <div className="absolute z-50 w-full bg-white border rounded-xl shadow max-h-56 overflow-y-auto mt-2">
-                      {productResults.map((p) => (
-                        <div
-                          key={p.id}
-                          className="p-3 hover:bg-gray-100 cursor-pointer"
-                          onClick={() => handleSelectProduct(p)}
-                        >
-                          <p className="font-medium">{p.name}</p>
-                          <p className="text-sm text-gray-500">
-                            ${p.price || p.basePrice}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* MANUAL ITEM */}
-                <div>
-                  <label className="text-sm font-semibold">Description</label>
-                  <input
-                    className="mt-1 border rounded-lg px-3 py-2.5 w-full"
-                    value={manualDesc}
-                    onChange={(e) => setManualDesc(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-semibold">Qty</label>
-                  <input
-                    type="number"
-                    className="mt-1 border rounded-lg px-3 py-2.5 w-full"
-                    value={manualQty}
-                    onChange={(e) => {
-                      const v = Number(e.target.value);
-                      setManualQty(v);
-                      setManualTotal(v * manualUnit);
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-semibold">Unit Price</label>
-                  <input
-                    type="number"
-                    className="mt-1 border rounded-lg px-3 py-2.5 w-full"
-                    value={manualUnit}
-                    onChange={(e) => {
-                      const v = Number(e.target.value);
-                      setManualUnit(v);
-                      setManualTotal(v * manualQty);
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-semibold">Total</label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <input
-                      type="number"
-                      className="border rounded-lg px-3 py-2.5 w-full"
-                      value={manualTotal}
-                      onChange={(e) => setManualTotal(Number(e.target.value))}
-                    />
-                    <button
-                      onClick={addManualItem}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow"
-                    >
-                      ✓ Add
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ITEMS LIST */}
-          <div>
-            {items.length === 0 ? (
-              <p className="text-gray-500">No products added yet.</p>
-            ) : (
-              items.map((item, index) => {
-                const isManual = !item.productId;
-const isConfigurable = !isManual;
-const displayQty = isManual ? item.qty : 1;
-
-
-                return (
-                  <div
-                    key={item.id}
-                    className="border rounded-xl p-4 mb-6 shadow-sm "
-                  >
-                    <div className=" relative">
-                     
-
-                      <button
-                        onClick={() => removeItem(index)}
-                        className="absolute top-2 right-4 text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-
-                    {!item._expanded ? (
- <div
-  className="cursor-pointer"
-  onClick={() => updateItem(index, { _expanded: true })}
->
-
-                        <div className="grid grid-cols-4 gap-4 p-4 bg-gray-50 border-gray-300 rounded-lg">
-
-                          <div>
-                            <p className="font-semibold text-gray-800">
-                              {item.name}
-                            </p>
-                            
-
-                            {buildOptionSummary(item) && (
-                              <p className="text-sm text-gray-600 mt-1">
-                                {buildOptionSummary(item)}
-                              </p>
-                            )}
-                          </div>
-
-                          <div>
-                            <p className="text-sm text-gray-500">Qty</p>
-                            <p className="font-bold">{displayQty}</p>
-                          </div>
-
-                          <div>
-                            <p className="text-sm text-gray-500">Unit Price</p>
-                            <p className="font-semibold">
-                              ${Number(item.unitPrice).toLocaleString()}
-                            </p>
-                          </div>
-
-                          <div>
-                            <p className="text-sm text-gray-500">Total</p>
-                            <p className="font-bold text-emerald-600">
-                              ${Number(item.total).toLocaleString()}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                 ) : isConfigurable ? (
-  <InlineProductEditor
-    product={item.product}
-    data={item}
-    onChange={(fields) => updateItem(index, fields)}
-  />
-) : (
-  // 🧾 MANUAL ITEM EDITOR
-  <div className="grid grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg border">
-    <div>
-      <label className="text-xs text-gray-500">Description</label>
-      <input
-        className="border rounded px-2 py-1 w-full"
-        value={item.name}
-        onChange={(e) =>
-          updateItem(index, { name: e.target.value })
+            <QuoteActionsMenu />
+          </>
         }
       />
-    </div>
 
-    <div>
-      <label className="text-xs text-gray-500">Qty</label>
-      <input
-        type="number"
-        className="border rounded px-2 py-1 w-full"
-        value={item.qty}
-        onChange={(e) =>
-          updateItem(index, { qty: Number(e.target.value) })
+      <DocumentDetailsCard
+        title="Quote Details"
+        selectedClient={selectedClient}
+        statusContent={
+          <select
+            className="inline-block w-auto appearance-none border-0 bg-blue-100 px-3 py-1 text-lg font-semibold text-blue-700 outline-none"
+            value={status}
+            onChange={(event) => setStatus(event.target.value)}
+          >
+            <option value="Pending">Pending</option>
+            <option value="Approved">Approved</option>
+            <option value="Rejected">Rejected</option>
+            <option value="Converted to Invoice">Converted to Invoice</option>
+          </select>
         }
-      />
-    </div>
-
-    <div>
-      <label className="text-xs text-gray-500">Unit</label>
-      <input
-        type="number"
-        className="border rounded px-2 py-1 w-full"
-        value={item.unitPrice}
-        onChange={(e) =>
-          updateItem(index, { unitPrice: Number(e.target.value) })
+        team={team}
+        primaryDateLabel="Quote Date"
+        primaryDate={quoteDate}
+        onPrimaryDateChange={setQuoteDate}
+        secondaryDateLabel="Due Date"
+        secondaryDate={expiryDate}
+        onSecondaryDateChange={setExpiryDate}
+        headerActions={
+          <button
+            type="button"
+            onClick={() => setShowCustomerModal(true)}
+            className="rounded-lg bg-blue-600 px-5 py-2 text-white shadow hover:bg-blue-700"
+          >
+            {selectedClient ? "Change Customer" : "+ Add Customer"}
+          </button>
         }
+        onOpenAssignModal={(roleKey) => {
+          setActiveRole(roleKey);
+          setShowAssignModal(true);
+        }}
       />
-    </div>
 
-    <div>
-      <label className="text-xs text-gray-500">Total</label>
-      <input
-        type="number"
-        className="border rounded px-2 py-1 w-full"
-        value={item.total}
-        onChange={(e) =>
-          updateItem(index, { total: Number(e.target.value) })
-        }
+      <DocumentProductsSection
+        showCreateJobButton={false}
+        showAddCard={showAddCard}
+        setShowAddCard={setShowAddCard}
+        productCatalog={productCatalog}
+        setProductCatalog={setProductCatalog}
+        productSearch={productSearch}
+        setProductSearch={setProductSearch}
+        productResults={productResults}
+        setProductResults={setProductResults}
+        isSearchingProducts={isSearchingProducts}
+        handleSelectProduct={handleSelectProduct}
+        manualDesc={manualDesc}
+        setManualDesc={setManualDesc}
+        manualQtyInput={manualQtyInput}
+        setManualQtyInput={setManualQtyInput}
+        setManualQty={setManualQty}
+        manualUnitInput={manualUnitInput}
+        setManualUnitInput={setManualUnitInput}
+        setManualUnit={setManualUnit}
+        manualTotal={manualTotal}
+        addManualItem={addManualItem}
+        items={items}
+        removeItem={removeItem}
+        handleToggleItemExpanded={handleToggleItemExpanded}
+        getItemChangeHandler={getItemChangeHandler}
       />
-    </div>
 
-    <div className="col-span-4 text-right">
-      <button
-        className="text-blue-600 text-sm"
-        onClick={() => updateItem(index, { _expanded: false })}
-      >
-        Done
-      </button>
-    </div>
-  </div>
-)}
-
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          {/* CUSTOMER NOTES */}
-          <div>
-            <label className="text-sm font-semibold">Customer Notes</label>
-            <textarea
-              className="mt-1 border rounded-lg px-4 py-2.5 w-full min-h-[160px]"
-              placeholder="Notes visible on the PDF…"
-              value={customerNotes}
-              onChange={(e) => setCustomerNotes(e.target.value)}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* TOTALS */}
-      <div className="mx-auto max-w-[1280px] text-right space-y-2">
-        <p>Subtotal: ${subtotal.toFixed(2)}</p>
-        <p>Tax: ${tax.toFixed(2)}</p>
-        <p className="text-2xl font-bold">Total: ${total.toFixed(2)}</p>
-      </div>
+      <DocumentTotalsSection
+        showTaxControl
+        documentId={quoteId}
+        customerNotes={customerNotes}
+        setCustomerNotes={setCustomerNotes}
+        payments={[]}
+        hasPayments={false}
+        subtotal={subtotal}
+        discountLines={[]}
+        appliedDiscount={null}
+        removeDiscount={() => {}}
+        taxEnabled={taxEnabled}
+        handleTaxChange={(event) => setTaxEnabled(event.target.checked)}
+        tax={tax}
+        total={total}
+        totalProcessingFee={0}
+        totalCharged={total}
+        balance={total}
+      />
 
       {/* CUSTOMER MODAL */}
       {showCustomerModal && (
@@ -906,33 +679,101 @@ const displayQty = isManual ? item.qty : 1;
             // ✅ NEW MODE: si ya existe quoteId, no crear otro
             if (quoteId) return;
 
-    const res = await fetch("/api/quotes", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    clientId: customer.id,
-    quoteDate,
-    expiryDate,
-    status,
-    items,          // 🔥 AHORA SÍ
-    subtotal,
-    tax,
-    total,
-    paymentOption,
-  }),
-});
+            const res = await fetch("/api/quotes", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                clientId: customer.id,
+                quoteDate,
+                expiryDate: expiryDate || null,
+                status,
 
+                items: items.map((item) => ({
+                  ...item,
+                  name: item.description || item.name || "Item",
+                  description: item.description || item.name || "Item",
+                })),
 
-            const data = await res.json();
+                subtotal,
+                tax,
+                total,
+                taxEnabled,
+                taxRate,
+                paymentOption,
+                customerNotes,
+              }),
+            });
 
-            if (!res.ok || data?.error) {
-              console.error("❌ Create quote error:", data);
-              alert("Error creating quote");
+            const responseText = await res.text();
+
+            let data = null;
+
+            if (responseText) {
+              try {
+                data = JSON.parse(responseText);
+              } catch (error) {
+                console.error(
+                  "La API devolvió una respuesta que no es JSON:",
+                  responseText,
+                );
+              }
+            }
+
+            if (!res.ok) {
+              console.error("❌ Create quote error:", {
+                status: res.status,
+                data,
+                responseText,
+              });
+
+              alert(data?.error || `Error creating quote (${res.status})`);
+
+              return;
+            }
+
+            if (!data?.id) {
+              console.error("❌ Quote created without valid response:", data);
+
+              alert("The quote API did not return the created quote.");
+
               return;
             }
 
             setQuoteId(data.id);
             setQuoteNumber(data.quoteNumber);
+
+            if (Array.isArray(data.items)) {
+              const hydratedItems = data.items.map((item) => ({
+                id: crypto.randomUUID(),
+
+                productId: item.productId || null,
+                product: null,
+
+                name: item.name || "Item",
+                description: item.name || "Item",
+
+                qty: item.qty,
+                unitPrice: item.unitPrice,
+                total: item.total,
+
+                options: item.options || {},
+
+                finish: item.options?.finish || "",
+                design: item.options?.design || "",
+                sides: item.options?.sides || "",
+                corners: item.options?.corners || "",
+
+                _expanded: false,
+              }));
+
+              setItems(hydratedItems);
+            }
+
+            quoteHydratedRef.current = true;
+
+            window.history.replaceState(null, "", `/quotes/${data.id}`);
           }}
           onClose={() => setShowCustomerModal(false)}
         />
@@ -947,7 +788,9 @@ const displayQty = isManual ? item.qty : 1;
             { id: 3, name: "Maria", role: "Manager" },
           ]}
           selectedUser={team[activeRole]}
-          onSelect={(user) => setTeam((prev) => ({ ...prev, [activeRole]: user }))}
+          onSelect={(user) =>
+            setTeam((prev) => ({ ...prev, [activeRole]: user }))
+          }
           onClose={() => setShowAssignModal(false)}
         />
       )}
@@ -988,6 +831,6 @@ const displayQty = isManual ? item.qty : 1;
           onClose={() => setShowCreateJobModal(false)}
         />
       )}
-    </main>
+    </DocumentEditorLayout>
   );
 }

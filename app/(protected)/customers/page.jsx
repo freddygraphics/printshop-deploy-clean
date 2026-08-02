@@ -9,6 +9,8 @@ export default function CustomersPage() {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const clientsPerPage = 15;
   const [editOpen, setEditOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   // 🔑 ESTADO DEL MODAL (ESTO FALTABA)
@@ -31,6 +33,9 @@ export default function CustomersPage() {
   useEffect(() => {
     loadClients();
   }, []);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
 
   if (loading) {
     return <div className="p-6">Loading customers…</div>;
@@ -63,6 +68,13 @@ export default function CustomersPage() {
       c.phone?.toLowerCase().includes(q)
     );
   });
+
+  const totalPages = Math.ceil(filteredClients.length / clientsPerPage);
+
+  const startIndex = (currentPage - 1) * clientsPerPage;
+  const endIndex = startIndex + clientsPerPage;
+
+  const paginatedClients = filteredClients.slice(startIndex, endIndex);
   return (
     <div className="space-y-6">
       <div className="max-w-7xl mx-auto p-6">
@@ -104,7 +116,7 @@ export default function CustomersPage() {
               </thead>
 
               <tbody>
-                {filteredClients.map((c) => (
+                {paginatedClients.map((c) => (
                   <tr
                     onClick={() => router.push(`/customers/${c.id}`)}
                     key={c.id}
@@ -161,6 +173,43 @@ export default function CustomersPage() {
                 ))}
               </tbody>
             </table>
+            {totalPages > 1 && (
+              <div className="flex flex-col gap-3 border-t bg-white px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-gray-500">
+                  Showing {startIndex + 1} to{" "}
+                  {Math.min(endIndex, filteredClients.length)} of{" "}
+                  {filteredClients.length} customers
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={currentPage === 1}
+                    onClick={() =>
+                      setCurrentPage((page) => Math.max(page - 1, 1))
+                    }
+                    className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Previous
+                  </button>
+
+                  <span className="px-3 text-sm font-medium text-gray-700">
+                    Page {currentPage} of {totalPages}
+                  </span>
+
+                  <button
+                    type="button"
+                    disabled={currentPage === totalPages}
+                    onClick={() =>
+                      setCurrentPage((page) => Math.min(page + 1, totalPages))
+                    }
+                    className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

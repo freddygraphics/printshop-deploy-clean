@@ -3,13 +3,9 @@ export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  FileText,
-  Receipt,
-  ListOrdered,
-  Loader2,
-  Calendar,
-} from "lucide-react";
+import { FileText, Receipt, ListOrdered, Loader2 } from "lucide-react";
+import { getInvoiceStatus } from "@/lib/invoiceStatus";
+import DocumentDateFilter from "@/components/documents/DocumentDateFilter";
 
 export default function DashboardPage() {
   const formatCurrency = (value) => {
@@ -25,7 +21,7 @@ export default function DashboardPage() {
   const [invoices, setInvoices] = useState([]);
   const [jobs, setJobs] = useState([]);
 
-  const [filter, setFilter] = useState("month"); // default filter
+  const [filter, setFilter] = useState("thismonth"); // default filter
 
   useEffect(() => {
     async function loadData() {
@@ -47,7 +43,33 @@ export default function DashboardPage() {
 
     loadData();
   }, []);
+  const previousMonths = Array.from({ length: 3 }).map((_, index) => {
+    const date = new Date();
 
+    date.setMonth(date.getMonth() - (index + 1));
+
+    return {
+      value: `${date.getFullYear()}-${date.getMonth()}`,
+      label: date.toLocaleString("en-US", {
+        month: "long",
+        year: "numeric",
+      }),
+    };
+  });
+
+  function getFilterLabel(filterValue) {
+    if (filterValue === "today") return "Today";
+    if (filterValue === "last7") return "Last 7 Days";
+    if (filterValue === "thismonth") return "This Month";
+    if (filterValue === "lastyear") return "Last Year";
+    if (filterValue === "all") return "All Time";
+
+    const selectedMonth = previousMonths.find(
+      (month) => month.value === filterValue,
+    );
+
+    return selectedMonth?.label || "Select";
+  }
   if (loading) {
     return (
       <div className="flex justify-center pt-20">
@@ -59,57 +81,73 @@ export default function DashboardPage() {
   // -----------------------------------
   // FILTRO DE FECHAS
   // -----------------------------------
-  function applyFilter(list) {
+  function applyFilter(list, dateField = "createdAt") {
     if (!Array.isArray(list)) return [];
 
     const now = new Date();
 
     return list.filter((item) => {
-      if (!item?.createdAt) return false;
+      const rawDate = item?.[dateField] || item?.createdAt;
 
-      const date = new Date(item.createdAt);
+      if (!rawDate) return false;
 
-      switch (filter) {
-        case "today":
-          return isToday(date);
+      const itemDate = new Date(rawDate);
 
-        case "week":
-          return isThisWeek(date);
-
-        case "month":
-          return (
-            date.getMonth() === now.getMonth() &&
-            date.getFullYear() === now.getFullYear()
-          );
-
-        case "year":
-          return date.getFullYear() === now.getFullYear();
-
-        case "all":
-          return true;
-
-        default:
-          return true;
+      if (Number.isNaN(itemDate.getTime())) {
+        return false;
       }
+
+      if (filter === "today") {
+        return isToday(itemDate);
+      }
+
+      if (filter === "last7") {
+        const startDate = new Date(now);
+
+        startDate.setDate(startDate.getDate() - 7);
+        startDate.setHours(0, 0, 0, 0);
+
+        return itemDate >= startDate && itemDate <= now;
+      }
+
+      if (filter === "thismonth") {
+        return (
+          itemDate.getMonth() === now.getMonth() &&
+          itemDate.getFullYear() === now.getFullYear()
+        );
+      }
+
+      if (filter.includes("-")) {
+        const [year, month] = filter.split("-").map(Number);
+
+        return itemDate.getFullYear() === year && itemDate.getMonth() === month;
+      }
+
+      if (filter === "lastyear") {
+        return itemDate.getFullYear() === now.getFullYear() - 1;
+      }
+
+      return true;
     });
   }
 
-  const fQuotes = applyFilter(quotes);
-  const fInvoices = applyFilter(invoices);
-  const fJobs = jobs;
+  const fQuotes = applyFilter(quotes, "quoteDate");
+  const fInvoices = applyFilter(invoices, "issuedAt");
+  const validInvoices = fInvoices.filter(
+    (invoice) => getInvoiceStatus(invoice) !== "Void",
+  );
+  const fJobs = applyFilter(jobs, "createdAt");
 
   // -----------------------------------
   // TOTALES SEGÚN FILTRO
   // -----------------------------------
   const quotesTotalAmount = fQuotes.reduce((acc, q) => acc + (q.total || 0), 0);
 
-  const invoicesTotalAmount = fInvoices.reduce(
-    (acc, i) => acc + (i.total || 0),
+  const invoicesTotalAmount = validInvoices.reduce(
+    (acc, invoice) => acc + Number(invoice.invoiceTotal ?? invoice.total ?? 0),
     0,
   );
-  const activeJobs = (jobs || []).filter(
-    (j) => j.status !== "Completed",
-  ).length;
+  const activeJobs = fJobs.filter((job) => job.status !== "Completed").length;
 
   return (
     <div className="w-full">
@@ -121,26 +159,16 @@ export default function DashboardPage() {
             <h1 className="text-2xl font-semibold tracking-tight">
               Freddy Graphics LLC
             </h1>
-
-            <div className="flex items-center gap-2 bg-white border rounded-lg shadow-sm px-3 py-2">
-              <Calendar className="text-gray-500" size={20} />
-
-              <select
-                className="text-sm bg-transparent focus:outline-none"
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-              >
-                <option value="today">Today</option>
-                <option value="week">This Week</option>
-                <option value="month">This Month</option>
-                <option value="year">This Year</option>
-                <option value="all">All Time</option>
-              </select>
-            </div>
+            <DocumentDateFilter
+              value={filter}
+              onChange={setFilter}
+              label={getFilterLabel(filter)}
+              previousMonths={previousMonths}
+            />
           </div>
 
           {/* 3 COLUMNAS */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             {/* QUOTES */}
             <Column
               title="Quotes"
@@ -151,6 +179,7 @@ export default function DashboardPage() {
                 value={fQuotes.length}
                 color="blue"
                 href="/quotes"
+                filter={filter}
               />
 
               <CardStat
@@ -158,6 +187,7 @@ export default function DashboardPage() {
                 value={formatCurrency(quotesTotalAmount)}
                 color="blue"
                 href="/quotes"
+                filter={filter}
               />
             </Column>
 
@@ -168,9 +198,10 @@ export default function DashboardPage() {
             >
               <CardStat
                 label="Invoices Created"
-                value={fInvoices.length}
+                value={validInvoices.length}
                 color="green"
                 href="/invoices"
+                filter={filter}
               />
 
               <CardStat
@@ -178,6 +209,7 @@ export default function DashboardPage() {
                 value={formatCurrency(invoicesTotalAmount)}
                 color="green"
                 href="/invoices"
+                filter={filter}
               />
             </Column>
 
@@ -188,10 +220,10 @@ export default function DashboardPage() {
             >
               <CardStat
                 label="Jobs Created"
-                value={jobs.length}
+                value={fJobs.length}
                 color="orange"
                 href="/orders"
-                filter="all"
+                filter={filter}
               />
 
               <CardStat
@@ -199,7 +231,7 @@ export default function DashboardPage() {
                 value={activeJobs}
                 color="orange"
                 href="/orders"
-                filter="all"
+                filter={filter}
               />
             </Column>
           </div>
@@ -235,7 +267,11 @@ function CardStat({ label, value, color, href, filter }) {
 
   return (
     <div
-      onClick={() => router.push(`${href}?filter=${filter}`)}
+      onClick={() => {
+        const destination = filter ? `${href}?filter=${filter}` : href;
+
+        router.push(destination);
+      }}
       className="
         rounded-xl border shadow-sm p-5 cursor-pointer
         transition-all duration-300 transform 
@@ -267,12 +303,4 @@ function isToday(date) {
     date.getMonth() === now.getMonth() &&
     date.getFullYear() === now.getFullYear()
   );
-}
-
-function isThisWeek(date) {
-  const now = new Date();
-  const start = new Date(now.setDate(now.getDate() - now.getDay()));
-  const end = new Date(start);
-  end.setDate(start.getDate() + 7);
-  return date >= start && date < end;
 }

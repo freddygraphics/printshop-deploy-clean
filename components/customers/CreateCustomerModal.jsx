@@ -1,6 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
+function formatPhoneNumber(value) {
+  const digits = String(value || "")
+    .replace(/\D/g, "")
+    .slice(0, 10);
+
+  if (digits.length === 0) return "";
+
+  if (digits.length <= 3) {
+    return digits;
+  }
+
+  if (digits.length <= 6) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  }
+
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
 export default function CreateCustomerModal({
   open,
   onClose,
@@ -8,8 +25,6 @@ export default function CreateCustomerModal({
   customer,
   isEdit,
 }) {
-  if (!open) return null;
-
   const [form, setForm] = useState({
     name: "",
     company: "",
@@ -28,7 +43,7 @@ export default function CreateCustomerModal({
         name: customer.name || "",
         company: customer.company || "",
         email: customer.email || "",
-        phone: customer.phone || "",
+        phone: formatPhoneNumber(customer.phone || ""),
         address: customer.address || "",
         city: customer.city || "",
         state: customer.state || "",
@@ -97,7 +112,7 @@ export default function CreateCustomerModal({
       setLoading(false);
     }
   };
-
+  if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div className="bg-white w-full max-w-2xl rounded-2xl shadow-xl border">
@@ -126,7 +141,6 @@ export default function CreateCustomerModal({
               </label>
               <input
                 required
-                placeholder="John Doe"
                 value={form.name}
                 onChange={(e) => update("name", e.target.value)}
                 className="mt-1 w-full border rounded-lg px-4 py-2.5 placeholder:text-gray-400"
@@ -138,7 +152,6 @@ export default function CreateCustomerModal({
                 Company
               </label>
               <input
-                placeholder="ABC Printing LLC"
                 value={form.company}
                 onChange={(e) => update("company", e.target.value)}
                 className="mt-1 w-full border rounded-lg px-4 py-2.5 placeholder:text-gray-400"
@@ -154,7 +167,6 @@ export default function CreateCustomerModal({
               </label>
               <input
                 type="email"
-                placeholder="john@company.com (optional)"
                 value={form.email}
                 onChange={(e) => update("email", e.target.value)}
                 className="mt-1 w-full border rounded-lg px-4 py-2.5 placeholder:text-gray-400"
@@ -166,9 +178,14 @@ export default function CreateCustomerModal({
                 Phone
               </label>
               <input
-                placeholder="(555) 123-4567"
+                type="tel"
+                inputMode="numeric"
+                autoComplete="tel"
+                maxLength={14}
                 value={form.phone}
-                onChange={(e) => update("phone", e.target.value)}
+                onChange={(e) =>
+                  update("phone", formatPhoneNumber(e.target.value))
+                }
                 className="mt-1 w-full border rounded-lg px-4 py-2.5 placeholder:text-gray-400"
               />
             </div>
@@ -180,7 +197,6 @@ export default function CreateCustomerModal({
               Address
             </label>
             <input
-              placeholder="123 Main Street"
               value={form.address}
               onChange={(e) => update("address", e.target.value)}
               className="mt-1 w-full border rounded-lg px-4 py-2.5 placeholder:text-gray-400"
@@ -193,7 +209,6 @@ export default function CreateCustomerModal({
                 City
               </label>
               <input
-                placeholder="Newark"
                 value={form.city}
                 onChange={(e) => update("city", e.target.value)}
                 className="mt-1 w-full border rounded-lg px-4 py-2.5 placeholder:text-gray-400"
@@ -205,7 +220,6 @@ export default function CreateCustomerModal({
                 State
               </label>
               <input
-                placeholder="NJ"
                 value={form.state}
                 onChange={(e) => update("state", e.target.value)}
                 className="mt-1 w-full border rounded-lg px-4 py-2.5 placeholder:text-gray-400"
@@ -215,7 +229,6 @@ export default function CreateCustomerModal({
             <div>
               <label className="text-xs font-semibold text-gray-500">ZIP</label>
               <input
-                placeholder="07102"
                 value={form.zip}
                 onChange={(e) => update("zip", e.target.value)}
                 className="mt-1 w-full border rounded-lg px-4 py-2.5 placeholder:text-gray-400"
@@ -227,7 +240,6 @@ export default function CreateCustomerModal({
                 Country
               </label>
               <input
-                placeholder="United States"
                 value={form.country}
                 onChange={(e) => update("country", e.target.value)}
                 className="mt-1 w-full border rounded-lg px-4 py-2.5 placeholder:text-gray-400"
