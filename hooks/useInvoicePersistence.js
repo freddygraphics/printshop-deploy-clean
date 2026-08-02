@@ -33,16 +33,37 @@ export function useInvoicePersistence({ invoiceId, taxEnabled, taxRate }) {
         },
         body: JSON.stringify({
           items: itemsToSave.map((i) => ({
+            id: i.id ?? null,
+
             productId: i.productId ?? null,
+            printProductionProfileId: i.printProductionProfileId ?? null,
+
             name: i.name,
             qty: i.qty,
             unitPrice: i.unitPrice,
             total: i.total,
+
+            totalCost: i.totalCost === undefined ? null : i.totalCost,
+
+            pricingMode: i.pricingMode || i.options?.pricingMode || "manual",
+
+            widthIn: i.widthIn ?? i.options?.widthIn ?? null,
+
+            heightIn: i.heightIn ?? i.options?.heightIn ?? null,
+
+            sqft: i.sqft ?? null,
+            priceSnapshot: i.priceSnapshot ?? null,
+            notes: i.notes ?? null,
+
             options: {
               ...(i.options || {}),
+
               finish: i.finish ?? i.options?.finish ?? null,
+
               design: i.design ?? i.options?.design ?? null,
+
               sides: i.sides ?? i.options?.sides ?? null,
+
               corners: i.corners ?? i.options?.corners ?? null,
             },
           })),

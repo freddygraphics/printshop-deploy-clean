@@ -247,6 +247,7 @@ model InvoiceItem {
   qty                      Int
   unitPrice                Float
   total                    Float
+  totalCost                Float?
   pricingMode              String                  @default("manual")
   widthIn                  Float?
   heightIn                 Float?
