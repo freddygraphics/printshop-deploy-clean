@@ -2,16 +2,34 @@
 
 import { useEffect, useState } from "react";
 
-export default function StickerCalculator({ onChange }) {
+export default function StickerCalculator({ value = null, onChange }) {
+  const savedOptions = value?.options || {};
+
   const [pricing, setPricing] = useState([]);
-  const [type, setType] = useState("");
-  const [width, setWidth] = useState(2);
-  const [height, setHeight] = useState(2);
-  const [qty, setQty] = useState(50);
-  const [laminated, setLaminated] = useState(true);
+
+  const [type, setType] = useState(
+    savedOptions.type || savedOptions.stickerType || "",
+  );
+
+  const [width, setWidth] = useState(
+    Number(savedOptions.width ?? savedOptions.stickerWidth ?? 2),
+  );
+
+  const [height, setHeight] = useState(
+    Number(savedOptions.height ?? savedOptions.stickerHeight ?? 2),
+  );
+
+  const [qty, setQty] = useState(
+    Number(savedOptions.quantity ?? savedOptions.qty ?? value?.qty ?? 50),
+  );
+
+  const [laminated, setLaminated] = useState(savedOptions.laminated ?? true);
+
   const [result, setResult] = useState(null);
 
-  // 🔥 SOLO UN useEffect
+  // ======================================================
+  // LOAD PRICING
+  // ======================================================
   useEffect(() => {
     const load = async () => {
       try {
@@ -20,9 +38,13 @@ export default function StickerCalculator({ onChange }) {
 
         if (data.length > 0) {
           setPricing(data);
-          const regular = data.find((p) => p.name === "Regular");
 
-          setType(regular ? regular.name : data[0].name);
+          // Si ya existe un tipo guardado, NO reemplazarlo
+          if (!savedOptions.type && !savedOptions.stickerType) {
+            const regular = data.find((p) => p.name === "Regular");
+
+            setType(regular ? regular.name : data[0].name);
+          }
         } else {
           setPricing([]);
         }
@@ -30,28 +52,41 @@ export default function StickerCalculator({ onChange }) {
         console.error("Error loading pricing", err);
 
         const fallback = [{ name: "Regular" }, { name: "Transparente" }];
+
         setPricing(fallback);
-        setType("Regular");
+
+        if (!savedOptions.type && !savedOptions.stickerType) {
+          setType("Regular");
+        }
       }
     };
 
     load();
   }, []);
 
+  // ======================================================
+  // AUTO CALCULATE
+  // ======================================================
   useEffect(() => {
     const autoCalculate = async () => {
-      if (!type || pricing.length === 0) return;
+      if (!type || pricing.length === 0) {
+        return;
+      }
 
       const selected = pricing.find((p) => p.name === type);
 
-      if (!selected) return;
+      if (!selected) {
+        return;
+      }
 
       try {
         const res = await fetch("/api/sticker-calc", {
           method: "POST",
+
           headers: {
             "Content-Type": "application/json",
           },
+
           body: JSON.stringify({
             stickerWidth: width,
             stickerHeight: height,
@@ -62,15 +97,46 @@ export default function StickerCalculator({ onChange }) {
         });
 
         const data = await res.json();
-        setResult(data);
+        const finalPrice = Math.round(Number(data.finalPrice || 0));
+
+        setResult({
+          ...data,
+          finalPrice,
+        });
+
         onChange?.({
           description: `${width}" x ${height}" ${type} Stickers`,
 
-          qty: qty,
+          qty,
 
-          unitPrice: Number((data.finalPrice / qty).toFixed(2)),
+          unitPrice: qty > 0 ? Number((finalPrice / qty).toFixed(4)) : 0,
 
-          total: Number(data.finalPrice.toFixed(2)),
+          total: finalPrice,
+
+          options: {
+            type,
+            stickerType: type,
+
+            width,
+            stickerWidth: width,
+
+            height,
+            stickerHeight: height,
+
+            quantity: qty,
+
+            laminated,
+
+            stickersPerSheet: data.stickersPerSheet,
+
+            sheetsNeeded: data.sheetsNeeded,
+
+            discountPercent: data.discountPercent || 0,
+
+            finalPrice,
+
+            productType: "stickers",
+          },
         });
       } catch (err) {
         console.error("Auto calculate error", err);
@@ -81,11 +147,12 @@ export default function StickerCalculator({ onChange }) {
   }, [type, width, height, qty, laminated, pricing]);
 
   return (
-    <div className="p-4">
-      <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow p-6 space-y-6">
+    <div>
+      <div className="border rounded-2xl p-6">
         {/* HEADER */}
-        <div>
-          <h1 className="text-2xl font-bold">Sticker Calculator</h1>
+        <div className="mb-8">
+          <h3 className="text-2xl font-semibold">Sticker Calculator</h3>
+
           <p className="text-gray-500">
             Calcula precio automáticamente por hoja 11 x 17
           </p>
@@ -113,6 +180,7 @@ export default function StickerCalculator({ onChange }) {
           {/* Ancho */}
           <div>
             <label className="text-sm text-gray-500">Ancho (in)</label>
+
             <input
               type="number"
               className="w-full border p-2 rounded-lg"
@@ -124,6 +192,7 @@ export default function StickerCalculator({ onChange }) {
           {/* Alto */}
           <div>
             <label className="text-sm text-gray-500">Alto (in)</label>
+
             <input
               type="number"
               className="w-full border p-2 rounded-lg"
@@ -172,9 +241,11 @@ export default function StickerCalculator({ onChange }) {
 
                 <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                   <p>Stickers por hoja:</p>
+
                   <p className="font-medium">{result.stickersPerSheet}</p>
 
                   <p>Hojas necesarias:</p>
+
                   <p className="font-medium">{result.sheetsNeeded}</p>
 
                   {result.discountPercent > 0 && (
@@ -194,7 +265,7 @@ export default function StickerCalculator({ onChange }) {
                 <p className="text-sm text-gray-500">Precio Final</p>
 
                 <div className="text-4xl font-bold">
-                  ${Math.round(result.finalPrice || 0)}
+                  ${result.finalPrice || 0}
                 </div>
               </div>
             </div>

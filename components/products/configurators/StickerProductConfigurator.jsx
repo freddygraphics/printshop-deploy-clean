@@ -25,14 +25,24 @@ export default function StickerProductConfigurator({
     qty: Number(initialData?.qty || 1),
     unitPrice: Number(initialData?.unitPrice || 0),
     total: Number(initialData?.total || 0),
+
     description:
       initialData?.description || initialData?.name || product?.name || "",
-  });
 
+    options: {
+      ...(product?.defaultOptions || {}),
+      ...(initialData?.options || {}),
+    },
+  });
   function handleChange(result) {
     const nextValue = {
       ...value,
       ...result,
+
+      options: {
+        ...(value.options || {}),
+        ...(result.options || {}),
+      },
     };
 
     setValue(nextValue);

@@ -37,16 +37,36 @@ export default function RaffleTicketCalculator({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const savedOptions = initialData?.options || {};
+
   const [quantity, setQuantity] = useState(
-    Number(initialData?.qty || initialData?.quantity || 500),
+    Number(
+      savedOptions.totalTickets ??
+        initialData?.qty ??
+        initialData?.quantity ??
+        500,
+    ),
   );
 
-  const [ticketsPerBook, setTicketsPerBook] = useState(50);
-  const [startingNumber, setStartingNumber] = useState(1);
-  const [numbering, setNumbering] = useState(true);
-  const [perforation, setPerforation] = useState(true);
-  const [booklets, setBooklets] = useState(true);
-  const [designType, setDesignType] = useState("print-ready");
+  const [ticketsPerBook, setTicketsPerBook] = useState(
+    Number(savedOptions.ticketsPerBook ?? 50),
+  );
+
+  const [startingNumber, setStartingNumber] = useState(
+    Number(savedOptions.startingNumber ?? 1),
+  );
+
+  const [numbering, setNumbering] = useState(savedOptions.numbering ?? true);
+
+  const [perforation, setPerforation] = useState(
+    savedOptions.perforation ?? true,
+  );
+
+  const [booklets, setBooklets] = useState(savedOptions.booklets ?? true);
+
+  const [designType, setDesignType] = useState(
+    savedOptions.designType ?? "print-ready",
+  );
 
   // ==========================================================
   // Cargar precios guardados en Settings
@@ -71,7 +91,7 @@ export default function RaffleTicketCalculator({
 
         setPricing(data);
 
-        if (!initialData?.customFields?.ticketsPerBook) {
+        if (initialData?.options?.ticketsPerBook == null) {
           setTicketsPerBook(Number(data.defaultTicketsPerBook || 50));
         }
       } catch (err) {
@@ -83,7 +103,7 @@ export default function RaffleTicketCalculator({
     }
 
     loadPricing();
-  }, [initialData?.customFields?.ticketsPerBook]);
+  }, [initialData?.options?.ticketsPerBook]);
 
   // ==========================================================
   // Calcular precio
@@ -191,8 +211,8 @@ export default function RaffleTicketCalculator({
   // ==========================================================
   // Enviar valores a la factura
   // ==========================================================
-  function handleAddToInvoice() {
-    if (!result) return;
+  const configuredItem = useMemo(() => {
+    if (!result || !pricing) return null;
 
     const details = [
       `${result.quantity} raffle tickets`,
@@ -206,12 +226,11 @@ export default function RaffleTicketCalculator({
       result.designLabel,
     ];
 
-    const invoiceItem = {
+    return {
       productId: product?.id,
       name: product?.name || "Raffle Tickets",
       description: details.join(" | "),
 
-      // Compatibilidad con diferentes estructuras de factura
       qty: result.quantity,
       quantity: result.quantity,
 
@@ -219,8 +238,9 @@ export default function RaffleTicketCalculator({
       price: Number(result.unitPrice.toFixed(4)),
       total: result.finalPrice,
 
-      customFields: {
+      options: {
         productType: "raffle-tickets",
+
         totalTickets: result.quantity,
         ticketsPerSheet: Number(pricing.ticketsPerSheet),
         sheetsNeeded: result.sheetsNeeded,
@@ -243,17 +263,21 @@ export default function RaffleTicketCalculator({
         calculatedTotal: result.finalPrice,
       },
     };
+  }, [
+    result,
+    pricing,
+    product,
+    booklets,
+    numbering,
+    startingNumber,
+    perforation,
+    designType,
+  ]);
+  useEffect(() => {
+    if (!configuredItem) return;
 
-    if (onAdd) {
-      onAdd(invoiceItem);
-      return;
-    }
-
-    if (onChange) {
-      onChange(invoiceItem);
-    }
-  }
-
+    onChange?.(configuredItem);
+  }, [configuredItem, onChange]);
   if (loading) {
     return (
       <div className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white p-10 text-gray-500">
@@ -423,7 +447,7 @@ export default function RaffleTicketCalculator({
             </div>
 
             {/* TOTAL */}
-            <div className="flex flex-col gap-5 rounded-xl bg-slate-900 p-6 text-white sm:flex-row sm:items-center sm:justify-between">
+            <div className="rounded-xl bg-slate-900 p-6 text-white">
               <div>
                 <p className="text-sm text-slate-300">Final selling price</p>
 
@@ -435,14 +459,6 @@ export default function RaffleTicketCalculator({
                   {money(result.unitPrice)} per ticket
                 </p>
               </div>
-
-              <button
-                type="button"
-                onClick={handleAddToInvoice}
-                className="rounded-lg bg-sky-500 px-6 py-3 font-semibold text-white transition hover:bg-sky-600"
-              >
-                Add to Invoice
-              </button>
             </div>
           </>
         )}

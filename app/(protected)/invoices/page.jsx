@@ -293,15 +293,15 @@ export default function InvoicesPage() {
           render: (invoice) => invoice.invoiceNumber ?? `IN-${invoice.id}`,
         },
         {
-          key: "customer",
-          label: "Customer",
-          render: (invoice) => invoice.client?.name || "No Client",
-        },
-        {
           key: "company",
           label: "Company",
           className: "px-6 py-3 text-gray-600",
           render: (invoice) => invoice.client?.company || "—",
+        },
+        {
+          key: "customer",
+          label: "Customer",
+          render: (invoice) => invoice.client?.name || "No Client",
         },
         {
           key: "date",

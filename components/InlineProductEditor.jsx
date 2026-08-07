@@ -179,7 +179,7 @@ function InlineProductEditor({
       });
     }
   }, [data._expanded, autoCalculateOnMount]);
-
+  const latestSpecialItemRef = useRef(null);
   // ------------------------------------------
   // MANUAL UPDATE
   // ------------------------------------------
@@ -622,7 +622,7 @@ function InlineProductEditor({
               onChange={(configuredItem) => {
                 if (!configuredItem) return;
 
-                onChange({
+                const nextConfiguredItem = {
                   ...data,
                   ...configuredItem,
 
@@ -676,7 +676,11 @@ function InlineProductEditor({
                   },
 
                   _expanded: true,
-                });
+                };
+
+                latestSpecialItemRef.current = nextConfiguredItem;
+
+                onChange(nextConfiguredItem);
               }}
             />
           )}
@@ -686,7 +690,7 @@ function InlineProductEditor({
                 type="button"
                 onClick={() =>
                   onChange({
-                    ...data,
+                    ...(latestSpecialItemRef.current || data),
                     _expanded: false,
                     __commit: true,
                   })

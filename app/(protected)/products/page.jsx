@@ -128,21 +128,9 @@ export default function ProductsCatalogPage() {
               </div>
 
               <div className="p-5">
-                <h2 className="line-clamp-1 text-base font-semibold text-gray-900">
+                <h2 className="line-clamp-1 text-center text-base font-semibold text-gray-900">
                   {product.name}
                 </h2>
-
-                {product.description && (
-                  <p className="mt-2 line-clamp-2 min-h-10 text-sm leading-5 text-gray-500">
-                    {product.description}
-                  </p>
-                )}
-
-                <div className="mt-4 border-t border-gray-100 pt-4">
-                  <span className="text-sm font-semibold text-blue-600">
-                    View options
-                  </span>
-                </div>
               </div>
             </Link>
           ))}
