@@ -2,13 +2,14 @@
 
 import { useEffect, useState, useMemo, useRef } from "react";
 import { memo } from "react";
-import StickerCalculator from "@/components/StickerCalculator.jsx";
-import SinaliteConfigurator from "@/components/SinaliteConfigurator";
-import ApparelConfigurator from "@/components/apparel/ApparelConfigurator";
-import ConfigurableTemplateEditor from "@/components/invoice/ConfigurableTemplateEditor";
+
 import { calculateOptionPricing } from "@/lib/product-builder/pricing";
 import { normalizeOptionGroups } from "@/lib/product-builder/normalizeOptionGroups";
 import RaffleTicketCalculator from "@/components/RaffleTicketCalculator";
+import ProductConfigurator from "@/components/products/ProductConfigurator";
+import ConfigurableTemplateEditor from "@/components/invoice/ConfigurableTemplateEditor";
+import SinaliteConfigurator from "@/components/SinaliteConfigurator";
+
 function unitLabel(unit) {
   switch (unit) {
     case "ft":
@@ -160,7 +161,12 @@ function InlineProductEditor({
     if (autoCalculateOnMount) return;
 
     // Se conserva el mismo cálculo de Invoice.
-    if (!isManual && !isApparel && data._expanded === true) {
+    if (
+      !isManual &&
+      !isSpecialProduct &&
+      !isSinalite &&
+      data._expanded === true
+    ) {
       const firstQty =
         pricingRows.length > 0 ? Number(pricingRows[0].minQty) : local.qty;
 
@@ -275,12 +281,57 @@ function InlineProductEditor({
 
     return Number(total.toFixed(2));
   };
-  const isSticker = product?.category === "stickers";
-  const isSinalite = product?.sinaliteEnabled === true;
-  const isApparel = product?.productType === "apparel";
+  const category = String(product?.category || "")
+    .trim()
+    .toLowerCase();
+
+  const templateType = String(product?.templateType || "")
+    .trim()
+    .toLowerCase();
+
+  const templateSlug = String(product?.template?.slug || "")
+    .trim()
+    .toLowerCase();
+
+  const itemProductType = String(data?.options?.productType || "")
+    .trim()
+    .toLowerCase();
+
+  const isSticker =
+    category === "stickers" ||
+    category === "sticker" ||
+    templateType === "stickers" ||
+    templateType === "sticker" ||
+    templateSlug === "stickers" ||
+    templateSlug === "sticker";
+
+  const productType = String(
+    product?.productType ||
+      data?.product?.productType ||
+      data?.options?.productType ||
+      "",
+  )
+    .trim()
+    .toLowerCase();
+
+  const isApparel =
+    productType === "apparel" ||
+    category === "apparel" ||
+    templateType === "apparel" ||
+    templateSlug === "apparel" ||
+    itemProductType === "apparel";
+
   const isRaffleTicket =
-    product?.templateType === "raffle-tickets" ||
-    product?.template?.slug === "raffle-tickets";
+    category === "raffle-tickets" ||
+    category === "raffle-ticket" ||
+    templateType === "raffle-tickets" ||
+    templateType === "raffle-ticket" ||
+    templateSlug === "raffle-tickets" ||
+    templateSlug === "raffle-ticket";
+
+  const isSpecialProduct = isSticker || isApparel || isRaffleTicket;
+
+  const isSinalite = product?.sinaliteEnabled === true;
   const productCalculationRef = useRef(false);
 
   useEffect(() => {
@@ -389,7 +440,7 @@ function InlineProductEditor({
           {/* ===================================================== */}
           {/* 🔥 MANUAL PRODUCTS */}
           {/* ===================================================== */}
-          {isManual && (
+          {isManual && !isSpecialProduct && (
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-semibold">Description</label>
@@ -544,75 +595,7 @@ function InlineProductEditor({
               </div>
             </div>
           )}
-          {/* ===================================================== */}
-          {/* 🔥 STICKER CALCULATOR */}
-          {/* ===================================================== */}
 
-          {/* ===================================================== */}
-          {/* 🔥 CONFIGURABLE PRODUCTS (KANAKKU STYLE + FIX QTY) */}
-          {/* ===================================================== */}
-
-          {/* ===================================================== */}
-          {/* 🔥 STICKER CALCULATOR */}
-          {/* ===================================================== */}
-
-          {isSticker && (
-            <>
-              <div className="mb-6">
-                <StickerCalculator
-                  value={local}
-                  onChange={(data) => {
-                    setLocal((prev) => ({
-                      ...prev,
-
-                      qty: data.qty,
-
-                      unitPrice: data.unitPrice,
-
-                      total: data.total,
-
-                      description: data.description,
-                    }));
-                  }}
-                />
-              </div>
-
-              {/* DONE */}
-              <div className="mt-6 pt-4 border-t border-gray-200 flex justify-end">
-                <button
-                  onClick={() =>
-                    onChange({
-                      qty: local.qty,
-
-                      name: local.description,
-                      description: local.description,
-
-                      unitPrice: local.unitPrice,
-
-                      total: local.total,
-
-                      _expanded: false,
-
-                      __commit: true,
-                    })
-                  }
-                  className="
-          h-11
-          px-6
-          rounded-xl
-          bg-blue-600
-          text-white
-          font-medium
-          hover:bg-blue-700
-          transition
-          shadow-sm
-        "
-                >
-                  Done
-                </button>
-              </div>
-            </>
-          )}
           {/* ===================================================== */}
           {/* 🔥 SINALITE PRODUCTS */}
           {/* ===================================================== */}
@@ -632,285 +615,334 @@ function InlineProductEditor({
             />
           )}
 
-          {isApparel && (
-            <ApparelConfigurator
+          {isSpecialProduct && (
+            <ProductConfigurator
               product={product}
               initialData={data}
-              onAdd={(item) =>
+              onChange={(configuredItem) => {
+                if (!configuredItem) return;
+
                 onChange({
                   ...data,
-                  ...item,
-                  _expanded: false,
-                  __commit: true,
-                })
-              }
+                  ...configuredItem,
+
+                  productId: isApparel
+                    ? null
+                    : configuredItem.productId ||
+                      data.productId ||
+                      product?.id ||
+                      null,
+
+                  product: configuredItem.product || data.product || product,
+
+                  name:
+                    configuredItem.name ||
+                    configuredItem.description ||
+                    data.name ||
+                    product?.name ||
+                    "Item",
+
+                  description:
+                    configuredItem.description ||
+                    configuredItem.name ||
+                    data.description ||
+                    data.name ||
+                    product?.name ||
+                    "Item",
+
+                  qty: Number(configuredItem.qty || data.qty || 1),
+
+                  unitPrice: Number(
+                    configuredItem.unitPrice ?? data.unitPrice ?? 0,
+                  ),
+
+                  subtotal: Number(
+                    configuredItem.subtotal ??
+                      configuredItem.total ??
+                      data.total ??
+                      0,
+                  ),
+
+                  total: Number(configuredItem.total ?? data.total ?? 0),
+
+                  options: {
+                    ...(data.options || {}),
+                    ...(configuredItem.options || {}),
+
+                    dynamicOptions: {
+                      ...(data.options?.dynamicOptions || {}),
+                      ...(configuredItem.options?.dynamicOptions || {}),
+                    },
+                  },
+
+                  _expanded: true,
+                });
+              }}
             />
           )}
-
-          {isRaffleTicket && (
-            <RaffleTicketCalculator
-              product={product}
-              initialData={data}
-              onAdd={(item) =>
-                onChange({
-                  ...data,
-                  ...item,
-                  _expanded: false,
-                  __commit: true,
-                })
-              }
-            />
+          {isSpecialProduct && (
+            <div className="mt-6 flex justify-end border-t border-gray-200 pt-4">
+              <button
+                type="button"
+                onClick={() =>
+                  onChange({
+                    ...data,
+                    _expanded: false,
+                    __commit: true,
+                  })
+                }
+                disabled={Number(data.total || 0) <= 0}
+                className="h-11 rounded-xl bg-blue-600 px-6 font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+              >
+                Done
+              </button>
+            </div>
           )}
+          {!isManual && !isSpecialProduct && !isSinalite && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* QUANTITY */}
+                {pricingRows.length > 0 && (
+                  <div>
+                    <label className="text-xs font-semibold">Quantity</label>
+                    <select
+                      className="border rounded-lg p-2 w-full mt-1"
+                      value={Number(local.qty)} // 🔥 FIX REAL
+                      onChange={(e) =>
+                        recalcConfigured({ qty: Number(e.target.value) })
+                      }
+                    >
+                      {pricingRows.map((r, i) => (
+                        <option key={i} value={Number(r.minQty)}>
+                          {r.minQty}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
-          {!isManual &&
-            !isSticker &&
-            !isSinalite &&
-            !isApparel &&
-            !isRaffleTicket && (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* QUANTITY */}
-                  {pricingRows.length > 0 && (
+                {measurements.enabled && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                     <div>
-                      <label className="text-xs font-semibold">Quantity</label>
+                      <label className="text-xs font-semibold text-gray-500">
+                        Unit
+                      </label>
+
                       <select
-                        className="border rounded-lg p-2 w-full mt-1"
-                        value={Number(local.qty)} // 🔥 FIX REAL
-                        onChange={(e) =>
-                          recalcConfigured({ qty: Number(e.target.value) })
-                        }
+                        className="mt-1 border rounded-lg px-3 py-2.5 w-full"
+                        value={unit}
+                        onChange={(e) => {
+                          const newUnit = e.target.value;
+
+                          setUnit(newUnit);
+
+                          const nextOptions = {
+                            ...(data.options || {}),
+                            width: Number(widthIn) || 0,
+                            height: Number(heightIn) || 0,
+                            unit: newUnit,
+                          };
+
+                          onChange({
+                            options: nextOptions,
+                          });
+
+                          recalcConfigured({
+                            options: nextOptions,
+                          });
+                        }}
                       >
-                        {pricingRows.map((r, i) => (
-                          <option key={i} value={Number(r.minQty)}>
-                            {r.minQty}
-                          </option>
-                        ))}
+                        <option value="in">In</option>
+                        <option value="ft">Ft</option>
+                        <option value="cm">CM</option>
+                        <option value="mm">Mll</option>
                       </select>
                     </div>
-                  )}
+                    {/* WIDTH */}
+                    <div>
+                      <label className="text-xs font-semibold text-gray-500">
+                        {measurements.width?.label || "Width"} (
+                        {unitLabel(unit)})
+                      </label>
+                      <input
+                        inputMode="decimal"
+                        className="mt-1 border rounded-lg px-3 py-2.5 w-full"
+                        value={widthIn}
+                        onChange={(e) => {
+                          const value = e.target.value;
 
-                  {measurements.enabled && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                      <div>
-                        <label className="text-xs font-semibold text-gray-500">
-                          Unit
-                        </label>
+                          const nextOptions = {
+                            ...(data.options || {}),
+                            width: Number(value),
+                            height: Number(heightIn) || 0,
+                            unit,
+                          };
 
-                        <select
-                          className="mt-1 border rounded-lg px-3 py-2.5 w-full"
-                          value={unit}
-                          onChange={(e) => {
-                            const newUnit = e.target.value;
+                          setWidthIn(value);
 
-                            setUnit(newUnit);
+                          onChange({
+                            options: nextOptions,
+                          });
 
-                            const nextOptions = {
-                              ...(data.options || {}),
-                              width: Number(widthIn) || 0,
-                              height: Number(heightIn) || 0,
-                              unit: newUnit,
-                            };
-
-                            onChange({
-                              options: nextOptions,
-                            });
-
-                            recalcConfigured({
-                              options: nextOptions,
-                            });
-                          }}
-                        >
-                          <option value="in">In</option>
-                          <option value="ft">Ft</option>
-                          <option value="cm">CM</option>
-                          <option value="mm">Mll</option>
-                        </select>
-                      </div>
-                      {/* WIDTH */}
-                      <div>
-                        <label className="text-xs font-semibold text-gray-500">
-                          {measurements.width?.label || "Width"} (
-                          {unitLabel(unit)})
-                        </label>
-                        <input
-                          inputMode="decimal"
-                          className="mt-1 border rounded-lg px-3 py-2.5 w-full"
-                          value={widthIn}
-                          onChange={(e) => {
-                            const value = e.target.value;
-
-                            const nextOptions = {
-                              ...(data.options || {}),
-                              width: Number(value),
-                              height: Number(heightIn) || 0,
-                              unit,
-                            };
-
-                            setWidthIn(value);
-
-                            onChange({
-                              options: nextOptions,
-                            });
-
-                            recalcConfigured({
-                              options: nextOptions,
-                            });
-                          }}
-                        />
-                      </div>
-
-                      {/* HEIGHT */}
-                      <div>
-                        <label className="text-xs font-semibold text-gray-500">
-                          {measurements.height?.label || "Height"} (
-                          {unitLabel(unit)})
-                        </label>
-                        <input
-                          inputMode="decimal"
-                          className="mt-1 border rounded-lg px-3 py-2.5 w-full"
-                          value={heightIn}
-                          onChange={(e) => {
-                            const value = e.target.value;
-
-                            const nextOptions = {
-                              ...(data.options || {}),
-                              width: Number(widthIn) || 0,
-                              height: Number(value),
-                              unit,
-                            };
-
-                            setHeightIn(value);
-
-                            onChange({
-                              options: nextOptions,
-                            });
-
-                            recalcConfigured({
-                              options: nextOptions,
-                            });
-                          }}
-                        />
-                      </div>
+                          recalcConfigured({
+                            options: nextOptions,
+                          });
+                        }}
+                      />
                     </div>
-                  )}
-                </div>
-                <div className="mt-4">
-                  <ConfigurableTemplateEditor
-                    optionGroups={optionGroups}
-                    value={local.dynamicOptions}
-                    onChange={(dynamicOptions) =>
-                      recalcConfigured({ dynamicOptions })
-                    }
-                  />
-                </div>
 
-                {/* 🔥 DISCOUNT + TOTAL — KANAKKU / SHOPVOX STYLE */}
-                <div className="mt-6 pt-4 border-t border-gray-200 flex items-center gap-4">
-                  {/* LEFT — DISCOUNT */}
-                  <div className="flex items-center gap-2 flex-1">
-                    {/* % */}
-                    <button
-                      onClick={() =>
-                        recalcConfigured({
-                          discountType: "percent",
-                          discountValue: "",
-                        })
-                      }
-                      className={`w-9 h-9 rounded-md border text-sm font-medium transition
+                    {/* HEIGHT */}
+                    <div>
+                      <label className="text-xs font-semibold text-gray-500">
+                        {measurements.height?.label || "Height"} (
+                        {unitLabel(unit)})
+                      </label>
+                      <input
+                        inputMode="decimal"
+                        className="mt-1 border rounded-lg px-3 py-2.5 w-full"
+                        value={heightIn}
+                        onChange={(e) => {
+                          const value = e.target.value;
+
+                          const nextOptions = {
+                            ...(data.options || {}),
+                            width: Number(widthIn) || 0,
+                            height: Number(value),
+                            unit,
+                          };
+
+                          setHeightIn(value);
+
+                          onChange({
+                            options: nextOptions,
+                          });
+
+                          recalcConfigured({
+                            options: nextOptions,
+                          });
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="mt-4">
+                <ConfigurableTemplateEditor
+                  optionGroups={optionGroups}
+                  value={local.dynamicOptions}
+                  onChange={(dynamicOptions) =>
+                    recalcConfigured({ dynamicOptions })
+                  }
+                />
+              </div>
+
+              {/* 🔥 DISCOUNT + TOTAL — KANAKKU / SHOPVOX STYLE */}
+              <div className="mt-6 pt-4 border-t border-gray-200 flex items-center gap-4">
+                {/* LEFT — DISCOUNT */}
+                <div className="flex items-center gap-2 flex-1">
+                  {/* % */}
+                  <button
+                    onClick={() =>
+                      recalcConfigured({
+                        discountType: "percent",
+                        discountValue: "",
+                      })
+                    }
+                    className={`w-9 h-9 rounded-md border text-sm font-medium transition
         ${
           local.discountType === "percent"
             ? "bg-blue-600 text-white border-blue-600 shadow-sm"
             : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
         }`}
-                    >
-                      %
-                    </button>
+                  >
+                    %
+                  </button>
 
-                    {/* $ */}
-                    <button
-                      onClick={() =>
-                        recalcConfigured({
-                          discountType: "amount",
-                          discountValue: "",
-                        })
-                      }
-                      className={`w-9 h-9 rounded-md border text-sm font-medium transition
+                  {/* $ */}
+                  <button
+                    onClick={() =>
+                      recalcConfigured({
+                        discountType: "amount",
+                        discountValue: "",
+                      })
+                    }
+                    className={`w-9 h-9 rounded-md border text-sm font-medium transition
         ${
           local.discountType === "amount"
             ? "bg-blue-600 text-white border-blue-600 shadow-sm"
             : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
         }`}
-                    >
-                      $
-                    </button>
+                  >
+                    $
+                  </button>
 
-                    {/* INPUT */}
-                    <input
-                      type="number"
-                      step="0.01"
-                      disabled={!local.discountType}
-                      placeholder={
-                        local.discountType === "percent"
-                          ? "Discount %"
-                          : local.discountType === "amount"
-                            ? "Discount amount"
-                            : "Add discount"
-                      }
-                      value={local.discountValue ?? ""}
-                      onChange={(e) =>
-                        recalcConfigured({ discountValue: e.target.value })
-                      }
-                      className={`w-40 h-11 px-3  border border-gray-200 text-sm
+                  {/* INPUT */}
+                  <input
+                    type="number"
+                    step="0.01"
+                    disabled={!local.discountType}
+                    placeholder={
+                      local.discountType === "percent"
+                        ? "Discount %"
+                        : local.discountType === "amount"
+                          ? "Discount amount"
+                          : "Add discount"
+                    }
+                    value={local.discountValue ?? ""}
+                    onChange={(e) =>
+                      recalcConfigured({ discountValue: e.target.value })
+                    }
+                    className={`w-40 h-11 px-3  border border-gray-200 text-sm
         ${
           local.discountType
             ? "bg-white border-gray-200 focus:ring-2 focus:ring-blue-100"
             : "bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed"
         }`}
-                    />
-                  </div>
-
-                  {/* TOTAL */}
-                  <div className="text-left min-w-[140px] ">
-                    <p className="text-m text-gray-400 uppercase tracking-wide">
-                      Total
-                    </p>
-                    <p className="text-xl font-semibold text-blue-600">
-                      ${Number(local.total).toLocaleString()}
-                    </p>
-                  </div>
-
-                  {/* DONE */}
-
-                  <button
-                    onClick={() =>
-                      onChange({
-                        ...data,
-
-                        qty: local.qty,
-                        unitPrice: local.unitPrice,
-                        total: local.total,
-
-                        finishes: selectedFinishes,
-
-                        options: {
-                          ...(data.options || {}),
-                          dynamicOptions: local.dynamicOptions,
-                        },
-
-                        discountType: local.discountType,
-                        discountValue: local.discountValue,
-
-                        _expanded: false,
-                        __commit: true,
-                      })
-                    }
-                    className="h-11 px-6 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 transition shadow-sm"
-                  >
-                    Done
-                  </button>
+                  />
                 </div>
-              </>
-            )}
+
+                {/* TOTAL */}
+                <div className="text-left min-w-[140px] ">
+                  <p className="text-m text-gray-400 uppercase tracking-wide">
+                    Total
+                  </p>
+                  <p className="text-xl font-semibold text-blue-600">
+                    ${Number(local.total).toLocaleString()}
+                  </p>
+                </div>
+
+                {/* DONE */}
+
+                <button
+                  onClick={() =>
+                    onChange({
+                      ...data,
+
+                      qty: local.qty,
+                      unitPrice: local.unitPrice,
+                      total: local.total,
+
+                      finishes: selectedFinishes,
+
+                      options: {
+                        ...(data.options || {}),
+                        dynamicOptions: local.dynamicOptions,
+                      },
+
+                      discountType: local.discountType,
+                      discountValue: local.discountValue,
+
+                      _expanded: false,
+                      __commit: true,
+                    })
+                  }
+                  className="h-11 px-6 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 transition shadow-sm"
+                >
+                  Done
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -193,7 +193,15 @@ function getQuantityPercent(settings, quantity) {
   return Number(match?.percent ?? settings.defaultProfitMargin ?? 0);
 }
 
-export default function ApparelConfigurator({ product, initialData, onAdd }) {
+export default function ApparelConfigurator({
+  product,
+  initialData,
+  onAdd,
+  onChange,
+  mode = "document",
+  actionLabel = "Add to Invoice",
+}) {
+  const isProductMode = mode === "product";
   const colors = Array.isArray(product?.colors) ? product.colors : [];
 
   const [showMoreSizes, setShowMoreSizes] = useState(false);
@@ -554,10 +562,13 @@ export default function ApparelConfigurator({ product, initialData, onAdd }) {
       .filter(Boolean)
       .join("\n");
 
-    onAdd({
+    const configuredItem = {
       name: description,
+      description,
+
       qty: calculation.quantity,
       unitPrice: calculation.unitPrice,
+      subtotal: calculation.saleTotal,
       total: calculation.saleTotal,
 
       options: {
@@ -581,15 +592,119 @@ export default function ApparelConfigurator({ product, initialData, onAdd }) {
           pricingMethod: settings.dtfPricingMethod,
           rollWidth: Number(settings.dtfRollWidth),
           gap: Number(settings.dtfGap),
+
           requiredLengthInches: Number(calculation.requiredLength.toFixed(2)),
+
           requiredLengthFeet: Number(
             (calculation.requiredLength / 12).toFixed(2),
           ),
+
           designSquareFeet: Number(calculation.designSquareFeet.toFixed(2)),
+
           sheets: calculation.gangSheet.sheets.map((sheet) => ({
             feet: sheet.feet,
             price: sheet.price,
           })),
+
+          totalCost: Number(calculation.dtfCost.toFixed(2)),
+        },
+
+        costs: {
+          apparel: Number(calculation.apparelCost.toFixed(2)),
+          dtf: Number(calculation.dtfCost.toFixed(2)),
+          labor: Number(calculation.laborCost.toFixed(2)),
+          setup: Number(calculation.setupCost.toFixed(2)),
+          waste: Number(calculation.wasteCost.toFixed(2)),
+          shipping: Number(calculation.shippingCost.toFixed(2)),
+          production: Number(calculation.productionCost.toFixed(2)),
+        },
+      },
+    };
+
+    onAdd?.(configuredItem);
+  }
+
+  useEffect(() => {
+    if (!isProductMode) return;
+    if (settingsLoading || settingsError) return;
+    if (settings.active === false) return;
+    if (!selectedColor) return;
+    if (calculation.quantity <= 0) return;
+
+    const incompleteLocation = calculation.printLocations.some(
+      (location) =>
+        location.enabled && (location.width <= 0 || location.height <= 0),
+    );
+
+    if (incompleteLocation) return;
+    if (!Number.isFinite(calculation.requiredLength)) return;
+
+    const sizeDescription = selectedSizes
+      .map((variant) => `${variant.quantity} ${variant.size}`)
+      .join(" / ");
+
+    const printDescription = calculation.printLocations
+      .filter((location) => location.enabled)
+      .map(
+        (location) => `${location.label} ${location.width}x${location.height}"`,
+      )
+      .join(" + ");
+
+    const description = [
+      `${product.brand || "SanMar"} ${product.supplierStyle || ""} - ${
+        product.name
+      }`,
+      `Color: ${selectedColor.name}`,
+      `Sizes: ${sizeDescription}`,
+      printDescription ? `DTF: ${printDescription}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    onChange?.({
+      name: description,
+      description,
+
+      qty: calculation.quantity,
+      unitPrice: calculation.unitPrice,
+      subtotal: calculation.saleTotal,
+      total: calculation.saleTotal,
+
+      options: {
+        ...(initialData?.options || {}),
+
+        productType: "apparel",
+        apparelProductId: product.id,
+        supplier: product.supplier,
+        supplierStyle: product.supplierStyle,
+        brand: product.brand,
+
+        color: selectedColor.name,
+        colorCode: selectedColor.colorCode || null,
+        sizes: selectedSizes,
+
+        printLocations: calculation.printLocations,
+        pricingMode: settings.pricingMode,
+        appliedPercent: calculation.appliedPercent,
+
+        dtf: {
+          pricingMethod: settings.dtfPricingMethod,
+          rollWidth: Number(settings.dtfRollWidth),
+          gap: Number(settings.dtfGap),
+
+          requiredLengthInches: Number(calculation.requiredLength.toFixed(2)),
+
+          requiredLengthFeet: Number(
+            (calculation.requiredLength / 12).toFixed(2),
+          ),
+
+          designSquareFeet: Number(calculation.designSquareFeet.toFixed(2)),
+
+          sheets: calculation.gangSheet.sheets.map((sheet) => ({
+            feet: sheet.feet,
+            price: sheet.price,
+          })),
+
           totalCost: Number(calculation.dtfCost.toFixed(2)),
         },
 
@@ -604,7 +719,22 @@ export default function ApparelConfigurator({ product, initialData, onAdd }) {
         },
       },
     });
-  }
+  }, [
+    isProductMode,
+    settingsLoading,
+    settingsError,
+    settings.active,
+    settings.pricingMode,
+    settings.dtfPricingMethod,
+    settings.dtfRollWidth,
+    settings.dtfGap,
+    selectedColor,
+    selectedSizes,
+    calculation,
+    product,
+    initialData,
+    onChange,
+  ]);
   const sortedVariants = sortSizes(selectedColor?.variants || []);
 
   const regularVariants = sortedVariants.filter((variant) => {
@@ -887,15 +1017,17 @@ export default function ApparelConfigurator({ product, initialData, onAdd }) {
         </div>
       </div>
 
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={handleAdd}
-          className="h-11 rounded-xl bg-blue-600 px-6 font-medium text-white shadow-sm transition hover:bg-blue-700"
-        >
-          Add to Invoice
-        </button>
-      </div>
+      {!isProductMode && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={handleAdd}
+            className="h-11 rounded-xl bg-blue-600 px-6 font-medium text-white shadow-sm transition hover:bg-blue-700"
+          >
+            {actionLabel}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

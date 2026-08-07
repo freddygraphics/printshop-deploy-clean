@@ -35,18 +35,60 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function loadData() {
+      setLoading(true);
+
       try {
-        const q = await fetch("/api/quotes").then((r) => r.json());
-        const inv = await fetch("/api/invoices").then((r) => r.json());
-        const jb = await fetch("/api/jobs").then((r) => r.json());
+        const [quotesResponse, invoicesResponse, jobsResponse] =
+          await Promise.all([
+            fetch("/api/quotes"),
+            fetch("/api/invoices"),
+            fetch("/api/jobs"),
+          ]);
 
-        setQuotes(q);
-        setInvoices(inv);
-        setJobs(jb.jobs || []);
+        const [quotesData, invoicesData, jobsData] = await Promise.all([
+          quotesResponse.json(),
+          invoicesResponse.json(),
+          jobsResponse.json(),
+        ]);
 
-        setLoading(false);
-      } catch (err) {
-        console.error("Dashboard error:", err);
+        if (!quotesResponse.ok) {
+          console.error("Error loading quotes:", quotesData);
+        }
+
+        if (!invoicesResponse.ok) {
+          console.error("Error loading invoices:", invoicesData);
+        }
+
+        if (!jobsResponse.ok) {
+          console.error("Error loading jobs:", jobsData);
+        }
+
+        setQuotes(
+          quotesResponse.ok && Array.isArray(quotesData) ? quotesData : [],
+        );
+
+        setInvoices(
+          invoicesResponse.ok && Array.isArray(invoicesData)
+            ? invoicesData
+            : [],
+        );
+
+        setJobs(
+          jobsResponse.ok
+            ? Array.isArray(jobsData)
+              ? jobsData
+              : Array.isArray(jobsData?.jobs)
+                ? jobsData.jobs
+                : []
+            : [],
+        );
+      } catch (error) {
+        console.error("Dashboard error:", error);
+
+        setQuotes([]);
+        setInvoices([]);
+        setJobs([]);
+      } finally {
         setLoading(false);
       }
     }
@@ -162,7 +204,7 @@ export default function DashboardPage() {
   // -----------------------------------
   // FACTURAS PENDIENTES Y PAGOS PARCIALES
   // -----------------------------------
-  const outstandingInvoices = invoices
+  const outstandingInvoices = (Array.isArray(invoices) ? invoices : [])
     .filter((invoice) => {
       const status = String(getInvoiceStatus(invoice) || "")
         .trim()

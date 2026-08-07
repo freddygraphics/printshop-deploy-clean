@@ -25,7 +25,8 @@ import DocumentDetailsCard from "@/components/document/DocumentDetailsCard";
 import InvoiceActionsMenu from "@/components/invoice/InvoiceActionsMenu";
 import { useInvoicePersistence } from "@/hooks/useInvoicePersistence";
 import InvoiceModals from "@/components/invoice/InvoiceModals";
-
+import UnsavedChangesDialog from "@/components/dialogs/UnsavedChangesDialog";
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   const [showCancelJobDialog, setShowCancelJobDialog] = useState(false);
 
@@ -199,6 +200,77 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
       taxEnabled,
       taxRate,
     });
+
+  const saveInvoiceAsDraft = useCallback(async () => {
+    if (!invoiceIdState) {
+      throw new Error("Invoice must exist before leaving.");
+    }
+
+    if (items.length > 0) {
+      await saveItems(items);
+    }
+
+    await fetch(`/api/invoices/${invoiceIdState}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        issuedAt,
+        dueDate: expiryDate || null,
+        notes: customerNotes,
+        taxEnabled,
+        taxRate,
+      }),
+    });
+
+    await persistTotals({
+      subtotal,
+      tax,
+      total,
+      balance,
+    });
+  }, [
+    invoiceIdState,
+    items,
+    issuedAt,
+    expiryDate,
+    customerNotes,
+    taxEnabled,
+    taxRate,
+    subtotal,
+    tax,
+    total,
+    balance,
+    saveItems,
+    persistTotals,
+  ]);
+
+  const {
+    showUnsavedDialog,
+    isSavingDraft,
+    markUnsaved,
+    markSaved,
+    requestNavigation,
+    closeUnsavedDialog,
+    handleSaveDraftAndLeave,
+    handleDiscardAndLeave,
+  } = useUnsavedChanges({
+    onSaveDraft: saveInvoiceAsDraft,
+  });
+
+  const initializedRef = useRef(false);
+
+  useEffect(() => {
+    if (!invoiceHydratedRef.current) return;
+
+    if (!initializedRef.current) {
+      initializedRef.current = true;
+      return;
+    }
+
+    markUnsaved();
+  }, [issuedAt, expiryDate, customerNotes, taxEnabled, markUnsaved]);
   useEffect(() => {
     if (!loadedSettings) return;
 
@@ -261,6 +333,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
     );
 
     invoiceReadyRef.current = true;
+    markSaved();
   }, [loadedInvoice, loadedSettings]);
   // 🔄 AUTO-REFRESH INVOICE (Square payments)
   useEffect(() => {
@@ -339,8 +412,12 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
       tax,
       total,
       balance,
-    });
-  }, [invoiceIdState, subtotal, tax, total, balance, totalPaid]);
+    })
+      .then(() => {
+        markSaved();
+      })
+      .catch(console.error);
+  }, [invoiceIdState, subtotal, tax, total, balance, totalPaid, markSaved]);
 
   // ----------------------------------------
   // INVOICE STATUS (AUTOMÁTICO)
@@ -364,7 +441,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         })),
         newItem,
       ]);
-
+      markUnsaved();
       setProductSearch("");
       setProductResults([]);
       setShowAddCard(false);
@@ -392,11 +469,13 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
       const nextItems = [...items, newItem];
 
       setItems(nextItems);
+      markUnsaved();
       setShowAddCard(false);
 
       // Guardar solo cuando el invoice ya existe
       if (invoiceIdState) {
         await saveItems(nextItems);
+        markSaved();
       }
 
       setManualDesc("");
@@ -423,6 +502,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
           dueDate: expiryDate || null,
         }),
       });
+      markSaved();
     } catch (err) {
       console.error("❌ Error saving dates", err);
     }
@@ -433,7 +513,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
     (index, fields) => {
       setItems((previousItems) => {
         const nextItems = updateDocumentItem(previousItems, index, fields);
-
+        markUnsaved();
         const updatedItem = nextItems[index];
 
         const isManualItem =
@@ -445,18 +525,21 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
           savingRef.current = true;
 
           Promise.resolve()
-            .then(() => saveItems(nextItems))
+            .then(async () => {
+              await saveItems(nextItems);
+              markSaved();
+            })
             .finally(() => {
               savingRef.current = false;
             });
         } else if (!isManualItem) {
-          scheduleAutosave(nextItems);
+          scheduleAutosave(nextItems, markSaved);
         }
 
         return nextItems;
       });
     },
-    [saveItems],
+    [saveItems, scheduleAutosave, markUnsaved, markSaved],
   );
 
   // 🔥 PASO 4 — handler estable por item (ANTI-LAG)
@@ -474,13 +557,14 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
     const nextItems = removeDocumentItem(previousItems, index);
 
     setItems(nextItems);
-
+    markUnsaved();
     if (!invoiceIdState) {
       return;
     }
 
     try {
       await saveItems(nextItems);
+      markSaved();
     } catch (error) {
       console.error("Error removing item:", error);
 
@@ -529,7 +613,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         taxRate: next ? (settings?.defaultTaxRate ?? 0) : taxRate,
       }),
     });
-
+    markSaved();
     triggerPdfGeneration();
   };
   // ======================================================
@@ -551,7 +635,8 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
 
       if (!res.ok) throw new Error();
 
-      router.push("/invoices");
+      markSaved();
+      requestNavigation("/invoices");
       router.refresh();
     } catch (err) {
       alert("Error voiding invoice");
@@ -728,6 +813,18 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         setInvoiceNumber={setInvoiceNumber}
         executeVoid={executeVoid}
         router={router}
+        markUnsaved={markUnsaved}
+        markSaved={markSaved}
+        requestNavigation={requestNavigation}
+      />
+
+      <UnsavedChangesDialog
+        open={showUnsavedDialog}
+        onClose={closeUnsavedDialog}
+        onSaveDraft={handleSaveDraftAndLeave}
+        onDiscard={handleDiscardAndLeave}
+        isSaving={isSavingDraft}
+        documentType="invoice"
       />
     </DocumentEditorLayout>
   );

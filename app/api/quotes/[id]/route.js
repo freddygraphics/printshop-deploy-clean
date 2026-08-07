@@ -89,12 +89,52 @@ export async function PATCH(request, context) {
 
     const body = await request.json();
 
-    const clientId = Number(body.clientId ?? body.customerId);
-
     const data = {};
 
-    if (Number.isInteger(clientId) && clientId > 0) {
-      data.clientId = clientId;
+    if (
+      Object.prototype.hasOwnProperty.call(body, "clientId") ||
+      Object.prototype.hasOwnProperty.call(body, "customerId")
+    ) {
+      const rawClientId = body.clientId ?? body.customerId;
+
+      if (rawClientId === null || rawClientId === "") {
+        data.clientId = null;
+      } else {
+        const clientId = Number(rawClientId);
+
+        if (!Number.isInteger(clientId) || clientId <= 0) {
+          return NextResponse.json(
+            {
+              error: "Invalid customer id",
+            },
+            {
+              status: 400,
+            },
+          );
+        }
+
+        const clientExists = await prisma.client.findUnique({
+          where: {
+            id: clientId,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        if (!clientExists) {
+          return NextResponse.json(
+            {
+              error: "Customer not found",
+            },
+            {
+              status: 404,
+            },
+          );
+        }
+
+        data.clientId = clientId;
+      }
     }
 
     if (body.quoteDate) {
@@ -128,7 +168,25 @@ export async function PATCH(request, context) {
     if (Number.isFinite(Number(body.total))) {
       data.total = Number(body.total);
     }
+    const existingQuote = await prisma.quote.findUnique({
+      where: {
+        id,
+      },
+      select: {
+        id: true,
+      },
+    });
 
+    if (!existingQuote) {
+      return NextResponse.json(
+        {
+          error: "Quote not found",
+        },
+        {
+          status: 404,
+        },
+      );
+    }
     const updatedQuote = await prisma.quote.update({
       where: {
         id,

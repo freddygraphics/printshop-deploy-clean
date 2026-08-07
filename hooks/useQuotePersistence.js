@@ -87,7 +87,7 @@ export function useQuotePersistence({ quoteId }) {
   );
 
   const scheduleAutosave = useCallback(
-    (itemsSnapshot) => {
+    (itemsSnapshot, onSuccess) => {
       if (!quoteId) return;
 
       if (autosaveTimerRef.current) {
@@ -107,10 +107,16 @@ export function useQuotePersistence({ quoteId }) {
             : {},
       }));
 
-      autosaveTimerRef.current = setTimeout(() => {
-        saveItems(snapshot).catch((error) => {
+      autosaveTimerRef.current = setTimeout(async () => {
+        try {
+          await saveItems(snapshot);
+
+          if (typeof onSuccess === "function") {
+            onSuccess();
+          }
+        } catch (error) {
           console.error("❌ Quote items autosave error:", error);
-        });
+        }
       }, 900);
     },
     [quoteId, saveItems],

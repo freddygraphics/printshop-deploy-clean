@@ -66,6 +66,24 @@ export async function PUT(request, context) {
             `Item ${index + 1}`,
         ).trim() || `Item ${index + 1}`;
 
+      const options =
+        item.options &&
+        typeof item.options === "object" &&
+        !Array.isArray(item.options)
+          ? item.options
+          : {};
+
+      const productType = String(
+        options.productType ||
+          item.product?.productType ||
+          item.productType ||
+          "",
+      )
+        .trim()
+        .toLowerCase();
+
+      const isApparel = productType === "apparel";
+
       const qtyNumber = Number(item.qty);
       const unitPriceNumber = Number(item.unitPrice);
       const totalNumber = Number(item.total);
@@ -87,23 +105,29 @@ export async function PUT(request, context) {
       return {
         quoteId,
 
+        // SanMar/Apparel no pertenece a la tabla Product.
         productId:
-          Number.isInteger(productIdNumber) && productIdNumber > 0
+          !isApparel && Number.isInteger(productIdNumber) && productIdNumber > 0
             ? productIdNumber
             : null,
 
         name,
-
         qty,
         unitPrice,
         total,
 
-        options:
-          item.options &&
-          typeof item.options === "object" &&
-          !Array.isArray(item.options)
-            ? item.options
-            : {},
+        options: {
+          ...options,
+
+          ...(isApparel
+            ? {
+                productType: "apparel",
+
+                apparelProductId:
+                  options.apparelProductId || item.product?.id || null,
+              }
+            : {}),
+        },
 
         notes:
           typeof item.notes === "string" && item.notes.trim()

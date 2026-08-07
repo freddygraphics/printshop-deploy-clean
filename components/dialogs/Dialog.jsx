@@ -39,20 +39,28 @@ export default function Dialog({
           `}
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b px-6 py-5">
-            <h2 className="text-xl font-semibold tracking-tight text-gray-900">
-              {title}
-            </h2>
+          {(title || showCloseButton) && (
+            <div className="flex items-center justify-between border-b px-6 py-5">
+              {title ? (
+                <h2 className="text-xl font-semibold tracking-tight text-gray-900">
+                  {title}
+                </h2>
+              ) : (
+                <div />
+              )}
 
-            {showCloseButton && (
-              <button
-                onClick={onClose}
-                className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            )}
-          </div>
+              {showCloseButton && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+                  aria-label="Close dialog"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Body */}
           <div className="px-6 py-5">{children}</div>

@@ -136,27 +136,36 @@ model PrintProductionProfile {
 }
 
 model Quote {
-  id            Int         @id @default(autoincrement())
-  quoteNumber   Int?        @unique
-  clientId      Int
-  quoteDate     DateTime    @default(now())
-  validUntil    DateTime?
-  subtotal      Float       @default(0)
-  tax           Float       @default(0)
-  total         Float       @default(0)
-  paymentOption String      @default("full")
-  status        String      @default("Pending")
-  notes         String?
-  reference     String?     @unique
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  customerNotes String?
-  internalNotes String?
-  userId        Int?
-  invoices      Invoice[]
-  client        Client      @relation(fields: [clientId], references: [id])
-  user          User?       @relation(fields: [userId], references: [id])
-  items         QuoteItem[]
+  id              Int       @id @default(autoincrement())
+  quoteNumber     Int?      @unique
+
+  clientId        Int?
+  client          Client?   @relation(fields: [clientId], references: [id])
+
+  quoteDate       DateTime  @default(now())
+  validUntil      DateTime?
+
+  subtotal        Float     @default(0)
+  tax             Float     @default(0)
+  total           Float     @default(0)
+
+  paymentOption   String    @default("full")
+  status          String    @default("Pending")
+
+  notes           String?
+  reference       String?   @unique
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  customerNotes   String?
+  internalNotes   String?
+
+  userId          Int?
+
+  invoices        Invoice[]
+  user            User?     @relation(fields: [userId], references: [id])
+  items           QuoteItem[]
 }
 
 model Counter {

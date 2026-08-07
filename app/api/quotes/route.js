@@ -35,6 +35,42 @@ export async function POST(request) {
   try {
     const body = await request.json();
 
+    // ---------------------------------------------
+    // CLIENTE OPCIONAL
+    // ---------------------------------------------
+    const parsedClientId = Number(body.clientId);
+
+    const clientId =
+      Number.isInteger(parsedClientId) && parsedClientId > 0
+        ? parsedClientId
+        : null;
+
+    // Si enviaron un cliente, confirmamos que exista.
+    if (clientId) {
+      const clientExists = await prisma.client.findUnique({
+        where: {
+          id: clientId,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (!clientExists) {
+        return NextResponse.json(
+          {
+            error: "Customer not found",
+          },
+          {
+            status: 400,
+          },
+        );
+      }
+    }
+
+    // ---------------------------------------------
+    // SIGUIENTE NÚMERO DE QUOTE
+    // ---------------------------------------------
     const lastQuote = await prisma.quote.findFirst({
       where: {
         quoteNumber: {
@@ -50,82 +86,109 @@ export async function POST(request) {
     });
 
     const lastNumber = Number(lastQuote?.quoteNumber || 0);
-
     const nextQuoteNumber = lastNumber >= 100 ? lastNumber + 1 : 100;
 
+    // ---------------------------------------------
+    // NORMALIZAR ITEMS
+    // ---------------------------------------------
+    const normalizedItems = Array.isArray(body.items)
+      ? body.items.map((item, index) => {
+          const name =
+            String(
+              item.name ||
+                item.description ||
+                item.product?.name ||
+                `Item ${index + 1}`,
+            ).trim() || `Item ${index + 1}`;
+
+          const qtyNumber = Number(item.qty);
+          const unitPriceNumber = Number(item.unitPrice);
+          const totalNumber = Number(item.total);
+          const productIdNumber = Number(item.productId);
+
+          const qty =
+            Number.isFinite(qtyNumber) && qtyNumber > 0
+              ? Math.round(qtyNumber)
+              : 1;
+
+          const unitPrice =
+            Number.isFinite(unitPriceNumber) && unitPriceNumber >= 0
+              ? unitPriceNumber
+              : 0;
+
+          const total =
+            Number.isFinite(totalNumber) && totalNumber >= 0
+              ? totalNumber
+              : qty * unitPrice;
+
+          return {
+            productId:
+              Number.isInteger(productIdNumber) && productIdNumber > 0
+                ? productIdNumber
+                : null,
+
+            name,
+            qty,
+            unitPrice,
+            total,
+
+            options:
+              item.options &&
+              typeof item.options === "object" &&
+              !Array.isArray(item.options)
+                ? item.options
+                : {},
+          };
+        })
+      : [];
+
+    // ---------------------------------------------
+    // CALCULAR TOTALES SI NO VIENEN
+    // ---------------------------------------------
+    const calculatedSubtotal = normalizedItems.reduce(
+      (sum, item) => sum + Number(item.total || 0),
+      0,
+    );
+
+    const subtotal = Number.isFinite(Number(body.subtotal))
+      ? Number(body.subtotal)
+      : calculatedSubtotal;
+
+    const tax = Number.isFinite(Number(body.tax)) ? Number(body.tax) : 0;
+
+    const total = Number.isFinite(Number(body.total))
+      ? Number(body.total)
+      : subtotal + tax;
+
+    // Sin cliente se crea como Draft.
+    const status = body.status || (clientId ? "Pending" : "Draft");
+
+    // ---------------------------------------------
+    // CREAR QUOTE
+    // ---------------------------------------------
     const quote = await prisma.quote.create({
       data: {
         quoteNumber: nextQuoteNumber,
 
-        clientId: Number(body.clientId),
+        // Ahora puede ser null
+        clientId,
 
         quoteDate: body.quoteDate ? new Date(body.quoteDate) : new Date(),
 
         validUntil: body.expiryDate ? new Date(body.expiryDate) : null,
 
-        status: body.status || "Pending",
+        status,
 
         customerNotes: body.customerNotes || "",
 
-        subtotal: Number(body.subtotal || 0),
-
-        tax: Number(body.tax || 0),
-
-        total: Number(body.total || 0),
+        subtotal,
+        tax,
+        total,
 
         paymentOption: body.paymentOption || "full",
+
         items: {
-          create: Array.isArray(body.items)
-            ? body.items.map((item, index) => {
-                const name =
-                  String(
-                    item.name ||
-                      item.description ||
-                      item.product?.name ||
-                      `Item ${index + 1}`,
-                  ).trim() || `Item ${index + 1}`;
-
-                const qtyNumber = Number(item.qty);
-                const unitPriceNumber = Number(item.unitPrice);
-                const totalNumber = Number(item.total);
-                const productIdNumber = Number(item.productId);
-
-                const qty =
-                  Number.isFinite(qtyNumber) && qtyNumber > 0
-                    ? Math.round(qtyNumber)
-                    : 1;
-
-                const unitPrice =
-                  Number.isFinite(unitPriceNumber) && unitPriceNumber >= 0
-                    ? unitPriceNumber
-                    : 0;
-
-                const total =
-                  Number.isFinite(totalNumber) && totalNumber >= 0
-                    ? totalNumber
-                    : qty * unitPrice;
-
-                return {
-                  productId:
-                    Number.isInteger(productIdNumber) && productIdNumber > 0
-                      ? productIdNumber
-                      : null,
-
-                  name,
-
-                  qty,
-                  unitPrice,
-                  total,
-
-                  options:
-                    item.options &&
-                    typeof item.options === "object" &&
-                    !Array.isArray(item.options)
-                      ? item.options
-                      : {},
-                };
-              })
-            : [],
+          create: normalizedItems,
         },
       },
 
@@ -143,7 +206,8 @@ export async function POST(request) {
 
     return NextResponse.json(
       {
-        error: error?.message || "Could not create quote",
+        error:
+          error instanceof Error ? error.message : "Could not create quote",
       },
       {
         status: 500,

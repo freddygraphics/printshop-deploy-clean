@@ -71,6 +71,30 @@ export async function PUT(req, { params }) {
         const qty = Number(item.qty);
         const unitPrice = Number(item.unitPrice);
         const itemTotal = Number(item.total);
+        const itemOptions =
+          item.options &&
+          typeof item.options === "object" &&
+          !Array.isArray(item.options)
+            ? item.options
+            : {};
+
+        const productType = String(
+          itemOptions.productType ||
+            item.product?.productType ||
+            item.productType ||
+            "",
+        )
+          .trim()
+          .toLowerCase();
+
+        const isApparel = productType === "apparel";
+
+        const parsedProductId = Number(item.productId);
+
+        const safeProductId =
+          !isApparel && Number.isInteger(parsedProductId) && parsedProductId > 0
+            ? parsedProductId
+            : null;
 
         if (!Number.isInteger(qty) || qty <= 0) {
           throw new Error(
@@ -120,7 +144,7 @@ export async function PUT(req, { params }) {
         }
 
         const pricingMode =
-          item.options?.pricingMode || item.pricingMode || "manual";
+          itemOptions.pricingMode || item.pricingMode || "manual";
 
         // -----------------------------------------
         // ITEM MANUAL O LEGACY
@@ -129,7 +153,7 @@ export async function PUT(req, { params }) {
           await tx.invoiceItem.create({
             data: {
               invoiceId,
-              productId: item.productId ? Number(item.productId) : null,
+              productId: safeProductId,
 
               printProductionProfileId: item.printProductionProfileId || null,
 
@@ -158,7 +182,19 @@ export async function PUT(req, { params }) {
 
               priceSnapshot: item.priceSnapshot ?? null,
 
-              options: item.options ?? {},
+              options: {
+                ...itemOptions,
+
+                ...(isApparel
+                  ? {
+                      productType: "apparel",
+                      apparelProductId:
+                        itemOptions.apparelProductId ||
+                        item.product?.id ||
+                        null,
+                    }
+                  : {}),
+              },
               notes: item.notes || null,
             },
           });
@@ -220,7 +256,7 @@ export async function PUT(req, { params }) {
           data: {
             invoiceId,
 
-            productId: item.productId ? Number(item.productId) : null,
+            productId: safeProductId,
 
             printProductionProfileId: item.printProductionProfileId || null,
 
@@ -239,7 +275,16 @@ export async function PUT(req, { params }) {
             priceSnapshot: breakdown,
 
             options: {
-              ...(item.options || {}),
+              ...itemOptions,
+
+              ...(isApparel
+                ? {
+                    productType: "apparel",
+                    apparelProductId:
+                      itemOptions.apparelProductId || item.product?.id || null,
+                  }
+                : {}),
+
               widthIn,
               heightIn,
               pricingMode: "sqft",

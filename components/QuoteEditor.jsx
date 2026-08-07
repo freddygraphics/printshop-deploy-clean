@@ -18,6 +18,8 @@ import AssignTeamMemberModal from "@/components/AssignTeamMemberModal";
 import CreateJobModal from "@/components/CreateJobModal";
 import { searchDocumentProducts } from "@/lib/document-items/searchDocumentProducts";
 import { createDocumentItem } from "@/lib/document-items/createDocumentItem";
+import UnsavedChangesDialog from "@/components/dialogs/UnsavedChangesDialog";
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 export default function QuoteEditor({
   mode = "new",
   quoteId: editQuoteId = null,
@@ -39,6 +41,7 @@ export default function QuoteEditor({
 
   const savingRef = useRef(false);
   const quoteHydratedRef = useRef(false);
+
   // ----------------------------------------
   // ITEMS
   // ----------------------------------------
@@ -56,7 +59,7 @@ export default function QuoteEditor({
   const [taxRate, setTaxRate] = useState(6.625);
   const [paymentOption, setPaymentOption] = useState("full");
 
-  const [status, setStatus] = useState("Pending");
+  const [status, setStatus] = useState(mode === "new" ? "Draft" : "Pending");
   const [customerNotes, setCustomerNotes] = useState("");
 
   const [quoteId, setQuoteId] = useState(null);
@@ -66,6 +69,7 @@ export default function QuoteEditor({
   const { saveItems, scheduleAutosave, persistQuote } = useQuotePersistence({
     quoteId,
   });
+
   // ----------------------------------------
   // MANUAL ITEM FIELDS
   // ----------------------------------------
@@ -91,92 +95,180 @@ export default function QuoteEditor({
   });
 
   // ======================================================
-  // ✅ LOAD QUOTE (EDIT MODE) - SOLO UNO (sin duplicar)
+  // LOAD EXISTING QUOTE
   // ======================================================
   useEffect(() => {
-    if (mode !== "edit" || !editQuoteId) return;
+    const numericQuoteId = Number(editQuoteId);
 
-    const loadQuote = async () => {
+    if (
+      mode !== "edit" ||
+      !Number.isInteger(numericQuoteId) ||
+      numericQuoteId <= 0
+    ) {
+      return;
+    }
+
+    let active = true;
+
+    async function loadQuote() {
       try {
         quoteHydratedRef.current = false;
 
-        const res = await fetch(`/api/quotes/${editQuoteId}`);
+        const res = await fetch(`/api/quotes/${numericQuoteId}`, {
+          cache: "no-store",
+        });
+
+        const data = await res.json().catch(() => null);
 
         if (!res.ok) {
-          throw new Error("Could not load quote");
+          throw new Error(
+            data?.error ||
+              data?.details ||
+              `Could not load quote (${res.status})`,
+          );
         }
 
-        const data = await res.json();
+        if (!data?.id) {
+          throw new Error("The quote API returned invalid data.");
+        }
 
-        setQuoteId(data.id);
-        setQuoteNumber(data.quoteNumber);
-        setSelectedClient(data.client);
-        setStatus(data.status);
-        setQuoteDate(data.quoteDate?.split("T")[0] || "");
-        setExpiryDate(data.validUntil ? data.validUntil.split("T")[0] : "");
-        setCustomerNotes(data.customerNotes || "");
-
-        // 🔥 FIX: ENRIQUECER ITEMS CON PRODUCT REAL (para que InlineProductEditor muestre config)
         const enrichedItems = await Promise.all(
-          (data.items || []).map(async (i) => {
+          (data.items || []).map(async (item) => {
             let productData = null;
 
-            if (i.productId) {
-              const pRes = await fetch(`/api/products/${i.productId}`);
-              productData = await pRes.json();
+            const itemOptions =
+              item.options &&
+              typeof item.options === "object" &&
+              !Array.isArray(item.options)
+                ? item.options
+                : {};
+
+            const productType = String(itemOptions.productType || "")
+              .trim()
+              .toLowerCase();
+
+            const isApparel = productType === "apparel";
+
+            // Producto normal de la tabla Product
+            if (item.productId) {
+              const productResponse = await fetch(
+                `/api/products/${item.productId}`,
+                {
+                  cache: "no-store",
+                },
+              );
+
+              if (productResponse.ok) {
+                productData = await productResponse.json();
+              }
             }
-            const defaults = productData?.defaultOptions || {};
 
-            const itemName = i.name || productData?.name || "Item";
+            // Producto SanMar guardado dentro de options
+            if (isApparel && itemOptions.apparelProductId) {
+              const apparelResponse = await fetch(
+                `/api/apparel/${itemOptions.apparelProductId}`,
+                {
+                  cache: "no-store",
+                },
+              );
 
+              if (apparelResponse.ok) {
+                const apparelData = await apparelResponse.json();
+
+                if (apparelData?.product) {
+                  productData = {
+                    ...apparelData.product,
+
+                    category: "apparel",
+                    productType: "apparel",
+
+                    colors: Array.isArray(apparelData.colors)
+                      ? apparelData.colors
+                      : [],
+
+                    variants: Array.isArray(apparelData.variants)
+                      ? apparelData.variants
+                      : [],
+
+                    sizes: Array.isArray(apparelData.sizes)
+                      ? apparelData.sizes
+                      : [],
+
+                    inventory: Array.isArray(apparelData.inventory)
+                      ? apparelData.inventory
+                      : [],
+
+                    images: Array.isArray(apparelData.images)
+                      ? apparelData.images
+                      : [],
+
+                    printLocations: Array.isArray(apparelData.printLocations)
+                      ? apparelData.printLocations
+                      : [],
+
+                    pricing: apparelData.pricing || null,
+                  };
+                }
+              }
+            }
             return {
-              id: crypto.randomUUID(),
-              productId: i.productId || null,
+              ...item,
 
               product: productData,
 
-              name: itemName,
-              description: itemName,
-
-              qty: i.qty || 1,
-              unitPrice: i.unitPrice || 0,
-              total: i.total || 0,
-
-              customFields:
-                i.customFields ||
-                productData?.customFields ||
-                productData?.template?.fields ||
-                null,
-
-              options:
-                i.options ||
-                productData?.defaultOptions ||
-                productData?.template?.options ||
-                {},
-
-              finish: i.options?.finish || defaults.finish || "",
-
-              design: i.options?.design || defaults.design || "",
-
-              sides: i.options?.sides || defaults.sides || "",
-
-              corners: i.options?.corners || defaults.corners || "",
+              options: {
+                ...(item.options || {}),
+              },
 
               _expanded: false,
             };
           }),
         );
+
+        if (!active) return;
+
+        setQuoteId(Number(data.id));
+        setQuoteNumber(data.quoteNumber ?? null);
+        setSelectedClient(data.client || null);
+
+        setQuoteDate(
+          data.quoteDate
+            ? String(data.quoteDate).slice(0, 10)
+            : new Date().toISOString().slice(0, 10),
+        );
+
+        setExpiryDate(
+          data.validUntil ? String(data.validUntil).slice(0, 10) : "",
+        );
+
+        setStatus(data.status || "Draft");
+        setCustomerNotes(data.customerNotes || "");
         setItems(enrichedItems);
+
         quoteHydratedRef.current = true;
-      } catch (err) {
+        markSaved();
+
+        console.log("QUOTE HYDRATED:", {
+          id: data.id,
+          quoteNumber: data.quoteNumber,
+          status: data.status,
+          items: enrichedItems.length,
+        });
+      } catch (error) {
         quoteHydratedRef.current = false;
-        console.error("❌ Error loading quote", err);
+
+        console.error("❌ Error loading quote:", error);
+
+        alert(error instanceof Error ? error.message : "Could not load quote.");
       }
-    };
+    }
 
     loadQuote();
-  }, [mode, editQuoteId]);
 
+    return () => {
+      active = false;
+    };
+  }, [mode, editQuoteId]);
   // ----------------------------------------
   // PRODUCT AUTOCOMPLETE
   // ----------------------------------------
@@ -224,9 +316,91 @@ export default function QuoteEditor({
   // ----------------------------------------
   // CALCULOS
   // ----------------------------------------
-  const subtotal = items.reduce((t, i) => t + (i.total || 0), 0);
+  const validItems = Array.isArray(items)
+    ? items.filter((item) => item && typeof item === "object")
+    : [];
+
+  const subtotal = validItems.reduce((total, item) => {
+    return total + Number(item.total || 0);
+  }, 0);
+
   const tax = taxEnabled ? subtotal * (taxRate / 100) : 0;
   const total = subtotal + tax;
+
+  const saveQuoteAsDraft = useCallback(async () => {
+    if (!selectedClient && items.length === 0) {
+      return;
+    }
+
+    if (!quoteId) {
+      throw new Error(
+        "The quote has not been created yet. Add a customer and save the quote first.",
+      );
+    }
+
+    if (items.length > 0) {
+      await saveItems(items);
+    }
+
+    await persistQuote({
+      clientId: selectedClient?.id ?? null,
+      quoteDate,
+      expiryDate,
+      status: "Draft",
+      customerNotes,
+      subtotal,
+      tax,
+      total,
+      paymentOption,
+    });
+  }, [
+    quoteId,
+    selectedClient,
+    items,
+    quoteDate,
+    expiryDate,
+    customerNotes,
+    subtotal,
+    tax,
+    total,
+    paymentOption,
+    saveItems,
+    persistQuote,
+  ]);
+
+  const {
+    showUnsavedDialog,
+    isSavingDraft,
+    markUnsaved,
+    markSaved,
+    requestNavigation,
+    closeUnsavedDialog,
+    handleSaveDraftAndLeave,
+    handleDiscardAndLeave,
+  } = useUnsavedChanges({
+    onSaveDraft: saveQuoteAsDraft,
+  });
+
+  const initializedRef = useRef(false);
+
+  useEffect(() => {
+    if (!quoteHydratedRef.current) return;
+
+    if (!initializedRef.current) {
+      initializedRef.current = true;
+      return;
+    }
+
+    markUnsaved();
+  }, [
+    quoteDate,
+    expiryDate,
+    status,
+    customerNotes,
+    taxEnabled,
+    paymentOption,
+    markUnsaved,
+  ]);
 
   useEffect(() => {
     if (!quoteId) return;
@@ -244,9 +418,13 @@ export default function QuoteEditor({
         tax,
         total,
         paymentOption,
-      }).catch((error) => {
-        console.error("❌ Error saving quote details:", error);
-      });
+      })
+        .then(() => {
+          markSaved();
+        })
+        .catch((error) => {
+          console.error("❌ Error saving quote details:", error);
+        });
     }, 700);
 
     return () => {
@@ -264,6 +442,7 @@ export default function QuoteEditor({
     total,
     paymentOption,
     persistQuote,
+    markSaved,
   ]);
   // ----------------------------------------
   // SELECT PRODUCT
@@ -297,9 +476,11 @@ export default function QuoteEditor({
       ];
 
       setItems(nextItems);
+      markUnsaved();
 
       if (quoteId) {
         await saveItems(nextItems);
+        markSaved();
       }
 
       setProductSearch("");
@@ -341,9 +522,11 @@ export default function QuoteEditor({
 
       setItems(nextItems);
       setShowAddCard(false);
+      markUnsaved();
 
       if (quoteId) {
         await saveItems(nextItems);
+        markSaved();
       }
 
       setManualDesc("");
@@ -387,7 +570,7 @@ export default function QuoteEditor({
           index,
           normalizedFields,
         );
-
+        markUnsaved();
         const updatedItem = nextItems[index];
 
         const isManualItem =
@@ -399,7 +582,10 @@ export default function QuoteEditor({
           savingRef.current = true;
 
           Promise.resolve()
-            .then(() => saveItems(nextItems))
+            .then(async () => {
+              await saveItems(nextItems);
+              markSaved();
+            })
             .catch((error) => {
               console.error("❌ Error saving quote item:", error);
 
@@ -409,13 +595,13 @@ export default function QuoteEditor({
               savingRef.current = false;
             });
         } else if (!isManualItem) {
-          scheduleAutosave(nextItems);
+          scheduleAutosave(nextItems, markSaved);
         }
 
         return nextItems;
       });
     },
-    [saveItems, scheduleAutosave],
+    [saveItems, scheduleAutosave, markUnsaved, markSaved],
   );
 
   const getItemChangeHandler = useCallback(
@@ -432,11 +618,12 @@ export default function QuoteEditor({
     const nextItems = removeDocumentItem(previousItems, index);
 
     setItems(nextItems);
-
+    markUnsaved();
     if (!quoteId) return;
 
     try {
       await saveItems(nextItems);
+      markSaved();
     } catch (error) {
       console.error("❌ Error removing quote item:", error);
 
@@ -498,7 +685,8 @@ export default function QuoteEditor({
                   const invoice = await res.json();
 
                   // 🔥 ESTE ES EL FIX
-                  window.location.href = `/invoices/${invoice.id}`;
+                  markSaved();
+                  requestNavigation(`/invoices/${invoice.id}`);
                 } catch (err) {
                   console.error(err);
                   alert("Error converting quote");
@@ -541,7 +729,8 @@ export default function QuoteEditor({
                   if (!res.ok) throw new Error("Failed to delete quote");
 
                   // 👉 regresar a la lista
-                  window.location.href = "/quotes";
+                  markSaved();
+                  requestNavigation("/quotes");
                 } catch (err) {
                   console.error("❌ Void quote error:", err);
                   alert("Error voiding quote");
@@ -590,6 +779,7 @@ export default function QuoteEditor({
             value={status}
             onChange={(event) => setStatus(event.target.value)}
           >
+            <option value="Draft">Draft</option>
             <option value="Pending">Pending</option>
             <option value="Approved">Approved</option>
             <option value="Rejected">Rejected</option>
@@ -640,7 +830,7 @@ export default function QuoteEditor({
         setManualUnit={setManualUnit}
         manualTotal={manualTotal}
         addManualItem={addManualItem}
-        items={items}
+        items={validItems}
         removeItem={removeItem}
         handleToggleItemExpanded={handleToggleItemExpanded}
         getItemChangeHandler={getItemChangeHandler}
@@ -670,110 +860,57 @@ export default function QuoteEditor({
       {showCustomerModal && (
         <CustomerSearchModal
           onSelect={async (customer) => {
-            setSelectedClient(customer);
             setShowCustomerModal(false);
 
-            // ✅ EDIT MODE: no crees otro quote
-            if (mode === "edit") return;
+            // Si el quote todavía no existe,
+            // solamente asignamos el cliente al estado.
+            // El autosave lo guardará cuando el quote sea creado.
 
-            // ✅ NEW MODE: si ya existe quoteId, no crear otro
-            if (quoteId) return;
+            if (!quoteId) {
+              setSelectedClient(customer);
+              markUnsaved();
 
-            const res = await fetch("/api/quotes", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                clientId: customer.id,
-                quoteDate,
-                expiryDate: expiryDate || null,
-                status,
-
-                items: items.map((item) => ({
-                  ...item,
-                  name: item.description || item.name || "Item",
-                  description: item.description || item.name || "Item",
-                })),
-
-                subtotal,
-                tax,
-                total,
-                taxEnabled,
-                taxRate,
-                paymentOption,
-                customerNotes,
-              }),
-            });
-
-            const responseText = await res.text();
-
-            let data = null;
-
-            if (responseText) {
-              try {
-                data = JSON.parse(responseText);
-              } catch (error) {
-                console.error(
-                  "La API devolvió una respuesta que no es JSON:",
-                  responseText,
-                );
+              if (status === "Draft") {
+                setStatus("Pending");
               }
+
+              return;
             }
 
-            if (!res.ok) {
-              console.error("❌ Create quote error:", {
-                status: res.status,
-                data,
-                responseText,
+            try {
+              const nextStatus = status === "Draft" ? "Pending" : status;
+
+              const res = await fetch(`/api/quotes/${quoteId}`, {
+                method: "PATCH",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  clientId: customer.id,
+                  status: nextStatus,
+                }),
               });
 
-              alert(data?.error || `Error creating quote (${res.status})`);
+              const data = await res.json().catch(() => null);
 
-              return;
+              if (!res.ok) {
+                throw new Error(
+                  data?.error || data?.details || "Could not update customer.",
+                );
+              }
+
+              setSelectedClient(data?.client || customer);
+              setStatus(data?.status || nextStatus);
+              markSaved();
+            } catch (error) {
+              console.error("❌ Customer update error:", error);
+
+              alert(
+                error instanceof Error
+                  ? error.message
+                  : "Could not update customer.",
+              );
             }
-
-            if (!data?.id) {
-              console.error("❌ Quote created without valid response:", data);
-
-              alert("The quote API did not return the created quote.");
-
-              return;
-            }
-
-            setQuoteId(data.id);
-            setQuoteNumber(data.quoteNumber);
-
-            if (Array.isArray(data.items)) {
-              const hydratedItems = data.items.map((item) => ({
-                id: crypto.randomUUID(),
-
-                productId: item.productId || null,
-                product: null,
-
-                name: item.name || "Item",
-                description: item.name || "Item",
-
-                qty: item.qty,
-                unitPrice: item.unitPrice,
-                total: item.total,
-
-                options: item.options || {},
-
-                finish: item.options?.finish || "",
-                design: item.options?.design || "",
-                sides: item.options?.sides || "",
-                corners: item.options?.corners || "",
-
-                _expanded: false,
-              }));
-
-              setItems(hydratedItems);
-            }
-
-            quoteHydratedRef.current = true;
-
-            window.history.replaceState(null, "", `/quotes/${data.id}`);
           }}
           onClose={() => setShowCustomerModal(false)}
         />
@@ -822,7 +959,8 @@ export default function QuoteEditor({
 
               await res.json();
               setShowCreateJobModal(false);
-              window.location.href = "/production";
+              markSaved();
+              requestNavigation("/production");
             } catch (err) {
               console.error("❌ Create Job error:", err);
               alert("Error creating Job");
@@ -831,6 +969,14 @@ export default function QuoteEditor({
           onClose={() => setShowCreateJobModal(false)}
         />
       )}
+      <UnsavedChangesDialog
+        open={showUnsavedDialog}
+        onClose={closeUnsavedDialog}
+        onSaveDraft={handleSaveDraftAndLeave}
+        onDiscard={handleDiscardAndLeave}
+        isSaving={isSavingDraft}
+        documentType="quote"
+      />
     </DocumentEditorLayout>
   );
 }

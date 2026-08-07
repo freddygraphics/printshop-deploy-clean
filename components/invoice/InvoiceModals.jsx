@@ -69,6 +69,9 @@ export default function InvoiceModals({
   executeVoid,
 
   router,
+  markUnsaved,
+  markSaved,
+  requestNavigation,
 }) {
   async function createInvoiceForCustomer(customer) {
     const response = await fetch("/api/invoices", {
@@ -114,6 +117,7 @@ export default function InvoiceModals({
     const previousCustomer = selectedClient;
 
     setSelectedClient(customer);
+    markUnsaved();
     setShowCustomerModal(false);
 
     // Si el invoice ya existe, actualizar el cliente en la BD
@@ -147,6 +151,8 @@ export default function InvoiceModals({
           client: updatedClient,
         }));
 
+        markSaved();
+
         return;
       } catch (error) {
         console.error("Error changing invoice customer:", error);
@@ -175,6 +181,7 @@ export default function InvoiceModals({
 
   async function handleCustomerCreated(customer) {
     setSelectedClient(customer);
+    markUnsaved();
     setShowCreateCustomerModal(false);
 
     /*
@@ -195,6 +202,7 @@ export default function InvoiceModals({
         if (!response.ok) {
           throw new Error("Could not assign customer.");
         }
+        markSaved();
       } catch (error) {
         console.error("Error assigning customer to invoice:", error);
 
@@ -206,6 +214,7 @@ export default function InvoiceModals({
 
     try {
       await createInvoiceForCustomer(customer);
+      markSaved();
     } catch (error) {
       console.error("Error creating invoice:", error);
 
@@ -320,7 +329,8 @@ export default function InvoiceModals({
         job: data,
       });
 
-      router.push("/production");
+      markSaved();
+      requestNavigation("/production");
     } catch (error) {
       console.error("Error creating job:", error);
 

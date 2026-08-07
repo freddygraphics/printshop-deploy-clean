@@ -11,7 +11,14 @@ const RAFFLE_TICKET_TEMPLATE = {
   templateType: "raffle-tickets",
   description: "Custom numbered, perforated and booklet raffle tickets.",
 };
-
+const APPAREL_TEMPLATE = {
+  id: "apparel",
+  name: "Apparel",
+  slug: "apparel",
+  templateType: "apparel",
+  description:
+    "Custom apparel with garment, size, color and decoration options.",
+};
 export default function ProductTemplateSelector({
   open = true,
   onClose,
@@ -39,16 +46,27 @@ export default function ProductTemplateSelector({
           template.templateType === "raffle-tickets",
       );
 
-      setTemplates(
-        raffleExists
-          ? loadedTemplates
-          : [...loadedTemplates, RAFFLE_TICKET_TEMPLATE],
+      const apparelExists = loadedTemplates.some(
+        (template) =>
+          template.slug === "apparel" || template.templateType === "apparel",
       );
+
+      const finalTemplates = [...loadedTemplates];
+
+      if (!apparelExists) {
+        finalTemplates.push(APPAREL_TEMPLATE);
+      }
+
+      if (!raffleExists) {
+        finalTemplates.push(RAFFLE_TICKET_TEMPLATE);
+      }
+
+      setTemplates(finalTemplates);
     } catch (err) {
       console.error("Error loading templates:", err);
 
       // Raffle Tickets seguirá visible aunque falle la API
-      setTemplates([RAFFLE_TICKET_TEMPLATE]);
+      setTemplates([APPAREL_TEMPLATE, RAFFLE_TICKET_TEMPLATE]);
     }
   }
 
