@@ -11,6 +11,8 @@ export async function GET() {
       data: [
         {
           name: "Regular",
+          sheetWidth: 11,
+          sheetHeight: 17,
           costPerSheet: 2.8,
           laminateCost: 1,
           cutCost: 0.5,
@@ -19,6 +21,8 @@ export async function GET() {
         },
         {
           name: "Transparente",
+          sheetWidth: 11,
+          sheetHeight: 17,
           costPerSheet: 4.5,
           laminateCost: 1.2,
           cutCost: 0.5,
@@ -40,37 +44,41 @@ export async function POST(req) {
   try {
     const body = await req.json();
 
-    const result = await prisma.stickerSheetPricing.upsert({
-      where: {
-        id: body.id,
-      },
+    const pricingData = {
+      name: body.name,
 
-      update: {
-        name: body.name,
-        costPerSheet: Number(body.costPerSheet),
-        laminateCost: Number(body.laminateCost),
-        cutCost: Number(body.cutCost),
-        wastePercent: Number(body.wastePercent),
-        profitMargin: Number(body.profitMargin),
-      },
+      sheetWidth: Number(body.sheetWidth ?? 11),
+      sheetHeight: Number(body.sheetHeight ?? 17),
 
-      create: {
-        name: body.name,
-        costPerSheet: Number(body.costPerSheet),
-        laminateCost: Number(body.laminateCost),
-        cutCost: Number(body.cutCost),
-        wastePercent: Number(body.wastePercent),
-        profitMargin: Number(body.profitMargin),
-      },
-    });
+      costPerSheet: Number(body.costPerSheet),
+      laminateCost: Number(body.laminateCost),
+      cutCost: Number(body.cutCost),
+      wastePercent: Number(body.wastePercent),
+      profitMargin: Number(body.profitMargin),
+    };
+
+    const result = body.id
+      ? await prisma.stickerSheetPricing.update({
+          where: {
+            id: body.id,
+          },
+          data: pricingData,
+        })
+      : await prisma.stickerSheetPricing.create({
+          data: pricingData,
+        });
 
     return NextResponse.json(result);
   } catch (err) {
-    console.error(err);
+    console.error("STICKER PRICING ERROR:", err);
 
     return NextResponse.json(
-      { error: "Error saving pricing" },
-      { status: 500 },
+      {
+        error: "Error saving pricing",
+      },
+      {
+        status: 500,
+      },
     );
   }
 }

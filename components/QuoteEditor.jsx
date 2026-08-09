@@ -41,11 +41,15 @@ export default function QuoteEditor({
 
   const savingRef = useRef(false);
   const quoteHydratedRef = useRef(false);
+  const itemsRef = useRef([]);
 
   // ----------------------------------------
   // ITEMS
   // ----------------------------------------
   const [items, setItems] = useState([]);
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
   const [showAddCard, setShowAddCard] = useState(false);
 
   // ----------------------------------------
@@ -243,6 +247,7 @@ export default function QuoteEditor({
 
         setStatus(data.status || "Draft");
         setCustomerNotes(data.customerNotes || "");
+        itemsRef.current = enrichedItems;
         setItems(enrichedItems);
 
         quoteHydratedRef.current = true;
@@ -475,6 +480,7 @@ export default function QuoteEditor({
         newItem,
       ];
 
+      itemsRef.current = nextItems;
       setItems(nextItems);
       markUnsaved();
 
@@ -519,7 +525,7 @@ export default function QuoteEditor({
       };
 
       const nextItems = [...items, normalizedItem];
-
+      itemsRef.current = nextItems;
       setItems(nextItems);
       setShowAddCard(false);
       markUnsaved();
@@ -552,54 +558,95 @@ export default function QuoteEditor({
   // ----------------------------------------
   const handleItemChange = useCallback(
     (index, fields) => {
-      setItems((previousItems) => {
-        const normalizedFields = {
-          ...fields,
-        };
+      const previousItems = itemsRef.current;
 
-        if (Object.prototype.hasOwnProperty.call(fields, "name")) {
-          normalizedFields.description = fields.name;
+      if (
+        !Array.isArray(previousItems) ||
+        !Number.isInteger(index) ||
+        index < 0 ||
+        index >= previousItems.length
+      ) {
+        console.warn("Invalid quote item index:", index);
+        return;
+      }
+
+      const currentItem = previousItems[index];
+
+      // ----------------------------------------
+      // CONSERVAR EL ID DEL ITEM EXISTENTE
+      // ----------------------------------------
+      const normalizedFields = {
+        ...fields,
+        id: currentItem.id,
+      };
+
+      // Mantener name/description sincronizados
+      if (Object.prototype.hasOwnProperty.call(fields, "name")) {
+        normalizedFields.description = fields.name;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(fields, "description")) {
+        normalizedFields.name = fields.description;
+      }
+
+      // ----------------------------------------
+      // ACTUALIZAR SOLAMENTE ESTE ITEM
+      // ----------------------------------------
+      const nextItems = updateDocumentItem(
+        previousItems,
+        index,
+        normalizedFields,
+      );
+
+      // Actualizar inmediatamente la referencia
+      itemsRef.current = nextItems;
+      setItems(nextItems);
+
+      markUnsaved();
+
+      const updatedItem = nextItems[index];
+
+      const isManualItem =
+        !updatedItem?.productId &&
+        !updatedItem?.product &&
+        !updatedItem?.options?.productType;
+
+      // ----------------------------------------
+      // DONE / COMMIT
+      // ----------------------------------------
+      if (fields.__commit === true) {
+        if (savingRef.current) {
+          return;
         }
 
-        if (Object.prototype.hasOwnProperty.call(fields, "description")) {
-          normalizedFields.name = fields.description;
-        }
+        savingRef.current = true;
 
-        const nextItems = updateDocumentItem(
-          previousItems,
-          index,
-          normalizedFields,
-        );
-        markUnsaved();
-        const updatedItem = nextItems[index];
+        saveItems(nextItems)
+          .then(() => {
+            markSaved();
+          })
+          .catch((error) => {
+            console.error("❌ Error saving quote item:", error);
 
-        const isManualItem =
-          !updatedItem?.productId &&
-          !updatedItem?.product &&
-          !updatedItem?.options?.productType;
+            alert(
+              error instanceof Error
+                ? error.message
+                : "Could not save quote item.",
+            );
+          })
+          .finally(() => {
+            savingRef.current = false;
+          });
 
-        if (fields.__commit === true && !savingRef.current) {
-          savingRef.current = true;
+        return;
+      }
 
-          Promise.resolve()
-            .then(async () => {
-              await saveItems(nextItems);
-              markSaved();
-            })
-            .catch((error) => {
-              console.error("❌ Error saving quote item:", error);
-
-              alert(error.message);
-            })
-            .finally(() => {
-              savingRef.current = false;
-            });
-        } else if (!isManualItem) {
-          scheduleAutosave(nextItems, markSaved);
-        }
-
-        return nextItems;
-      });
+      // ----------------------------------------
+      // AUTOSAVE
+      // ----------------------------------------
+      if (!isManualItem) {
+        scheduleAutosave(nextItems, markSaved);
+      }
     },
     [saveItems, scheduleAutosave, markUnsaved, markSaved],
   );
@@ -617,6 +664,7 @@ export default function QuoteEditor({
 
     const nextItems = removeDocumentItem(previousItems, index);
 
+    itemsRef.current = nextItems;
     setItems(nextItems);
     markUnsaved();
     if (!quoteId) return;
@@ -627,15 +675,19 @@ export default function QuoteEditor({
     } catch (error) {
       console.error("❌ Error removing quote item:", error);
 
+      itemsRef.current = previousItems;
       setItems(previousItems);
 
       alert("Could not remove the product.");
     }
   };
   const handleToggleItemExpanded = (index) => {
-    setItems((previousItems) =>
-      toggleDocumentItemExpanded(previousItems, index),
-    );
+    const previousItems = itemsRef.current;
+
+    const nextItems = toggleDocumentItemExpanded(previousItems, index);
+
+    itemsRef.current = nextItems;
+    setItems(nextItems);
   };
 
   // ======================================================

@@ -29,9 +29,21 @@ function InlineProductEditor({
   onClose,
   autoCalculateOnMount = false,
 }) {
-  const isManual = !product;
+  // ======================================================
+  // RESOLVE PRODUCT
+  // Para Apparel cargado desde Invoice, product puede venir null.
+  // En ese caso recuperamos la prenda SanMar guardada en options.
+  // ======================================================
+  const effectiveProduct =
+    product || data?.product || data?.options?.apparelProduct || null;
 
-  const configuration = product?.defaultOptions ?? {};
+  const savedProductType = String(data?.options?.productType || "")
+    .trim()
+    .toLowerCase();
+
+  const isManual = !effectiveProduct && savedProductType !== "apparel";
+
+  const configuration = effectiveProduct?.defaultOptions ?? {};
 
   console.log("DEFAULT OPTIONS");
   console.log(configuration);
@@ -180,6 +192,12 @@ function InlineProductEditor({
     }
   }, [data._expanded, autoCalculateOnMount]);
   const latestSpecialItemRef = useRef(null);
+  const [specialDraft, setSpecialDraft] = useState(null);
+
+  useEffect(() => {
+    latestSpecialItemRef.current = null;
+    setSpecialDraft(null);
+  }, [data?.id]);
   // ------------------------------------------
   // MANUAL UPDATE
   // ------------------------------------------
@@ -281,15 +299,15 @@ function InlineProductEditor({
 
     return Number(total.toFixed(2));
   };
-  const category = String(product?.category || "")
+  const category = String(effectiveProduct?.category || "")
     .trim()
     .toLowerCase();
 
-  const templateType = String(product?.templateType || "")
+  const templateType = String(effectiveProduct?.templateType || "")
     .trim()
     .toLowerCase();
 
-  const templateSlug = String(product?.template?.slug || "")
+  const templateSlug = String(effectiveProduct?.template?.slug || "")
     .trim()
     .toLowerCase();
 
@@ -306,10 +324,7 @@ function InlineProductEditor({
     templateSlug === "sticker";
 
   const productType = String(
-    product?.productType ||
-      data?.product?.productType ||
-      data?.options?.productType ||
-      "",
+    effectiveProduct?.productType || data?.options?.productType || "",
   )
     .trim()
     .toLowerCase();
@@ -331,7 +346,7 @@ function InlineProductEditor({
 
   const isSpecialProduct = isSticker || isApparel || isRaffleTicket;
 
-  const isSinalite = product?.sinaliteEnabled === true;
+  const isSinalite = effectiveProduct?.sinaliteEnabled === true;
   const productCalculationRef = useRef(false);
 
   useEffect(() => {
@@ -366,7 +381,12 @@ function InlineProductEditor({
     });
 
     productCalculationRef.current = true;
-  }, [autoCalculateOnMount, product?.id, data?._expanded, pricingRows.length]);
+  }, [
+    autoCalculateOnMount,
+    effectiveProduct?.id,
+    data?._expanded,
+    pricingRows.length,
+  ]);
   // ------------------------------------------
   // RENDER
   // ------------------------------------------
@@ -374,50 +394,51 @@ function InlineProductEditor({
   return (
     <div className="mt-4 p-5 bg-white-50  rounded-xl shadow-sm">
       {/* PRODUCT HEADER */}
-      <div className="grid grid-cols-1 xl:grid-cols-[320px_1fr] gap-8 mb-8">
+      <div
+        className={`grid grid-cols-1 gap-8 mb-8 ${
+          effectiveProduct ? "xl:grid-cols-[320px_1fr]" : "xl:grid-cols-1"
+        }`}
+      >
         {/* LEFT */}
-        {product && (
+        {effectiveProduct && (
           <div className="p-4 shadow-sm h-fit">
-            {product?.image || product?.imageUrl ? (
+            {effectiveProduct?.image || effectiveProduct?.imageUrl ? (
               <img
-                src={product.image || product.imageUrl}
-                alt={product.name}
+                src={effectiveProduct.image || effectiveProduct.imageUrl}
+                alt={effectiveProduct.name}
                 className="
-            w-full
-            aspect-[4/5]
-            object-cover
-     
-            border
-            bg-gray-50
-          "
+      w-full
+      aspect-[4/5]
+      object-cover
+      border
+      bg-gray-50
+    "
               />
             ) : (
               <div
                 className="
-            w-full
-            aspect-[4/5]
-         
-            border
-            bg-gray-50
-            flex
-            items-center
-            justify-center
-            text-gray-400
-
-          "
+      w-full
+      aspect-[4/5]
+      border
+      bg-gray-50
+      flex
+      items-center
+      justify-center
+      text-gray-400
+    "
               >
                 No Image
               </div>
             )}
 
-            {product?.description && (
+            {effectiveProduct?.description && (
               <div className="mt-4 border-t border-gray-200 pt-4">
                 <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
                   Product description
                 </p>
 
                 <p className="whitespace-pre-line text-sm leading-6 text-gray-700">
-                  {product.description}
+                  {effectiveProduct.description}
                 </p>
               </div>
             )}
@@ -425,10 +446,10 @@ function InlineProductEditor({
         )}
         {/* RIGHT */}
         <div>
-          {product && (
+          {effectiveProduct && (
             <div className="pb-5 border-b mb-6">
               <h2 className="text-3xl font-semibold text-gray-900">
-                {product?.name}
+                {effectiveProduct.name}
               </h2>
 
               <p className="text-sm text-gray-500 mt-2">
@@ -602,7 +623,7 @@ function InlineProductEditor({
 
           {isSinalite && (
             <SinaliteConfigurator
-              product={product}
+              product={effectiveProduct}
               onAdd={(item) =>
                 onChange({
                   ...item,
@@ -617,7 +638,7 @@ function InlineProductEditor({
 
           {isSpecialProduct && (
             <ProductConfigurator
-              product={product}
+              product={effectiveProduct}
               initialData={data}
               onChange={(configuredItem) => {
                 if (!configuredItem) return;
@@ -626,31 +647,35 @@ function InlineProductEditor({
                   ...data,
                   ...configuredItem,
 
+                  // MUY IMPORTANTE:
+                  // conservar siempre el ID del item que estamos editando
+                  id: data.id,
+
                   productId: isApparel
                     ? null
                     : configuredItem.productId ||
                       data.productId ||
-                      product?.id ||
+                      effectiveProduct?.id ||
                       null,
 
-                  product: configuredItem.product || data.product || product,
+                  product:
+                    configuredItem.product || data.product || effectiveProduct,
 
                   name:
                     configuredItem.name ||
                     configuredItem.description ||
                     data.name ||
-                    product?.name ||
+                    effectiveProduct?.name ||
                     "Item",
-
                   description:
                     configuredItem.description ||
                     configuredItem.name ||
                     data.description ||
                     data.name ||
-                    product?.name ||
+                    effectiveProduct?.name ||
                     "Item",
 
-                  qty: Number(configuredItem.qty || data.qty || 1),
+                  qty: Number(configuredItem.qty ?? data.qty ?? 1),
 
                   unitPrice: Number(
                     configuredItem.unitPrice ?? data.unitPrice ?? 0,
@@ -675,12 +700,16 @@ function InlineProductEditor({
                     },
                   },
 
+                  // Mientras configura NO hacemos commit
                   _expanded: true,
+                  __commit: false,
                 };
 
+                // Guardamos temporalmente los cambios.
+                // El ref conserva el valor inmediatamente.
+                // El state fuerza el re-render para habilitar Done.
                 latestSpecialItemRef.current = nextConfiguredItem;
-
-                onChange(nextConfiguredItem);
+                setSpecialDraft(nextConfiguredItem);
               }}
             />
           )}
@@ -688,14 +717,25 @@ function InlineProductEditor({
             <div className="mt-6 flex justify-end border-t border-gray-200 pt-4">
               <button
                 type="button"
-                onClick={() =>
+                onClick={() => {
+                  const itemToSave =
+                    specialDraft || latestSpecialItemRef.current || data;
+
                   onChange({
-                    ...(latestSpecialItemRef.current || data),
+                    ...itemToSave,
+                    id: data.id,
                     _expanded: false,
                     __commit: true,
-                  })
+                  });
+                }}
+                disabled={
+                  Number(
+                    specialDraft?.total ??
+                      latestSpecialItemRef.current?.total ??
+                      data?.total ??
+                      0,
+                  ) <= 0
                 }
-                disabled={Number(data.total || 0) <= 0}
                 className="h-11 rounded-xl bg-blue-600 px-6 font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
               >
                 Done

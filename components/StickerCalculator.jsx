@@ -127,6 +127,9 @@ export default function StickerCalculator({ value = null, onChange }) {
 
             laminated,
 
+            sheetWidth: Number(selected.sheetWidth || 11),
+            sheetHeight: Number(selected.sheetHeight || 17),
+
             stickersPerSheet: data.stickersPerSheet,
 
             sheetsNeeded: data.sheetsNeeded,
@@ -154,7 +157,9 @@ export default function StickerCalculator({ value = null, onChange }) {
           <h3 className="text-2xl font-semibold">Sticker Calculator</h3>
 
           <p className="text-gray-500">
-            Calcula precio automáticamente por hoja 11 x 17
+            Calcula precio automáticamente por hoja{" "}
+            {pricing.find((p) => p.name === type)?.sheetWidth || 11} x{" "}
+            {pricing.find((p) => p.name === type)?.sheetHeight || 17}
           </p>
         </div>
 

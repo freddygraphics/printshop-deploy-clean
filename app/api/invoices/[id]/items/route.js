@@ -188,10 +188,15 @@ export async function PUT(req, { params }) {
                 ...(isApparel
                   ? {
                       productType: "apparel",
+
                       apparelProductId:
                         itemOptions.apparelProductId ||
+                        itemOptions.apparelProduct?.id ||
                         item.product?.id ||
                         null,
+
+                      apparelProduct:
+                        itemOptions.apparelProduct || item.product || null,
                     }
                   : {}),
               },
@@ -280,8 +285,15 @@ export async function PUT(req, { params }) {
               ...(isApparel
                 ? {
                     productType: "apparel",
+
                     apparelProductId:
-                      itemOptions.apparelProductId || item.product?.id || null,
+                      itemOptions.apparelProductId ||
+                      itemOptions.apparelProduct?.id ||
+                      item.product?.id ||
+                      null,
+
+                    apparelProduct:
+                      itemOptions.apparelProduct || item.product || null,
                   }
                 : {}),
 

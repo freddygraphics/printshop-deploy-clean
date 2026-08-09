@@ -39,7 +39,7 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   const [taxEnabled, setTaxEnabled] = useState(true);
 
   const savingRef = useRef(false);
-
+  const itemsRef = useRef([]);
   const router = useRouter();
   const [showVoidModal, setShowVoidModal] = useState(false);
   const [isVoiding, setIsVoiding] = useState(false);
@@ -87,6 +87,9 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   // ITEMS
   // ----------------------------------------
   const [items, setItems] = useState([]);
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
 
   const [showAddCard, setShowAddCard] = useState(false);
 
@@ -326,7 +329,10 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
 
     setCustomerNotes(loadedInvoice.notes || "");
 
-    setItems(mapInvoiceItems(loadedInvoice.invoiceItems || []));
+    const mappedItems = mapInvoiceItems(loadedInvoice.invoiceItems || []);
+
+    itemsRef.current = mappedItems;
+    setItems(mappedItems);
 
     setPayments(
       Array.isArray(loadedInvoice.payments) ? loadedInvoice.payments : [],
@@ -511,33 +517,77 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   // UPDATE ITEM
   const handleItemChange = useCallback(
     (index, fields) => {
-      setItems((previousItems) => {
-        const nextItems = updateDocumentItem(previousItems, index, fields);
-        markUnsaved();
-        const updatedItem = nextItems[index];
+      const previousItems = itemsRef.current;
 
-        const isManualItem =
-          !updatedItem?.productId &&
-          !updatedItem?.product &&
-          !updatedItem?.options?.productType;
+      if (
+        !Array.isArray(previousItems) ||
+        !Number.isInteger(index) ||
+        index < 0 ||
+        index >= previousItems.length
+      ) {
+        console.warn("Invalid invoice item index:", index);
+        return;
+      }
 
-        if (fields.__commit === true && !savingRef.current) {
-          savingRef.current = true;
+      const currentItem = previousItems[index];
 
-          Promise.resolve()
-            .then(async () => {
-              await saveItems(nextItems);
-              markSaved();
-            })
-            .finally(() => {
-              savingRef.current = false;
-            });
-        } else if (!isManualItem) {
-          scheduleAutosave(nextItems, markSaved);
+      // --------------------------------------------------
+      // CONSERVAR SIEMPRE EL ID DEL ITEM QUE SE ESTÁ EDITANDO
+      // --------------------------------------------------
+      const safeFields = {
+        ...fields,
+        id: currentItem.id,
+      };
+
+      // --------------------------------------------------
+      // ACTUALIZAR SOLAMENTE ESTE ITEM
+      // --------------------------------------------------
+      const nextItems = updateDocumentItem(previousItems, index, safeFields);
+
+      // Actualizar ref inmediatamente.
+      // Así otro evento no trabaja con un array viejo.
+      itemsRef.current = nextItems;
+
+      setItems(nextItems);
+      markUnsaved();
+
+      const updatedItem = nextItems[index];
+
+      const isManualItem =
+        !updatedItem?.productId &&
+        !updatedItem?.product &&
+        !updatedItem?.options?.productType;
+
+      // --------------------------------------------------
+      // DONE / COMMIT
+      // --------------------------------------------------
+      if (fields.__commit === true) {
+        if (savingRef.current) {
+          return;
         }
 
-        return nextItems;
-      });
+        savingRef.current = true;
+
+        saveItems(nextItems)
+          .then(() => {
+            markSaved();
+          })
+          .catch((error) => {
+            console.error("Error saving invoice items:", error);
+          })
+          .finally(() => {
+            savingRef.current = false;
+          });
+
+        return;
+      }
+
+      // --------------------------------------------------
+      // AUTOSAVE
+      // --------------------------------------------------
+      if (!isManualItem) {
+        scheduleAutosave(nextItems, markSaved);
+      }
     },
     [saveItems, scheduleAutosave, markUnsaved, markSaved],
   );

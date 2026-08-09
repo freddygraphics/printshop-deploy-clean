@@ -21,15 +21,38 @@ export default function StickerSettings() {
   const save = async (item) => {
     setSaving(item.name);
 
-    await fetch("/api/sticker-pricing", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(item),
-    });
+    try {
+      const res = await fetch("/api/sticker-pricing", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(item),
+      });
 
-    setTimeout(() => setSaving(null), 800);
+      const savedItem = await res.json();
+
+      if (!res.ok) {
+        throw new Error(savedItem?.error || "Error saving pricing");
+      }
+
+      // Importante para tipos nuevos:
+      // después de crear, guardamos el id recibido desde Prisma.
+      setData((current) =>
+        current.map((row) =>
+          row === item
+            ? {
+                ...row,
+                ...savedItem,
+              }
+            : row,
+        ),
+      );
+    } catch (err) {
+      console.error("Error saving sticker pricing:", err);
+    } finally {
+      setTimeout(() => setSaving(null), 800);
+    }
   };
 
   const addType = () => {
@@ -37,9 +60,17 @@ export default function StickerSettings() {
       ...data,
       {
         name: "Nuevo Tipo",
+
+        // MEDIDA DE LA HOJA
+        sheetWidth: 11,
+        sheetHeight: 17,
+
+        // COSTOS
         costPerSheet: 0,
         laminateCost: 0,
         cutCost: 0,
+
+        // PRICING
         wastePercent: 10,
         profitMargin: 40,
       },
@@ -47,14 +78,15 @@ export default function StickerSettings() {
   };
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-5xl mx-auto p-6 space-y-6">
         {/* HEADER */}
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold">Sticker Pricing</h1>
-            <p className="text-gray-500">
-              Configura costos y ganancias por tipo de sticker
+
+            <p className="text-gray-500 mt-1">
+              Configura costos, medidas de hoja y ganancias por tipo de sticker
             </p>
           </div>
 
@@ -69,8 +101,8 @@ export default function StickerSettings() {
         {/* CARDS */}
         {data.map((item, i) => (
           <div
-            key={i}
-            className="bg-white rounded-2xl shadow p-6 space-y-4 border"
+            key={item.id || i}
+            className="bg-white rounded-2xl shadow p-6 space-y-5 border"
           >
             {/* TITLE */}
             <div className="flex justify-between items-center">
@@ -82,43 +114,78 @@ export default function StickerSettings() {
 
               <button
                 onClick={() => save(item)}
-                className="bg-black text-white px-4 py-2 rounded-lg text-sm"
+                disabled={saving === item.name}
+                className="bg-black text-white px-4 py-2 rounded-lg text-sm disabled:opacity-60"
               >
                 {saving === item.name ? "Guardando..." : "Guardar"}
               </button>
             </div>
 
-            {/* GRID */}
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="Costo hoja"
-                value={item.costPerSheet}
-                onChange={(v) => updateField(i, "costPerSheet", v)}
-              />
+            {/* MEDIDA DE HOJA */}
+            <div>
+              <p className="text-sm font-semibold text-gray-700 mb-3">
+                Medida de la hoja
+              </p>
 
-              <Input
-                label="Laminado"
-                value={item.laminateCost}
-                onChange={(v) => updateField(i, "laminateCost", v)}
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="Ancho hoja (in)"
+                  value={item.sheetWidth ?? 11}
+                  onChange={(v) => updateField(i, "sheetWidth", v)}
+                />
 
-              <Input
-                label="Corte"
-                value={item.cutCost}
-                onChange={(v) => updateField(i, "cutCost", v)}
-              />
+                <Input
+                  label="Alto hoja (in)"
+                  value={item.sheetHeight ?? 17}
+                  onChange={(v) => updateField(i, "sheetHeight", v)}
+                />
+              </div>
+            </div>
 
-              <Input
-                label="Desperdicio %"
-                value={item.wastePercent}
-                onChange={(v) => updateField(i, "wastePercent", v)}
-              />
+            {/* COSTOS */}
+            <div>
+              <p className="text-sm font-semibold text-gray-700 mb-3">Costos</p>
 
-              <Input
-                label="Ganancia %"
-                value={item.profitMargin}
-                onChange={(v) => updateField(i, "profitMargin", v)}
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="Costo hoja"
+                  value={item.costPerSheet}
+                  onChange={(v) => updateField(i, "costPerSheet", v)}
+                />
+
+                <Input
+                  label="Laminado"
+                  value={item.laminateCost}
+                  onChange={(v) => updateField(i, "laminateCost", v)}
+                />
+
+                <Input
+                  label="Corte"
+                  value={item.cutCost}
+                  onChange={(v) => updateField(i, "cutCost", v)}
+                />
+              </div>
+            </div>
+
+            {/* PRICING */}
+            <div>
+              <p className="text-sm font-semibold text-gray-700 mb-3">
+                Pricing
+              </p>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="Desperdicio %"
+                  value={item.wastePercent}
+                  onChange={(v) => updateField(i, "wastePercent", v)}
+                />
+
+                <Input
+                  label="Ganancia %"
+                  value={item.profitMargin}
+                  onChange={(v) => updateField(i, "profitMargin", v)}
+                />
+              </div>
             </div>
           </div>
         ))}
@@ -127,16 +194,18 @@ export default function StickerSettings() {
   );
 }
 
-/* 🔹 COMPONENTE INPUT PRO */
+/* COMPONENTE INPUT */
 function Input({ label, value, onChange }) {
   return (
     <div>
       <label className="text-sm text-gray-500">{label}</label>
+
       <input
         type="number"
-        value={value}
+        step="0.01"
+        value={value ?? ""}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full border p-2 rounded-lg mt-1 focus:ring-2 focus:ring-black"
+        className="w-full border p-2 rounded-lg mt-1 focus:ring-2 focus:ring-black outline-none"
       />
     </div>
   );

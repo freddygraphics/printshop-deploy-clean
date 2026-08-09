@@ -20,11 +20,29 @@ export default function CustomersPage() {
   async function loadClients() {
     try {
       setLoading(true);
-      const res = await fetch("/api/clients");
+
+      const res = await fetch("/api/clients", {
+        cache: "no-store",
+      });
+
       const data = await res.json();
+
+      if (!res.ok) {
+        console.error("Error from /api/clients:", data);
+        setClients([]);
+        return;
+      }
+
+      if (!Array.isArray(data)) {
+        console.error("Invalid clients response:", data);
+        setClients([]);
+        return;
+      }
+
       setClients(data);
     } catch (err) {
       console.error("Error loading clients:", err);
+      setClients([]);
     } finally {
       setLoading(false);
     }
@@ -59,15 +77,17 @@ export default function CustomersPage() {
     }
   }
 
-  const filteredClients = clients.filter((c) => {
-    const q = search.toLowerCase();
+  const filteredClients = (Array.isArray(clients) ? clients : []).filter(
+    (c) => {
+      const q = search.toLowerCase();
 
-    return (
-      c.name?.toLowerCase().includes(q) ||
-      c.company?.toLowerCase().includes(q) ||
-      c.phone?.toLowerCase().includes(q)
-    );
-  });
+      return (
+        c.name?.toLowerCase().includes(q) ||
+        c.company?.toLowerCase().includes(q) ||
+        c.phone?.toLowerCase().includes(q)
+      );
+    },
+  );
 
   const totalPages = Math.ceil(filteredClients.length / clientsPerPage);
 

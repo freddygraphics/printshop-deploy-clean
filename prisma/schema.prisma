@@ -31,6 +31,10 @@ model Client {
 model StickerSheetPricing {
   id           String   @id @default(cuid())
   name         String   @unique
+
+  sheetWidth   Float    @default(11)
+  sheetHeight  Float    @default(17)
+
   costPerSheet Float
   laminateCost Float
   cutCost      Float

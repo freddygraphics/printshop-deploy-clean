@@ -237,7 +237,128 @@ export default function ApparelConfigurator({
       return result;
     }, {});
   });
+  // ======================================================
+  // REHYDRATE SAVED APPAREL CONFIGURATION
+  // ======================================================
+  // ======================================================
+  // REHYDRATE SAVED APPAREL CONFIGURATION
+  // ======================================================
+  useEffect(() => {
+    if (!initialData) return;
 
+    const options = initialData.options || {};
+
+    // ----------------------------------
+    // COLOR
+    // ----------------------------------
+    const savedColorName = options.color || "";
+
+    if (savedColorName) {
+      setSelectedColorName(savedColorName);
+    }
+
+    // ----------------------------------
+    // BUSCAR EL COLOR ACTUAL DEL PRODUCTO
+    // ----------------------------------
+    const currentColor =
+      colors.find(
+        (color) =>
+          String(color.name || "")
+            .trim()
+            .toLowerCase() ===
+          String(savedColorName || "")
+            .trim()
+            .toLowerCase(),
+      ) || null;
+
+    // ----------------------------------
+    // SIZES / QUANTITIES
+    // ----------------------------------
+    const savedSizes = Array.isArray(options.sizes) ? options.sizes : [];
+
+    if (savedSizes.length > 0 && currentColor) {
+      const currentVariants = Array.isArray(currentColor.variants)
+        ? currentColor.variants
+        : [];
+
+      const restoredQuantities = {};
+
+      for (const savedSize of savedSizes) {
+        // 1. Intentar por variantId
+        let currentVariant = currentVariants.find(
+          (variant) => String(variant.id) === String(savedSize.variantId),
+        );
+
+        // 2. Si no coincide, intentar por supplierSku
+        if (!currentVariant && savedSize.supplierSku) {
+          currentVariant = currentVariants.find(
+            (variant) =>
+              String(variant.supplierSku || "")
+                .trim()
+                .toLowerCase() ===
+              String(savedSize.supplierSku || "")
+                .trim()
+                .toLowerCase(),
+          );
+        }
+
+        // 3. Último fallback: talla
+        if (!currentVariant && savedSize.size) {
+          currentVariant = currentVariants.find(
+            (variant) =>
+              String(variant.size || "")
+                .trim()
+                .toUpperCase() ===
+              String(savedSize.size || "")
+                .trim()
+                .toUpperCase(),
+          );
+        }
+
+        if (!currentVariant) continue;
+
+        restoredQuantities[currentVariant.id] = Number(savedSize.quantity || 0);
+      }
+
+      setSizeQuantities(restoredQuantities);
+
+      const hasExtendedSize = savedSizes.some((item) => {
+        const size = String(item?.size || "")
+          .trim()
+          .toUpperCase();
+
+        return !["XS", "S", "M", "L"].includes(size);
+      });
+
+      setShowMoreSizes(hasExtendedSize);
+    }
+
+    // ----------------------------------
+    // DTF PRINT LOCATIONS
+    // ----------------------------------
+    if (Array.isArray(options.printLocations)) {
+      setPrints((current) =>
+        PRINT_LOCATIONS.reduce((result, location) => {
+          const saved = options.printLocations.find(
+            (item) => item.key === location.key,
+          );
+
+          result[location.key] = {
+            enabled:
+              saved !== undefined
+                ? saved.enabled === true
+                : current?.[location.key]?.enabled || false,
+
+            width: saved?.width ?? current?.[location.key]?.width ?? "",
+
+            height: saved?.height ?? current?.[location.key]?.height ?? "",
+          };
+
+          return result;
+        }, {}),
+      );
+    }
+  }, [initialData, colors]);
   useEffect(() => {
     let active = true;
 
@@ -319,7 +440,7 @@ export default function ApparelConfigurator({
     return () => {
       active = false;
     };
-  }, []);
+  }, [initialData]);
 
   const selectedColor = useMemo(
     () => colors.find((color) => color.name === selectedColorName),

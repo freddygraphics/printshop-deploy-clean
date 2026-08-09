@@ -118,9 +118,19 @@ export default function ApparelProductConfigurator({
 
         options: {
           ...(createdItem?.options || {}),
+
           productType: "apparel",
+
           catalogProductId: product?.id || null,
+
           apparelProductId: garment.id,
+
+          // Guardar producto SanMar completo
+          apparelProduct: garment,
+
+          supplier: garment.supplier,
+          supplierStyle: garment.supplierStyle,
+          brand: garment.brand,
         },
 
         _expanded: true,
@@ -178,10 +188,17 @@ export default function ApparelProductConfigurator({
         productType: "apparel",
 
         // Producto genérico creado en Settings
-        catalogProductId: product?.id ?? null,
+        catalogProductId:
+          product?.id ?? initialData?.options?.catalogProductId ?? null,
 
         // Prenda real seleccionada de SanMar
         apparelProductId: selectedGarment.id,
+
+        // IMPORTANTE:
+        // Guardamos el producto completo para poder reconstruir
+        // el configurador cuando volvamos a editar el Invoice.
+        apparelProduct: selectedGarment,
+
         supplier: selectedGarment.supplier,
         supplierStyle: selectedGarment.supplierStyle,
         brand: selectedGarment.brand,
