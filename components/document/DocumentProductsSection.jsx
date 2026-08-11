@@ -3,7 +3,7 @@
 import { Search, Trash2 } from "lucide-react";
 import InlineProductEditor from "@/components/InlineProductEditor";
 import { buildOptionSummary } from "@/lib/document-items/buildOptionSummary";
-
+import { documentText } from "@/components/document/documentStyles";
 export default function DocumentProductsSection({
   showCreateJobButton = true,
   invoiceId,
@@ -78,7 +78,7 @@ export default function DocumentProductsSection({
       </div>
 
       {/* PRODUCTS CARD */}
-      <div className="mt-2 rounded-xl bg-white px-5 py-2 shadow-md">
+      <div className="mt-2">
         <div className="py-6 space-y-10">
           {/* ADD ITEM CARD */}
           {showAddCard && (
@@ -316,7 +316,7 @@ export default function DocumentProductsSection({
                   <div
                     key={item.id}
                     className={`p-5 mb-1 shadow-sm ${
-                      index % 2 === 0 ? "bg-gray-50" : "bg-white"
+                      index % 2 === 0 ? "bg-white" : "bg-gray-50"
                     }`}
                   >
                     <div className="relative">
@@ -336,7 +336,7 @@ export default function DocumentProductsSection({
                       >
                         <div className="grid grid-cols-[30%_2fr_150px_200px_150px] gap-4 p-4 bg-white-50 border-gray-300 rounded-lg">
                           <div>
-                            <p className="font-semibold text-gray-800">
+                            <p className={documentText.sectionTitle}>
                               {item.name}
                             </p>
 
@@ -350,22 +350,22 @@ export default function DocumentProductsSection({
                           <div />
 
                           <div>
-                            <p className="text-sm text-gray-500">Qty</p>
-                            <p className="font-bold">{displayQty}</p>
+                            <p className={documentText.label}>Qty</p>
+                            <p className={documentText.value}>{displayQty}</p>
                           </div>
 
                           <div>
-                            <p className="text-sm text-gray-500">Unit Price</p>
+                            <p className={documentText.label}>Unit Price</p>
 
-                            <p className="font-semibold">
+                            <p className={documentText.value}>
                               ${Number(item.unitPrice).toLocaleString()}
                             </p>
                           </div>
 
                           <div>
-                            <p className="text-sm text-gray-500">Total</p>
+                            <p className={documentText.label}>Total</p>
 
-                            <p className="font-bold">
+                            <p className={documentText.value}>
                               ${Number(item.total).toLocaleString()}
                             </p>
                           </div>

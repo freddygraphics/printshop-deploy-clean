@@ -27,6 +27,7 @@ import { useInvoicePersistence } from "@/hooks/useInvoicePersistence";
 import InvoiceModals from "@/components/invoice/InvoiceModals";
 import UnsavedChangesDialog from "@/components/dialogs/UnsavedChangesDialog";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
+import { buildDocumentPdf } from "@/lib/pdf/buildDocumentPdf";
 export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   const [showCancelJobDialog, setShowCancelJobDialog] = useState(false);
 
@@ -197,12 +198,11 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
     if (invoiceIdState) checkJob();
   }, [invoiceIdState]);
 
-  const { saveItems, scheduleAutosave, triggerPdfGeneration, persistTotals } =
-    useInvoicePersistence({
-      invoiceId: invoiceIdState,
-      taxEnabled,
-      taxRate,
-    });
+  const { saveItems, scheduleAutosave, persistTotals } = useInvoicePersistence({
+    invoiceId: invoiceIdState,
+    taxEnabled,
+    taxRate,
+  });
 
   const saveInvoiceAsDraft = useCallback(async () => {
     if (!invoiceIdState) {
@@ -644,8 +644,6 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
         discount: null,
       }),
     });
-
-    triggerPdfGeneration();
   };
 
   const handleTaxChange = async (event) => {
@@ -664,7 +662,6 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
       }),
     });
     markSaved();
-    triggerPdfGeneration();
   };
   // ======================================================
   // ACTIONS MENU (igual a tu código)
@@ -710,8 +707,119 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
             <button
               type="button"
               disabled={!invoiceIdState}
-              onClick={() => {
-                window.open(`/api/invoices/${invoiceIdState}/pdf`, "_blank");
+              onClick={async () => {
+                if (!invoiceIdState) return;
+
+                try {
+                  // ================================================
+                  // LOGO
+                  // ================================================
+                  const response = await fetch("/logo.png", {
+                    cache: "force-cache",
+                  });
+
+                  let logoBytes = null;
+
+                  if (response.ok) {
+                    logoBytes = await response.arrayBuffer();
+                  }
+
+                  // ================================================
+                  // DISCOUNT
+                  // ================================================
+                  const discountAmount = discountLines.reduce(
+                    (sum, line) => sum + Number(line.amount || 0),
+                    0,
+                  );
+
+                  const discountLabel =
+                    appliedDiscount?.name || appliedDiscount?.label || null;
+
+                  // ================================================
+                  // GENERATE PDF DIRECTLY
+                  // ================================================
+                  const pdfBytes = await buildDocumentPdf({
+                    documentType: "invoice",
+
+                    documentNumber: invoiceNumber,
+
+                    issuedAt,
+                    dueDate: expiryDate,
+                    status,
+
+                    client: selectedClient,
+
+                    // Usa el estado ACTUAL del editor.
+                    items: itemsRef.current,
+
+                    subtotal,
+                    tax,
+                    total,
+
+                    discountAmount,
+                    discountLabel,
+
+                    payments,
+                    balance,
+
+                    logoBytes,
+                  });
+
+                  // ================================================
+                  // OPEN PDF
+                  // ================================================
+                  // ================================================
+                  // FILE NAME
+                  // ================================================
+                  const companyName =
+                    selectedClient?.company ||
+                    selectedClient?.name ||
+                    "Customer";
+
+                  const safeCompanyName = companyName
+                    .replace(/[<>:"/\\|?*]/g, "")
+                    .trim()
+                    .replace(/\s+/g, "-");
+
+                  const fileName = `${safeCompanyName}-Invoice-${invoiceNumber}.pdf`;
+
+                  // ================================================
+                  // SEND PDF TO SHARED ROUTE
+                  // ================================================
+                  const blob = new Blob([pdfBytes], {
+                    type: "application/pdf",
+                  });
+
+                  const formData = new FormData();
+
+                  formData.append("pdf", blob, fileName);
+
+                  formData.append("fileName", fileName);
+
+                  const pdfResponse = await fetch("/api/documents/pdf", {
+                    method: "POST",
+                    body: formData,
+                  });
+
+                  const pdfData = await pdfResponse.json();
+
+                  if (!pdfResponse.ok) {
+                    throw new Error(pdfData?.error || "Could not prepare PDF.");
+                  }
+
+                  if (!pdfData?.url) {
+                    throw new Error("PDF URL was not returned.");
+                  }
+
+                  // ================================================
+                  // OPEN REAL PDF URL
+                  // ================================================
+                  window.open(pdfData.url, "_blank");
+                } catch (error) {
+                  console.error("❌ Direct Invoice PDF error:", error);
+
+                  alert("Could not generate PDF.");
+                }
               }}
               className="rounded-lg border bg-white px-4 py-2 font-semibold disabled:cursor-not-allowed disabled:opacity-50"
             >

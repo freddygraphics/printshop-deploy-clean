@@ -4,8 +4,12 @@ import { useCallback, useEffect, useRef } from "react";
 
 export function useQuotePersistence({ quoteId }) {
   const autosaveTimerRef = useRef(null);
+
   const savingPromiseRef = useRef(Promise.resolve());
 
+  // ======================================================
+  // SAVE ITEMS
+  // ======================================================
   const saveItems = useCallback(
     async (itemsToSave) => {
       if (!quoteId) return null;
@@ -34,21 +38,14 @@ export function useQuotePersistence({ quoteId }) {
               ...(item.options || {}),
 
               finish: item.finish ?? item.options?.finish ?? null,
-
               design: item.design ?? item.options?.design ?? null,
-
               sides: item.sides ?? item.options?.sides ?? null,
-
               corners: item.corners ?? item.options?.corners ?? null,
             },
           };
         }),
       };
 
-      /*
-       * Encadena guardados para evitar que dos requests
-       * borren y creen productos al mismo tiempo.
-       */
       savingPromiseRef.current = savingPromiseRef.current.then(async () => {
         const response = await fetch(`/api/quotes/${quoteId}/items`, {
           method: "PUT",
@@ -86,6 +83,9 @@ export function useQuotePersistence({ quoteId }) {
     [quoteId],
   );
 
+  // ======================================================
+  // AUTOSAVE ITEMS
+  // ======================================================
   const scheduleAutosave = useCallback(
     (itemsSnapshot, onSuccess) => {
       if (!quoteId) return;
@@ -94,10 +94,6 @@ export function useQuotePersistence({ quoteId }) {
         clearTimeout(autosaveTimerRef.current);
       }
 
-      /*
-       * Creamos una copia para que el timer no use
-       * una referencia que React pueda modificar después.
-       */
       const snapshot = itemsSnapshot.map((item) => ({
         ...item,
 
@@ -122,6 +118,9 @@ export function useQuotePersistence({ quoteId }) {
     [quoteId, saveItems],
   );
 
+  // ======================================================
+  // SAVE QUOTE DETAILS
+  // ======================================================
   const persistQuote = useCallback(
     async ({
       clientId,
@@ -179,6 +178,9 @@ export function useQuotePersistence({ quoteId }) {
     [quoteId],
   );
 
+  // ======================================================
+  // CLEANUP
+  // ======================================================
   useEffect(() => {
     return () => {
       if (autosaveTimerRef.current) {

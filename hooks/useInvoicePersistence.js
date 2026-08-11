@@ -4,22 +4,10 @@ import { useRef, useCallback } from "react";
 
 export function useInvoicePersistence({ invoiceId, taxEnabled, taxRate }) {
   const autosaveTimerRef = useRef(null);
-  const pdfTimerRef = useRef(null);
 
-  const triggerPdfGeneration = useCallback(() => {
-    if (!invoiceId) return;
-
-    if (pdfTimerRef.current) {
-      clearTimeout(pdfTimerRef.current);
-    }
-
-    pdfTimerRef.current = setTimeout(() => {
-      fetch(`/api/invoices/${invoiceId}/generate-pdf`, {
-        method: "POST",
-      });
-    }, 2000);
-  }, [invoiceId]);
-
+  // ======================================================
+  // SAVE ITEMS
+  // ======================================================
   const saveItems = useCallback(
     async (itemsToSave) => {
       if (!invoiceId) return null;
@@ -47,6 +35,7 @@ export function useInvoicePersistence({ invoiceId, taxEnabled, taxRate }) {
             pricingMode: i.pricingMode || i.options?.pricingMode || "manual",
 
             widthIn: i.widthIn ?? i.options?.widthIn ?? null,
+
             heightIn: i.heightIn ?? i.options?.heightIn ?? null,
 
             sqft: i.sqft ?? null,
@@ -57,8 +46,11 @@ export function useInvoicePersistence({ invoiceId, taxEnabled, taxRate }) {
               ...(i.options || {}),
 
               finish: i.finish ?? i.options?.finish ?? null,
+
               design: i.design ?? i.options?.design ?? null,
+
               sides: i.sides ?? i.options?.sides ?? null,
+
               corners: i.corners ?? i.options?.corners ?? null,
             },
           })),
@@ -75,13 +67,14 @@ export function useInvoicePersistence({ invoiceId, taxEnabled, taxRate }) {
         );
       }
 
-      triggerPdfGeneration();
-
       return data;
     },
-    [invoiceId, triggerPdfGeneration],
+    [invoiceId],
   );
 
+  // ======================================================
+  // AUTOSAVE ITEMS
+  // ======================================================
   const scheduleAutosave = useCallback(
     (itemsSnapshot, onSuccess) => {
       if (!invoiceId) return;
@@ -92,6 +85,7 @@ export function useInvoicePersistence({ invoiceId, taxEnabled, taxRate }) {
 
       const snapshot = itemsSnapshot.map((item) => ({
         ...item,
+
         options:
           item.options && typeof item.options === "object"
             ? { ...item.options }
@@ -113,15 +107,20 @@ export function useInvoicePersistence({ invoiceId, taxEnabled, taxRate }) {
     [invoiceId, saveItems],
   );
 
+  // ======================================================
+  // SAVE TOTALS
+  // ======================================================
   const persistTotals = useCallback(
     async ({ subtotal, tax, total, balance }) => {
       if (!invoiceId) return null;
 
       const response = await fetch(`/api/invoices/${invoiceId}`, {
         method: "PATCH",
+
         headers: {
           "Content-Type": "application/json",
         },
+
         body: JSON.stringify({
           subtotal,
           tax,
@@ -142,17 +141,14 @@ export function useInvoicePersistence({ invoiceId, taxEnabled, taxRate }) {
         );
       }
 
-      triggerPdfGeneration();
-
       return data;
     },
-    [invoiceId, taxEnabled, taxRate, triggerPdfGeneration],
+    [invoiceId, taxEnabled, taxRate],
   );
 
   return {
     saveItems,
     scheduleAutosave,
-    triggerPdfGeneration,
     persistTotals,
   };
 }

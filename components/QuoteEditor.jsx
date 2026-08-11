@@ -20,6 +20,7 @@ import { searchDocumentProducts } from "@/lib/document-items/searchDocumentProdu
 import { createDocumentItem } from "@/lib/document-items/createDocumentItem";
 import UnsavedChangesDialog from "@/components/dialogs/UnsavedChangesDialog";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
+import { buildDocumentPdf } from "@/lib/pdf/buildDocumentPdf";
 export default function QuoteEditor({
   mode = "new",
   quoteId: editQuoteId = null,
@@ -809,8 +810,93 @@ export default function QuoteEditor({
             <button
               type="button"
               disabled={!quoteId}
-              onClick={() => {
-                window.open(`/api/quotes/${quoteId}/pdf`, "_blank");
+              onClick={async () => {
+                if (!quoteId) return;
+
+                try {
+                  const response = await fetch("/logo.png", {
+                    cache: "force-cache",
+                  });
+
+                  let logoBytes = null;
+
+                  if (response.ok) {
+                    logoBytes = await response.arrayBuffer();
+                  }
+
+                  const pdfBytes = await buildDocumentPdf({
+                    documentType: "quote",
+                    documentNumber: quoteNumber,
+
+                    issuedAt: quoteDate,
+                    dueDate: expiryDate,
+                    status,
+
+                    client: selectedClient,
+                    items: itemsRef.current,
+
+                    subtotal,
+                    tax,
+                    total,
+
+                    discountAmount: 0,
+                    discountLabel: null,
+
+                    payments: [],
+                    balance: total,
+
+                    logoBytes,
+                  });
+                  // ======================================================
+                  // FILE NAME
+                  // ======================================================
+                  const companyName =
+                    selectedClient?.company ||
+                    selectedClient?.name ||
+                    "Customer";
+
+                  const safeCompanyName = companyName
+                    .replace(/[<>:"/\\|?*]/g, "")
+                    .trim()
+                    .replace(/\s+/g, "-");
+
+                  const fileName = `${safeCompanyName}-Quote-${quoteNumber}.pdf`;
+
+                  // ======================================================
+                  // SEND PDF TO SHARED ROUTE
+                  // ======================================================
+                  const blob = new Blob([pdfBytes], {
+                    type: "application/pdf",
+                  });
+
+                  const formData = new FormData();
+
+                  formData.append("pdf", blob, fileName);
+
+                  formData.append("fileName", fileName);
+
+                  const pdfResponse = await fetch("/api/documents/pdf", {
+                    method: "POST",
+                    body: formData,
+                  });
+
+                  const pdfData = await pdfResponse.json();
+
+                  if (!pdfResponse.ok) {
+                    throw new Error(pdfData?.error || "Could not prepare PDF.");
+                  }
+
+                  if (!pdfData?.url) {
+                    throw new Error("PDF URL was not returned.");
+                  }
+
+                  // Abrir directamente el PDF guardado en Vercel Blob
+                  window.open(pdfData.url, "_blank");
+                } catch (error) {
+                  console.error("❌ Direct PDF error:", error);
+
+                  alert("Could not generate PDF.");
+                }
               }}
               className="rounded-lg border bg-white px-4 py-2 font-semibold disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -914,22 +1000,103 @@ export default function QuoteEditor({
           onSelect={async (customer) => {
             setShowCustomerModal(false);
 
-            // Si el quote todavía no existe,
-            // solamente asignamos el cliente al estado.
-            // El autosave lo guardará cuando el quote sea creado.
+            try {
+              // =====================================================
+              // NUEVO QUOTE
+              // CREAR INMEDIATAMENTE AL SELECCIONAR CUSTOMER
+              // =====================================================
+              if (!quoteId) {
+                const nextStatus = status === "Draft" ? "Pending" : status;
 
-            if (!quoteId) {
-              setSelectedClient(customer);
-              markUnsaved();
+                const currentItems = Array.isArray(itemsRef.current)
+                  ? itemsRef.current
+                  : [];
 
-              if (status === "Draft") {
-                setStatus("Pending");
+                const res = await fetch("/api/quotes", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    clientId: customer.id,
+
+                    quoteDate,
+
+                    // IMPORTANTE:
+                    // tu POST /api/quotes espera expiryDate
+                    expiryDate: expiryDate || null,
+
+                    status: nextStatus,
+                    customerNotes: customerNotes || "",
+
+                    subtotal,
+                    tax,
+                    total,
+
+                    paymentOption,
+
+                    // Si ya agregaste productos antes del customer,
+                    // también se crean junto con el quote.
+                    items: currentItems,
+                  }),
+                });
+
+                const data = await res.json().catch(() => null);
+
+                if (!res.ok) {
+                  throw new Error(
+                    data?.error || data?.details || "Could not create quote.",
+                  );
+                }
+
+                if (!data?.id) {
+                  throw new Error(
+                    "Quote was created but the API did not return an ID.",
+                  );
+                }
+
+                // =====================================================
+                // GUARDAR EL QUOTE CREADO EN EL FRONTEND
+                // =====================================================
+                setQuoteId(Number(data.id));
+
+                setQuoteNumber(data.quoteNumber ?? null);
+
+                setSelectedClient(data.client || customer);
+
+                setStatus(data.status || nextStatus);
+
+                // Los items devueltos por Prisma ahora tienen ID real
+                if (Array.isArray(data.items)) {
+                  const savedItems = data.items.map((item) => ({
+                    ...item,
+                    _expanded: false,
+                  }));
+
+                  itemsRef.current = savedItems;
+                  setItems(savedItems);
+                }
+
+                // Habilita autosave para este nuevo Quote
+                quoteHydratedRef.current = true;
+                initializedRef.current = true;
+
+                markSaved();
+
+                console.log("✅ QUOTE CREATED:", {
+                  id: data.id,
+                  quoteNumber: data.quoteNumber,
+                  clientId: data.clientId,
+                  items: data.items?.length || 0,
+                });
+
+                return;
               }
 
-              return;
-            }
-
-            try {
+              // =====================================================
+              // QUOTE YA EXISTE
+              // SOLAMENTE CAMBIAR CUSTOMER
+              // =====================================================
               const nextStatus = status === "Draft" ? "Pending" : status;
 
               const res = await fetch(`/api/quotes/${quoteId}`, {
@@ -952,15 +1119,17 @@ export default function QuoteEditor({
               }
 
               setSelectedClient(data?.client || customer);
+
               setStatus(data?.status || nextStatus);
+
               markSaved();
             } catch (error) {
-              console.error("❌ Customer update error:", error);
+              console.error("❌ Customer / Quote error:", error);
 
               alert(
                 error instanceof Error
                   ? error.message
-                  : "Could not update customer.",
+                  : "Could not save customer.",
               );
             }
           }}

@@ -142,6 +142,9 @@ export async function PUT(request, context) {
      * los productos anteriores.
      */
     const savedItems = await prisma.$transaction(async (tx) => {
+      // ======================================================
+      // REEMPLAZAR ITEMS
+      // ======================================================
       await tx.quoteItem.deleteMany({
         where: {
           quoteId,
@@ -157,6 +160,22 @@ export async function PUT(request, context) {
         });
       }
 
+      // ======================================================
+      // INVALIDAR PDF
+      // ======================================================
+      await tx.quote.update({
+        where: {
+          id: quoteId,
+        },
+        data: {
+          pdfStatus: "pending",
+          pdfUpdatedAt: null,
+        },
+      });
+
+      // ======================================================
+      // DEVOLVER ITEMS GUARDADOS
+      // ======================================================
       return tx.quoteItem.findMany({
         where: {
           quoteId,

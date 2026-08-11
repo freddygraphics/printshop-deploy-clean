@@ -145,31 +145,71 @@ export default function DocumentTotalsSection({
 
           {/* VALUES */}
           <div className="mt-1 font-semibold space-y-1 text-right">
-            <p>${subtotal.toFixed(2)}</p>
+            <p>
+              $
+              {Number(subtotal || 0).toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </p>
 
             {discountLines.map((discount) => (
               <p
                 key={`${discount.name}-${discount.type}`}
                 className="text-emerald-700"
               >
-                −${discount.amount.toFixed(2)}
+                −$
+                {Number(discount.amount || 0).toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
               </p>
             ))}
 
-            <p>${tax.toFixed(2)}</p>
+            <p>
+              $
+              {Number(tax || 0).toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </p>
 
-            <p className="text-2xl font-bold">${total.toFixed(2)}</p>
+            <p className="text-2xl font-bold">
+              $
+              {Number(total || 0).toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </p>
 
-            {totalProcessingFee > 0 && (
-              <p className="font-semibold">+${totalProcessingFee.toFixed(2)}</p>
+            {Number(totalProcessingFee || 0) > 0 && (
+              <p className="font-semibold">
+                +$
+                {Number(totalProcessingFee || 0).toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </p>
             )}
 
             {hasPayments && (
-              <p className="font-semibold">${totalCharged.toFixed(2)}</p>
+              <p className="font-semibold">
+                $
+                {Number(totalCharged || 0).toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </p>
             )}
 
             {hasPayments && (
-              <p className="text-base font-bold">${balance.toFixed(2)}</p>
+              <p className="text-base font-bold">
+                $
+                {Number(balance || 0).toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </p>
             )}
           </div>
         </div>

@@ -167,6 +167,9 @@ model Quote {
 
   userId          Int?
 
+  pdfStatus       String?   @default("pending")
+  pdfUpdatedAt    DateTime?
+
   invoices        Invoice[]
   user            User?     @relation(fields: [userId], references: [id])
   items           QuoteItem[]
