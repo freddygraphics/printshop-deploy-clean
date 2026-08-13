@@ -30,7 +30,7 @@ export async function GET(req, { params }) {
     if (!invoice) {
       return new NextResponse("Invoice not found", { status: 404 });
     }
-
+    console.log("INVOICE PAYMENTS:", invoice.payments);
     // ðŸ‘‡ SI ES async, ESTO LO ARREGLA
     const html = await buildInvoiceHtml({
       invoiceId: invoice.id,

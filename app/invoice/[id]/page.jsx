@@ -2,7 +2,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import prisma from "@/lib/db";
 import PayWithCardButton from "@/components/payments/PayWithCardButton";
-import InvoicePDFButton from "@/components/InvoicePDFButton";
 
 export default async function InvoicePublicPage({ params }) {
   const invoiceId = Number(params.id);
@@ -83,9 +82,6 @@ export default async function InvoicePublicPage({ params }) {
         </div>
 
         <PayWithCardButton invoiceId={invoice.id} amount={balance} />
-
-        {/* 🔥 BOTÓN PDF */}
-        <InvoicePDFButton />
       </div>
     </div>
   );
