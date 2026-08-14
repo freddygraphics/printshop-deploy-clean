@@ -70,17 +70,21 @@ export default function ProductConfigurator({
       />
     );
   }
+  const productTemplateSlug = String(product?.templateSlug || "")
+    .trim()
+    .toLowerCase();
 
-  const hasYardSignConfiguration = Boolean(
-    product?.defaultOptions?.yardSign || product?.configuration?.yardSign,
-  );
   const isYardSign =
-    templateSlug === "yard-signs" ||
+    productType === "yard-sign" ||
+    productType === "yard-signs" ||
+    category === "yard-sign" ||
+    category === "yard-signs" ||
+    templateType === "yard-sign" ||
+    templateType === "yard-signs" ||
     templateSlug === "yard-sign" ||
-    String(product?.templateSlug || "")
-      .trim()
-      .toLowerCase() === "yard-signs" ||
-    hasYardSignConfiguration;
+    templateSlug === "yard-signs" ||
+    productTemplateSlug === "yard-sign" ||
+    productTemplateSlug === "yard-signs";
 
   if (isApparel) {
     return (

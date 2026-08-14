@@ -724,8 +724,8 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                   // ================================================
                   // LOGO
                   // ================================================
-                  const response = await fetch("/logo.png", {
-                    cache: "force-cache",
+                  const response = await fetch(`/logo.png?v=${Date.now()}`, {
+                    cache: "no-store",
                   });
 
                   let logoBytes = null;

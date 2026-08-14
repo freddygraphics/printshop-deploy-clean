@@ -48,12 +48,6 @@ function InlineProductEditor({
     effectiveProduct?.template?.configuration ||
     {};
 
-  const hasYardSignConfiguration = Boolean(
-    configuration?.yardSign ||
-    effectiveProduct?.configuration?.yardSign ||
-    effectiveProduct?.defaultOptions?.yardSign ||
-    effectiveProduct?.template?.configuration?.yardSign,
-  );
   console.log("DEFAULT OPTIONS");
   console.log(configuration);
 
@@ -338,8 +332,11 @@ function InlineProductEditor({
     .trim()
     .toLowerCase();
 
+  const productTemplateSlug = String(effectiveProduct?.templateSlug || "")
+    .trim()
+    .toLowerCase();
+
   const isYardSign =
-    hasYardSignConfiguration ||
     productType === "yard-sign" ||
     productType === "yard-signs" ||
     category === "yard-sign" ||
@@ -348,17 +345,10 @@ function InlineProductEditor({
     templateType === "yard-signs" ||
     templateSlug === "yard-sign" ||
     templateSlug === "yard-signs" ||
-    String(effectiveProduct?.templateSlug || "")
-      .trim()
-      .toLowerCase() === "yard-signs" ||
-    String(effectiveProduct?.templateSlug || "")
-      .trim()
-      .toLowerCase() === "yard-sign" ||
+    productTemplateSlug === "yard-sign" ||
+    productTemplateSlug === "yard-signs" ||
     itemProductType === "yard-sign" ||
-    itemProductType === "yard-signs" ||
-    String(effectiveProduct?.name || "")
-      .trim()
-      .toLowerCase() === "yard sign";
+    itemProductType === "yard-signs";
 
   const isApparel =
     productType === "apparel" ||

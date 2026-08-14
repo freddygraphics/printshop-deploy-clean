@@ -825,10 +825,9 @@ export default function QuoteEditor({
                 if (!quoteId) return;
 
                 try {
-                  const response = await fetch("/logo.png", {
-                    cache: "force-cache",
+                  const response = await fetch(`/logo.png?v=${Date.now()}`, {
+                    cache: "no-store",
                   });
-
                   let logoBytes = null;
 
                   if (response.ok) {

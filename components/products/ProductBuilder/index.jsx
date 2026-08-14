@@ -45,13 +45,15 @@ export default function ProductBuilder({
 
     optionGroups: normalizeOptionGroups(configuration.productOptions || []),
 
-    yardSign: configuration.yardSign || {
-      sizes: [],
-      materials: [],
-      printSides: [],
-      stakes: [],
-      packages: [],
-    },
+    yardSign: isYardSign
+      ? configuration.yardSign || {
+          sizes: [],
+          materials: [],
+          printSides: [],
+          stakes: [],
+          packages: [],
+        }
+      : null,
 
     inventory: configuration.inventory || {},
 
@@ -88,13 +90,15 @@ export default function ProductBuilder({
         template.configuration?.productOptions || [],
       ),
 
-      yardSign: template.configuration?.yardSign || {
-        sizes: [],
-        materials: [],
-        printSides: [],
-        stakes: [],
-        packages: [],
-      },
+      yardSign: isYardSign
+        ? template.configuration?.yardSign || {
+            sizes: [],
+            materials: [],
+            printSides: [],
+            stakes: [],
+            packages: [],
+          }
+        : null,
 
       inventory: template.configuration?.inventory || {},
 
@@ -234,7 +238,11 @@ export default function ProductBuilder({
 
               pricing: product.quantityPricing,
 
-              yardSign: product.yardSign,
+              ...(isYardSign
+                ? {
+                    yardSign: product.yardSign,
+                  }
+                : {}),
 
               inventory: product.inventory,
 
