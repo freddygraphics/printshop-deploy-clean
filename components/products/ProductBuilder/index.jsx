@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { normalizeOptionGroups } from "@/lib/product-builder/normalizeOptionGroups";
+
 import SaveBar from "./SaveBar";
 import { defaultSections } from "./sections";
 import SectionRenderer from "./SectionRenderer";
 import BuilderToolbar from "./BuilderToolbar";
+import YardSignProduct from "./YardSignProduct";
 
 export default function ProductBuilder({
   template = null,
@@ -14,19 +16,16 @@ export default function ProductBuilder({
   templateType,
   onSave,
 }) {
-  // SIEMPRE priorizar el producto.
   const configuration =
     existingData.defaultOptions ||
     existingData.configuration ||
     template?.configuration ||
     {};
-  console.log("PRODUCT", existingData);
 
-  console.log("DEFAULT OPTIONS", existingData.defaultOptions);
+  const isYardSign =
+    template?.slug?.toLowerCase() === "yard-signs" ||
+    template?.name?.trim().toLowerCase() === "yard signs";
 
-  console.log("CONFIGURATION", configuration);
-
-  console.log("PRODUCT OPTIONS", configuration.productOptions);
   const [product, setProduct] = useState({
     image: existingData.image || "",
 
@@ -46,11 +45,20 @@ export default function ProductBuilder({
 
     optionGroups: normalizeOptionGroups(configuration.productOptions || []),
 
+    yardSign: configuration.yardSign || {
+      sizes: [],
+      materials: [],
+      printSides: [],
+      stakes: [],
+      packages: [],
+    },
+
     inventory: configuration.inventory || {},
 
     supplier: configuration.supplier || {},
 
     metadata: configuration.metadata || {},
+
     measurements: configuration.measurements || {
       enabled: false,
 
@@ -80,6 +88,14 @@ export default function ProductBuilder({
         template.configuration?.productOptions || [],
       ),
 
+      yardSign: template.configuration?.yardSign || {
+        sizes: [],
+        materials: [],
+        printSides: [],
+        stakes: [],
+        packages: [],
+      },
+
       inventory: template.configuration?.inventory || {},
 
       measurements: template.configuration?.measurements || {
@@ -104,7 +120,7 @@ export default function ProductBuilder({
 
       metadata: template.configuration?.metadata || {},
     }));
-  }, [template]);
+  }, [template, mode]);
 
   const [sections, setSections] = useState(defaultSections);
 
@@ -132,7 +148,7 @@ export default function ProductBuilder({
         <BuilderToolbar sections={sections} onToggleSection={toggleSection} />
       )}
 
-      {/* Primera fila */}
+      {/* IMAGE + GENERAL INFO */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {sections.image && (
           <div className="lg:col-span-1">
@@ -155,31 +171,52 @@ export default function ProductBuilder({
         )}
       </div>
 
-      {/* Resto de secciones */}
-      {sections.pricing && (
-        <SectionRenderer section="pricing" product={product} update={update} />
-      )}
+      {/* YARD SIGNS */}
+      {isYardSign ? (
+        <YardSignProduct product={product} update={update} />
+      ) : (
+        <>
+          {/* NORMAL PRODUCTS */}
+          {sections.pricing && (
+            <SectionRenderer
+              section="pricing"
+              product={product}
+              update={update}
+            />
+          )}
 
-      {sections.options && (
-        <SectionRenderer section="options" product={product} update={update} />
-      )}
-      {sections.measurements && (
-        <SectionRenderer
-          section="measurements"
-          product={product}
-          update={update}
-        />
-      )}
-      {sections.inventory && (
-        <SectionRenderer
-          section="inventory"
-          product={product}
-          update={update}
-        />
-      )}
+          {sections.options && (
+            <SectionRenderer
+              section="options"
+              product={product}
+              update={update}
+            />
+          )}
 
-      {sections.supplier && (
-        <SectionRenderer section="supplier" product={product} update={update} />
+          {sections.measurements && (
+            <SectionRenderer
+              section="measurements"
+              product={product}
+              update={update}
+            />
+          )}
+
+          {sections.inventory && (
+            <SectionRenderer
+              section="inventory"
+              product={product}
+              update={update}
+            />
+          )}
+
+          {sections.supplier && (
+            <SectionRenderer
+              section="supplier"
+              product={product}
+              update={update}
+            />
+          )}
+        </>
       )}
 
       <SaveBar
@@ -197,10 +234,14 @@ export default function ProductBuilder({
 
               pricing: product.quantityPricing,
 
+              yardSign: product.yardSign,
+
               inventory: product.inventory,
 
               supplier: product.supplier,
+
               measurements: product.measurements,
+
               metadata: product.metadata,
             },
           })

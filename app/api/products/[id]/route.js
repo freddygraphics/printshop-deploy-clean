@@ -43,10 +43,13 @@ export async function PUT(req, { params }) {
 
     console.log("===== UPDATE PRODUCT =====");
     console.log(JSON.stringify(body, null, 2));
+    const configuration = body.configuration ?? body.defaultOptions ?? {};
+
     const updated = await prisma.product.update({
       where: {
         id,
       },
+
       data: {
         name: body.name,
 
@@ -57,7 +60,14 @@ export async function PUT(req, { params }) {
         basePrice: Number(body.basePrice ?? 0),
 
         customFields: body.customFields || {},
-        defaultOptions: body.configuration ?? body.defaultOptions ?? {},
+
+        // Aquí guardamos toda la configuración del producto,
+        // incluyendo yardSign.sizes[].pricing, defaults y add-ons.
+        defaultOptions: configuration,
+      },
+
+      include: {
+        template: true,
       },
     });
 

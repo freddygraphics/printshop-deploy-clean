@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
 
 export default function InvoiceViewPage({ params }) {
   const [html, setHtml] = useState("");
@@ -17,6 +15,9 @@ export default function InvoiceViewPage({ params }) {
     const element = document.getElementById("invoice-root");
     if (!element) return;
 
+    const { default: html2canvas } = await import("html2canvas");
+    const { default: jsPDF } = await import("jspdf");
+
     const canvas = await html2canvas(element, {
       scale: 3,
       useCORS: true,
@@ -29,13 +30,11 @@ export default function InvoiceViewPage({ params }) {
 
     pdf.addImage(imgData, "PNG", 0, 0, 216, 279);
 
-    // 🔥 abrir PDF en navegador
     const blob = pdf.output("blob");
     const url = URL.createObjectURL(blob);
 
     window.open(url, "_blank");
 
-    // limpiar memoria
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   };
   return (

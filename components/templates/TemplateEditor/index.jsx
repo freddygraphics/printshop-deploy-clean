@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import YardSign from "./YardSign";
 import General from "./General";
 import ProductOptions from "./ProductOptions";
 import Pricing from "./Pricing";
@@ -10,6 +11,10 @@ import SaveBar from "./SaveBar";
 
 export default function TemplateEditor({ template, onChange }) {
   const [saving, setSaving] = useState(false);
+
+  const isYardSign =
+    template.slug?.toLowerCase() === "yard-signs" ||
+    template.name?.trim().toLowerCase() === "yard signs";
 
   async function saveTemplate() {
     try {
@@ -24,21 +29,20 @@ export default function TemplateEditor({ template, onChange }) {
           inventory: template.inventory || {},
           supplier: template.supplier || {},
           workflow: template.workflow || {},
+          yardSign: template.yardSign || {},
         },
       };
+
       console.log("TEMPLATE", template);
-
-      console.log(
-        "PRODUCT OPTIONS",
-        JSON.stringify(template.optionGroups, null, 2),
-      );
-
       console.log("PAYLOAD", payload);
+
       const res = await fetch(`/api/templates/${template.id}`, {
         method: "PUT",
+
         headers: {
           "Content-Type": "application/json",
         },
+
         body: JSON.stringify(payload),
       });
 
@@ -48,7 +52,27 @@ export default function TemplateEditor({ template, onChange }) {
 
       const updated = await res.json();
 
-      onChange(updated);
+      onChange({
+        ...updated,
+
+        optionGroups: updated.configuration?.productOptions || [],
+
+        quantityPricing: updated.configuration?.pricing || [],
+
+        inventory: updated.configuration?.inventory || {},
+
+        supplier: updated.configuration?.supplier || {},
+
+        workflow: updated.configuration?.workflow || {},
+
+        yardSign: updated.configuration?.yardSign || {
+          sizes: [],
+          materials: [],
+          printSides: [],
+          stakes: [],
+          packages: [],
+        },
+      });
 
       alert("✅ Template saved.");
     } catch (err) {
@@ -64,11 +88,17 @@ export default function TemplateEditor({ template, onChange }) {
     <div className="space-y-8">
       <General template={template} onChange={onChange} />
 
-      <Pricing template={template} onChange={onChange} />
+      {isYardSign ? (
+        <YardSign template={template} onChange={onChange} />
+      ) : (
+        <>
+          <Pricing template={template} onChange={onChange} />
 
-      <ProductOptions template={template} onChange={onChange} />
+          <ProductOptions template={template} onChange={onChange} />
 
-      <Inventory template={template} onChange={onChange} />
+          <Inventory template={template} onChange={onChange} />
+        </>
+      )}
 
       <SaveBar saving={saving} onSave={saveTemplate} />
     </div>

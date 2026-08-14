@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { useState } from "react";
 import Link from "next/link";
-import * as XLSX from "xlsx";
+
 import { ArrowLeft } from "lucide-react";
 
 export default function ImportCustomers() {
@@ -12,16 +12,24 @@ export default function ImportCustomers() {
   const [result, setResult] = useState(null);
 
   // Leer y mostrar vista previa
-  const handlePreview = (e) => {
+  const handlePreview = async (e) => {
     const selected = e.target.files[0];
+
+    if (!selected) return;
+
     setFile(selected);
 
+    const XLSX = await import("xlsx");
+
     const reader = new FileReader();
+
     reader.onload = (evt) => {
       const workbook = XLSX.read(evt.target.result, { type: "binary" });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
       setPreview(XLSX.utils.sheet_to_json(sheet));
     };
+
     reader.readAsBinaryString(selected);
   };
 

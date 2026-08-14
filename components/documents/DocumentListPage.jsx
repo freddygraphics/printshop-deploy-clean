@@ -5,7 +5,7 @@ import { Calendar, ChevronDown, Plus } from "lucide-react";
 
 import DocumentDateFilter from "./DocumentDateFilter";
 
-export function DocumentSummaryCard({ title, value, valueClassName = "" }) {
+function DocumentSummaryCard({ title, value, valueClassName = "" }) {
   return (
     <div className="rounded-xl border bg-white p-5 shadow-sm">
       <div className="text-sm text-gray-500">{title}</div>

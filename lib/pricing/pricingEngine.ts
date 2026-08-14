@@ -3,9 +3,9 @@ import prisma from "@/lib/db";
 // ===============================
 // TYPES
 // ===============================
-export type PricingMode = "manual" | "sqft";
+type PricingMode = "manual" | "sqft";
 
-export type PriceBreakdownLine = {
+type PriceBreakdownLine = {
   label: string;
   qty: number;
   rate: number;
@@ -30,34 +30,6 @@ function round2(n: number) {
 
 export function calcSqft(widthIn: number, heightIn: number) {
   return (Number(widthIn) * Number(heightIn)) / 144;
-}
-
-// ===============================
-// MANUAL PRICING
-// ===============================
-export function priceManual(args: {
-  basePrice: number;
-  quantity?: number;
-}): PriceBreakdown {
-  const unitQty = Math.max(1, Number(args.quantity ?? 1));
-  const unitPrice = round2(args.basePrice);
-  const subtotal = round2(unitPrice * unitQty);
-
-  return {
-    mode: "manual",
-    unitQty,
-    unitSqft: 0,
-    unitPrice,
-    subtotal,
-    lines: [
-      {
-        label: "Manual price",
-        qty: unitQty,
-        rate: unitPrice,
-        amount: subtotal,
-      },
-    ],
-  };
 }
 
 // ===============================

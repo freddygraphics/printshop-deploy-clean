@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 import { PrismaClient } from "@prisma/client";
 
@@ -9,9 +10,11 @@ const prisma = new PrismaClient();
 //
 export async function GET(req, { params }) {
   try {
+    const { id } = await params;
+
     const template = await prisma.template.findUnique({
       where: {
-        id: Number(params.id),
+        id: Number(id),
       },
     });
 
@@ -46,23 +49,29 @@ export async function GET(req, { params }) {
 //
 export async function PUT(req, { params }) {
   try {
+    const { id } = await params;
     const body = await req.json();
 
     const template = await prisma.template.update({
       where: {
-        id: Number(params.id),
+        id: Number(id),
       },
+
       data: {
         name: body.name,
         slug: body.slug,
-        description: body.description,
-        icon: body.icon,
-        type: body.type,
-        category: body.category,
-        configuration: body.configuration,
-        fields: body.fields,
-        options: body.options,
-        active: body.active,
+
+        description: body.description ?? null,
+        icon: body.icon ?? null,
+        type: body.type ?? null,
+        category: body.category ?? null,
+
+        configuration: body.configuration ?? {},
+
+        fields: body.fields ?? {},
+        options: body.options ?? {},
+
+        active: body.active ?? true,
       },
     });
 
@@ -86,9 +95,11 @@ export async function PUT(req, { params }) {
 //
 export async function DELETE(req, { params }) {
   try {
+    const { id } = await params;
+
     await prisma.template.delete({
       where: {
-        id: Number(params.id),
+        id: Number(id),
       },
     });
 

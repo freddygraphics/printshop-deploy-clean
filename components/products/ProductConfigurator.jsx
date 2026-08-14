@@ -4,7 +4,7 @@ import StandardProductConfigurator from "@/components/products/configurators/Sta
 import StickerProductConfigurator from "@/components/products/configurators/StickerProductConfigurator";
 import ApparelProductConfigurator from "@/components/products/configurators/ApparelProductConfigurator";
 import RaffleTicketProductConfigurator from "@/components/products/configurators/RaffleTicketProductConfigurator";
-
+import YardSignProductConfigurator from "@/components/products/configurators/YardSignProductConfigurator";
 export default function ProductConfigurator({
   product,
   onChange,
@@ -71,6 +71,17 @@ export default function ProductConfigurator({
     );
   }
 
+  const hasYardSignConfiguration = Boolean(
+    product?.defaultOptions?.yardSign || product?.configuration?.yardSign,
+  );
+  const isYardSign =
+    templateSlug === "yard-signs" ||
+    templateSlug === "yard-sign" ||
+    String(product?.templateSlug || "")
+      .trim()
+      .toLowerCase() === "yard-signs" ||
+    hasYardSignConfiguration;
+
   if (isApparel) {
     return (
       <ApparelProductConfigurator
@@ -90,7 +101,15 @@ export default function ProductConfigurator({
       />
     );
   }
-
+  if (isYardSign) {
+    return (
+      <YardSignProductConfigurator
+        product={product}
+        initialData={initialData}
+        onChange={onChange}
+      />
+    );
+  }
   return (
     <StandardProductConfigurator
       product={product}

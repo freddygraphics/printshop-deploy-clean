@@ -1,10 +1,12 @@
 "use client";
-
+import nextDynamic from "next/dynamic";
 export const dynamic = "force-dynamic";
 
 import { useEffect, useMemo, useState } from "react";
 import DesktopBoard from "@/components/production/DesktopBoard";
-import JobModal from "@/components/JobModal/JobModal";
+const JobModal = nextDynamic(() => import("@/components/JobModal/JobModal"), {
+  ssr: false,
+});
 import SearchResults from "@/components/production/SearchResults";
 import SearchBar from "@/components/production/SearchBar";
 

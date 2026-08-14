@@ -3,9 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/db";
 
-export const dynamic = "force-dynamic";
-
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const { handlers, auth } = NextAuth({
   secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
   trustHost: true,
 

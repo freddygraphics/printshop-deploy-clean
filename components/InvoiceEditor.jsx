@@ -1,8 +1,6 @@
 "use client";
-
+import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, useCallback } from "react";
-
-import AssignTeamMemberModal from "@/components/AssignTeamMemberModal";
 
 import { useRouter } from "next/navigation";
 
@@ -24,10 +22,22 @@ import DocumentTotalsSection from "@/components/document/DocumentTotalsSection";
 import DocumentDetailsCard from "@/components/document/DocumentDetailsCard";
 import InvoiceActionsMenu from "@/components/invoice/InvoiceActionsMenu";
 import { useInvoicePersistence } from "@/hooks/useInvoicePersistence";
-import InvoiceModals from "@/components/invoice/InvoiceModals";
+
 import UnsavedChangesDialog from "@/components/dialogs/UnsavedChangesDialog";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
-import { buildDocumentPdf } from "@/lib/pdf/buildDocumentPdf";
+const AssignTeamMemberModal = dynamic(
+  () => import("@/components/AssignTeamMemberModal"),
+  {
+    ssr: false,
+  },
+);
+
+const InvoiceModals = dynamic(
+  () => import("@/components/invoice/InvoiceModals"),
+  {
+    ssr: false,
+  },
+);
 export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
   const [showCancelJobDialog, setShowCancelJobDialog] = useState(false);
 
@@ -738,6 +748,8 @@ export default function InvoiceEditor({ mode = "edit", invoiceId = null }) {
                   // ================================================
                   // GENERATE PDF DIRECTLY
                   // ================================================
+                  const { buildDocumentPdf } =
+                    await import("@/lib/pdf/buildDocumentPdf");
                   const pdfBytes = await buildDocumentPdf({
                     documentType: "invoice",
 

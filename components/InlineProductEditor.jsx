@@ -42,9 +42,18 @@ function InlineProductEditor({
     .toLowerCase();
 
   const isManual = !effectiveProduct && savedProductType !== "apparel";
+  const configuration =
+    effectiveProduct?.configuration ||
+    effectiveProduct?.defaultOptions ||
+    effectiveProduct?.template?.configuration ||
+    {};
 
-  const configuration = effectiveProduct?.defaultOptions ?? {};
-
+  const hasYardSignConfiguration = Boolean(
+    configuration?.yardSign ||
+    effectiveProduct?.configuration?.yardSign ||
+    effectiveProduct?.defaultOptions?.yardSign ||
+    effectiveProduct?.template?.configuration?.yardSign,
+  );
   console.log("DEFAULT OPTIONS");
   console.log(configuration);
 
@@ -329,6 +338,28 @@ function InlineProductEditor({
     .trim()
     .toLowerCase();
 
+  const isYardSign =
+    hasYardSignConfiguration ||
+    productType === "yard-sign" ||
+    productType === "yard-signs" ||
+    category === "yard-sign" ||
+    category === "yard-signs" ||
+    templateType === "yard-sign" ||
+    templateType === "yard-signs" ||
+    templateSlug === "yard-sign" ||
+    templateSlug === "yard-signs" ||
+    String(effectiveProduct?.templateSlug || "")
+      .trim()
+      .toLowerCase() === "yard-signs" ||
+    String(effectiveProduct?.templateSlug || "")
+      .trim()
+      .toLowerCase() === "yard-sign" ||
+    itemProductType === "yard-sign" ||
+    itemProductType === "yard-signs" ||
+    String(effectiveProduct?.name || "")
+      .trim()
+      .toLowerCase() === "yard sign";
+
   const isApparel =
     productType === "apparel" ||
     category === "apparel" ||
@@ -344,7 +375,8 @@ function InlineProductEditor({
     templateSlug === "raffle-tickets" ||
     templateSlug === "raffle-ticket";
 
-  const isSpecialProduct = isSticker || isApparel || isRaffleTicket;
+  const isSpecialProduct =
+    isSticker || isApparel || isRaffleTicket || isYardSign;
 
   const isSinalite = effectiveProduct?.sinaliteEnabled === true;
   const productCalculationRef = useRef(false);
@@ -358,6 +390,7 @@ function InlineProductEditor({
       isSinalite ||
       isApparel ||
       isRaffleTicket ||
+      isYardSign ||
       data?._expanded !== true ||
       pricingRows.length === 0
     ) {
@@ -396,11 +429,13 @@ function InlineProductEditor({
       {/* PRODUCT HEADER */}
       <div
         className={`grid grid-cols-1 gap-8 mb-8 ${
-          effectiveProduct ? "xl:grid-cols-[320px_1fr]" : "xl:grid-cols-1"
+          effectiveProduct && !isYardSign
+            ? "xl:grid-cols-[320px_1fr]"
+            : "xl:grid-cols-1"
         }`}
       >
         {/* LEFT */}
-        {effectiveProduct && (
+        {effectiveProduct && !isYardSign && (
           <div className="p-4 shadow-sm h-fit">
             {effectiveProduct?.image || effectiveProduct?.imageUrl ? (
               <img

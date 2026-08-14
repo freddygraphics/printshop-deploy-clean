@@ -385,67 +385,6 @@ export default function RaffleTicketCalculator({
         {/* RESULTADOS */}
         {result && (
           <>
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              <ResultCard label="Sheets needed" value={result.sheetsNeeded} />
-
-              <ResultCard
-                label="Booklets"
-                value={booklets ? result.bookCount : "No"}
-              />
-
-              <ResultCard
-                label="Production cost"
-                value={money(result.productionCost)}
-              />
-
-              <ResultCard label="Profit" value={money(result.profit)} green />
-            </div>
-
-            <div className="rounded-xl bg-gray-50 p-5">
-              <h3 className="mb-4 font-semibold text-gray-900">
-                Calculation details
-              </h3>
-
-              <div className="grid grid-cols-1 gap-x-10 gap-y-2 text-sm md:grid-cols-2">
-                <DetailRow
-                  label="Paper, printing and cutting"
-                  value={money(result.sheetProductionCost)}
-                />
-
-                <DetailRow
-                  label={`Waste (${pricing.wastePercent}%)`}
-                  value={money(result.wasteCost)}
-                />
-
-                <DetailRow
-                  label="General setup"
-                  value={money(result.setupCost)}
-                />
-
-                <DetailRow
-                  label="Numbering"
-                  value={money(result.numberingCost)}
-                />
-
-                <DetailRow
-                  label="Perforation"
-                  value={money(result.perforationCost)}
-                />
-
-                <DetailRow
-                  label="Booklet assembly"
-                  value={money(result.bookletCost)}
-                />
-
-                <DetailRow label="Design" value={money(result.designFee)} />
-
-                <DetailRow
-                  label={`Profit margin (${result.profitMargin}%)`}
-                  value={money(result.profit)}
-                />
-              </div>
-            </div>
-
             {/* TOTAL */}
             <div className="rounded-xl bg-slate-900 p-6 text-white">
               <div>

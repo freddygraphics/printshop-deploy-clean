@@ -31,25 +31,7 @@ export async function getSinaliteToken() {
 
   return cachedToken;
 }
-// 🔥 GET PRODUCT CONFIG
-export async function getSinaliteProduct(productId: number) {
-  const token = await getSinaliteToken();
 
-  const res = await fetch(
-    `https://api.sinaliteuppy.com/product/${productId}/1`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    },
-  );
-
-  const data = await res.json();
-
-  console.log("🔥 PRODUCT CONFIG:", JSON.stringify(data, null, 2));
-
-  return data;
-}
 // 💰 PRICE
 export async function getSinalitePrice(productId: number, options: any) {
   const token = await getSinaliteToken();

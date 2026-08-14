@@ -12,7 +12,7 @@ export default function EditTemplatePage() {
 
   useEffect(() => {
     loadTemplate();
-  }, []);
+  }, [id]);
 
   async function loadTemplate() {
     try {
@@ -36,6 +36,14 @@ export default function EditTemplatePage() {
         supplier: data.configuration?.supplier || {},
 
         workflow: data.configuration?.workflow || {},
+
+        yardSign: data.configuration?.yardSign || {
+          sizes: [],
+          materials: [],
+          printSides: [],
+          stakes: [],
+          packages: [],
+        },
       });
     } catch (err) {
       console.error(err);

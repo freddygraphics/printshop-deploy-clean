@@ -5,7 +5,7 @@ function round2(n: number) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
-export function calcSqft(widthIn: number, heightIn: number) {
+function calcSqft(widthIn: number, heightIn: number) {
   return (Number(widthIn) * Number(heightIn)) / 144;
 }
 

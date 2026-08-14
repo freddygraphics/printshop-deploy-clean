@@ -1,5 +1,5 @@
 "use client";
-
+import dynamic from "next/dynamic";
 import DocumentProductsSection from "@/components/document/DocumentProductsSection";
 import DocumentDetailsCard from "@/components/document/DocumentDetailsCard";
 import { createManualDocumentItem } from "@/lib/document-items/createManualDocumentItem";
@@ -11,16 +11,27 @@ import {
 } from "@/lib/document-items/documentItemActions";
 import DocumentHeader from "@/components/document/DocumentHeader";
 import DocumentEditorLayout from "@/components/document/DocumentEditorLayout";
-import CustomerSearchModal from "@/components/CustomerSearchModal";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuotePersistence } from "@/hooks/useQuotePersistence";
-import AssignTeamMemberModal from "@/components/AssignTeamMemberModal";
-import CreateJobModal from "@/components/CreateJobModal";
+
 import { searchDocumentProducts } from "@/lib/document-items/searchDocumentProducts";
 import { createDocumentItem } from "@/lib/document-items/createDocumentItem";
 import UnsavedChangesDialog from "@/components/dialogs/UnsavedChangesDialog";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
-import { buildDocumentPdf } from "@/lib/pdf/buildDocumentPdf";
+const CustomerSearchModal = dynamic(
+  () => import("@/components/CustomerSearchModal"),
+  { ssr: false },
+);
+
+const AssignTeamMemberModal = dynamic(
+  () => import("@/components/AssignTeamMemberModal"),
+  { ssr: false },
+);
+
+const CreateJobModal = dynamic(() => import("@/components/CreateJobModal"), {
+  ssr: false,
+});
 export default function QuoteEditor({
   mode = "new",
   quoteId: editQuoteId = null,
@@ -823,7 +834,8 @@ export default function QuoteEditor({
                   if (response.ok) {
                     logoBytes = await response.arrayBuffer();
                   }
-
+                  const { buildDocumentPdf } =
+                    await import("@/lib/pdf/buildDocumentPdf");
                   const pdfBytes = await buildDocumentPdf({
                     documentType: "quote",
                     documentNumber: quoteNumber,
