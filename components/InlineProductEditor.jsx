@@ -313,7 +313,9 @@ function InlineProductEditor({
   const templateSlug = String(effectiveProduct?.template?.slug || "")
     .trim()
     .toLowerCase();
-
+  const templateName = String(effectiveProduct?.template?.name || "")
+    .trim()
+    .toLowerCase();
   const itemProductType = String(data?.options?.productType || "")
     .trim()
     .toLowerCase();
@@ -345,6 +347,8 @@ function InlineProductEditor({
     templateType === "yard-signs" ||
     templateSlug === "yard-sign" ||
     templateSlug === "yard-signs" ||
+    templateName === "yard sign" ||
+    templateName === "yard signs" ||
     productTemplateSlug === "yard-sign" ||
     productTemplateSlug === "yard-signs" ||
     itemProductType === "yard-sign" ||

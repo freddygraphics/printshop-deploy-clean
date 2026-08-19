@@ -22,6 +22,9 @@ export default function ProductConfigurator({
     .trim()
     .toLowerCase();
 
+  const templateName = String(product?.template?.name || "")
+    .trim()
+    .toLowerCase();
   console.log("PRODUCT CONFIGURATOR:", {
     id: product?.id,
     name: product?.name,
@@ -83,6 +86,8 @@ export default function ProductConfigurator({
     templateType === "yard-signs" ||
     templateSlug === "yard-sign" ||
     templateSlug === "yard-signs" ||
+    templateName === "yard sign" ||
+    templateName === "yard signs" ||
     productTemplateSlug === "yard-sign" ||
     productTemplateSlug === "yard-signs";
 

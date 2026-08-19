@@ -22,9 +22,11 @@ export default function ProductBuilder({
     template?.configuration ||
     {};
 
-  const isYardSign =
-    template?.slug?.toLowerCase() === "yard-signs" ||
-    template?.name?.trim().toLowerCase() === "yard signs";
+const resolvedTemplate = template || existingData?.template || null;
+
+const isYardSign =
+  resolvedTemplate?.slug?.toLowerCase() === "yard-signs" ||
+  resolvedTemplate?.name?.trim().toLowerCase() === "yard signs";
 
   const [product, setProduct] = useState({
     image: existingData.image || "",

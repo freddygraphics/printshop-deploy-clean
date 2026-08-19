@@ -8,6 +8,7 @@ import {
   ShoppingBag,
   Sparkles,
   Sticker,
+  Ticket,
   Users,
 } from "lucide-react";
 
@@ -35,6 +36,13 @@ const cards = [
     href: "/settings/stickers",
     description: "Manage sticker materials, costs and pricing.",
     icon: Sticker,
+  },
+  {
+    title: "Raffle Ticket Pricing",
+    href: "/settings/raffle-tickets",
+    description:
+      "Configure raffle ticket production costs, options and pricing.",
+    icon: Ticket,
   },
   {
     title: "Apparel & DTF Pricing",
