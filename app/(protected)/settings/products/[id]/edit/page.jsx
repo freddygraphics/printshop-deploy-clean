@@ -54,6 +54,9 @@ export default function EditProductPage() {
   }
 
   async function handleSave(updatedProduct) {
+    console.log("🔥 HANDLE SAVE CALLED");
+    console.log("➡ relatedService:", relatedService);
+    console.log("➡ updatedProduct:", updatedProduct);
     try {
       const res = await fetch(`/api/products/${id}`, {
         method: "PUT",
@@ -63,6 +66,7 @@ export default function EditProductPage() {
         body: JSON.stringify({
           ...updatedProduct,
           relatedService: relatedService || null,
+          showOnWebsite: Boolean(relatedService),
         }),
       });
 

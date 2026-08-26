@@ -50,19 +50,17 @@ export async function PUT(req, { params }) {
       where: {
         id,
       },
-
       data: {
         name: body.name,
         image: body.image ?? null,
         description: body.description ?? "",
-
         relatedService: body.relatedService ?? null,
+
+        showOnWebsite:
+          typeof body.showOnWebsite === "boolean" ? body.showOnWebsite : false,
 
         basePrice: Number(body.basePrice ?? 0),
         customFields: body.customFields || {},
-
-        // Aquí guardamos toda la configuración del producto,
-        // incluyendo yardSign.sizes[].pricing, defaults y add-ons.
         defaultOptions: configuration,
       },
 
