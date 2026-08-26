@@ -15,14 +15,13 @@ export default function NewProductPage() {
 
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [category, setCategory] = useState("standard");
-
+  const [relatedService, setRelatedService] = useState("");
   async function handleSave(product) {
     try {
       const payload = {
         ...product,
-
         category: category === "standard" ? null : category,
-
+        relatedService: relatedService || null,
         templateId: selectedTemplate.id,
         templateSlug: selectedTemplate.slug,
       };
@@ -74,26 +73,52 @@ export default function NewProductPage() {
       ) : (
         <>
           <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="max-w-md">
-              <label className="mb-2 block text-sm font-semibold text-gray-700">
-                Product Type
-              </label>
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* PRODUCT TYPE */}
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  Product Type
+                </label>
 
-              <select
-                value={category}
-                onChange={(event) => setCategory(event.target.value)}
-                className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              >
-                <option value="standard">Standard Product</option>
-                <option value="stickers">Stickers</option>
-                <option value="apparel">Apparel</option>
-                <option value="raffle-tickets">Raffle Tickets</option>
-              </select>
+                <select
+                  value={category}
+                  onChange={(event) => setCategory(event.target.value)}
+                  className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                >
+                  <option value="standard">Standard Product</option>
+                  <option value="stickers">Stickers</option>
+                  <option value="apparel">Apparel</option>
+                  <option value="raffle-tickets">Raffle Tickets</option>
+                </select>
 
-              <p className="mt-2 text-xs text-gray-500">
-                This determines which configurator opens when the product is
-                selected.
-              </p>
+                <p className="mt-2 text-xs text-gray-500">
+                  This determines which configurator opens when the product is
+                  selected.
+                </p>
+              </div>
+
+              {/* RELATED SERVICE */}
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  Related Service
+                </label>
+
+                <select
+                  value={relatedService}
+                  onChange={(event) => setRelatedService(event.target.value)}
+                  className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                >
+                  <option value="">No Related Service</option>
+                  <option value="print-newark-nj">Printing</option>
+                  <option value="signs-newark-nj">Signs</option>
+                  <option value="apparel-newark-nj">Apparel</option>
+                  <option value="design-newark-nj">Design</option>
+                </select>
+
+                <p className="mt-2 text-xs text-gray-500">
+                  This determines which service page displays this product.
+                </p>
+              </div>
             </div>
           </section>
 

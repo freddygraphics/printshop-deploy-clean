@@ -43,6 +43,7 @@ export async function PUT(req, { params }) {
 
     console.log("===== UPDATE PRODUCT =====");
     console.log(JSON.stringify(body, null, 2));
+
     const configuration = body.configuration ?? body.defaultOptions ?? {};
 
     const updated = await prisma.product.update({
@@ -52,13 +53,12 @@ export async function PUT(req, { params }) {
 
       data: {
         name: body.name,
-
         image: body.image ?? null,
-
         description: body.description ?? "",
 
-        basePrice: Number(body.basePrice ?? 0),
+        relatedService: body.relatedService ?? null,
 
+        basePrice: Number(body.basePrice ?? 0),
         customFields: body.customFields || {},
 
         // Aquí guardamos toda la configuración del producto,

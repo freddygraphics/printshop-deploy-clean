@@ -10,7 +10,7 @@ import ProductBuilder from "@/components/products/ProductBuilder";
 export default function EditProductPage() {
   const { id } = useParams();
   const router = useRouter();
-
+  const [relatedService, setRelatedService] = useState("");
   const [product, setProduct] = useState(null);
   const [template, setTemplate] = useState(null);
 
@@ -32,6 +32,7 @@ export default function EditProductPage() {
       const productData = await res.json();
 
       setProduct(productData);
+      setRelatedService(productData.relatedService || "");
 
       // -----------------------------
       // TEMPLATE
@@ -59,7 +60,10 @@ export default function EditProductPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(updatedProduct),
+        body: JSON.stringify({
+          ...updatedProduct,
+          relatedService: relatedService || null,
+        }),
       });
 
       const data = await res.json();
@@ -79,9 +83,33 @@ export default function EditProductPage() {
   if (!product) {
     return <div className="p-8">Loading...</div>;
   }
-
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
+      {/* RELATED SERVICE */}
+      <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="max-w-md">
+          <label className="mb-2 block text-sm font-semibold text-gray-700">
+            Related Service
+          </label>
+
+          <select
+            value={relatedService}
+            onChange={(event) => setRelatedService(event.target.value)}
+            className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          >
+            <option value="">No Related Service</option>
+            <option value="print-newark-nj">Printing</option>
+            <option value="signs-newark-nj">Signs</option>
+            <option value="apparel-newark-nj">Apparel</option>
+            <option value="design-newark-nj">Design</option>
+          </select>
+
+          <p className="mt-2 text-xs text-gray-500">
+            This determines which service page displays this product.
+          </p>
+        </div>
+      </section>
+
       <ProductBuilder
         mode="edit"
         existingData={product}

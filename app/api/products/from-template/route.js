@@ -14,13 +14,13 @@ export async function POST(req) {
       name,
       description,
       category,
+      relatedService,
       basePrice,
       templateType,
       templateSlug,
       customFields,
       defaultOptions,
       templateId,
-
       sinaliteEnabled,
       sinaliteId,
       sinaliteOptions,
@@ -107,6 +107,11 @@ export async function POST(req) {
 
         category:
           normalizedCategory || (isSpecialProduct ? requestedType : null),
+
+        relatedService:
+          relatedService && String(relatedService).trim()
+            ? String(relatedService).trim()
+            : null,
 
         basePrice: Number(basePrice ?? 0),
         templateType: resolvedTemplateType,
