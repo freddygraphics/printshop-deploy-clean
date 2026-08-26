@@ -13,6 +13,8 @@ export async function POST(req) {
     const {
       name,
       description,
+      image,
+      images,
       category,
       relatedService,
       basePrice,
@@ -99,11 +101,29 @@ export async function POST(req) {
       Object.keys(defaultOptions).length > 0
         ? defaultOptions
         : template?.configuration || {};
-
+    const normalizedImages = Array.isArray(images)
+      ? images
+          .filter((item) => item?.url)
+          .map((item, index) => ({
+            url: item.url,
+            position: index,
+            isPrimary: item.url === image || Boolean(item.isPrimary),
+          }))
+      : [];
     const product = await prisma.product.create({
       data: {
         name: name.trim(),
+
         description: description?.trim() || "",
+
+        image: image || normalizedImages[0]?.url || null,
+
+        images:
+          normalizedImages.length > 0
+            ? {
+                create: normalizedImages,
+              }
+            : undefined,
 
         category:
           normalizedCategory || (isSpecialProduct ? requestedType : null),
@@ -138,6 +158,14 @@ export async function POST(req) {
               },
             }
           : {}),
+      },
+
+      include: {
+        images: {
+          orderBy: {
+            position: "asc",
+          },
+        },
       },
     });
 

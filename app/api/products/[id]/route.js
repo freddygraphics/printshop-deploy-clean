@@ -16,6 +16,12 @@ export async function GET(req, { params }) {
       },
       include: {
         template: true,
+
+        images: {
+          orderBy: {
+            position: "asc",
+          },
+        },
       },
     });
 
@@ -45,27 +51,53 @@ export async function PUT(req, { params }) {
     console.log(JSON.stringify(body, null, 2));
 
     const configuration = body.configuration ?? body.defaultOptions ?? {};
-
+    const normalizedImages = Array.isArray(body.images)
+      ? body.images
+          .filter((item) => item?.url)
+          .map((item, index) => ({
+            url: item.url,
+            position: index,
+            isPrimary: item.url === body.image || Boolean(item.isPrimary),
+          }))
+      : [];
     const updated = await prisma.product.update({
       where: {
         id,
       },
+
       data: {
         name: body.name,
-        image: body.image ?? null,
+
+        image: body.image || normalizedImages[0]?.url || null,
+
         description: body.description ?? "",
+
         relatedService: body.relatedService ?? null,
 
         showOnWebsite:
           typeof body.showOnWebsite === "boolean" ? body.showOnWebsite : false,
 
         basePrice: Number(body.basePrice ?? 0),
+
         customFields: body.customFields || {},
+
         defaultOptions: configuration,
+
+        images: {
+          deleteMany: {},
+
+          create: normalizedImages,
+        },
       },
 
       include: {
         template: true,
+
+        images: {
+          orderBy: {
+            position: "asc",
+          },
+        },
       },
     });
 

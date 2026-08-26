@@ -32,6 +32,18 @@ export async function GET(request: Request) {
         image: true,
         category: true,
         relatedService: true,
+
+        images: {
+          orderBy: {
+            position: "asc",
+          },
+          select: {
+            id: true,
+            url: true,
+            position: true,
+            isPrimary: true,
+          },
+        },
       },
     });
 

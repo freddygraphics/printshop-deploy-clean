@@ -12,7 +12,9 @@ export default function SectionRenderer({ section, product, update }) {
       return (
         <ProductImage
           value={product.image}
+          images={product.images || []}
           onChange={(image) => update({ image })}
+          onImagesChange={(images) => update({ images })}
         />
       );
 

@@ -27,8 +27,19 @@ export async function GET(request, { params }) {
         description: true,
         category: true,
         image: true,
-
         defaultOptions: true,
+
+        images: {
+          orderBy: {
+            position: "asc",
+          },
+          select: {
+            id: true,
+            url: true,
+            position: true,
+            isPrimary: true,
+          },
+        },
 
         template: {
           select: {
@@ -68,7 +79,7 @@ export async function GET(request, { params }) {
       description: product.description,
       category: product.category,
       image: product.image,
-
+      images: product.images,
       pricing: pricing.map((row) => ({
         minQty: Number(row.minQty),
         maxQty:

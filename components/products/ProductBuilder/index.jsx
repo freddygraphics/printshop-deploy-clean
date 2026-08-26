@@ -22,14 +22,26 @@ export default function ProductBuilder({
     template?.configuration ||
     {};
 
-const resolvedTemplate = template || existingData?.template || null;
+  const resolvedTemplate = template || existingData?.template || null;
 
-const isYardSign =
-  resolvedTemplate?.slug?.toLowerCase() === "yard-signs" ||
-  resolvedTemplate?.name?.trim().toLowerCase() === "yard signs";
-
+  const isYardSign =
+    resolvedTemplate?.slug?.toLowerCase() === "yard-signs" ||
+    resolvedTemplate?.name?.trim().toLowerCase() === "yard signs";
   const [product, setProduct] = useState({
     image: existingData.image || "",
+
+    images:
+      existingData.images?.length > 0
+        ? existingData.images
+        : existingData.image
+          ? [
+              {
+                url: existingData.image,
+                position: 0,
+                isPrimary: true,
+              },
+            ]
+          : [],
 
     name: existingData.name || "",
 
