@@ -31,53 +31,36 @@ model Client {
 model StickerSheetPricing {
   id           String   @id @default(cuid())
   name         String   @unique
-
-  sheetWidth   Float    @default(11)
-  sheetHeight  Float    @default(17)
-
   costPerSheet Float
   laminateCost Float
   cutCost      Float
   wastePercent Float    @default(10)
   profitMargin Float    @default(40)
   createdAt    DateTime @default(now())
+  sheetHeight  Float    @default(17)
+  sheetWidth   Float    @default(11)
 }
 
 model RaffleTicketPricing {
-  id String @id @default(cuid())
-
-  // Impresión
-  paperCostPerSheet    Float @default(0.45)
-  printingCostPerSheet Float @default(0.55)
-  cutCostPerSheet      Float @default(0.20)
-  ticketsPerSheet      Int   @default(8)
-  wastePercent         Float @default(10)
-
-  // Preparación
-  setupFee Float @default(10)
-
-  // Numeración
-  numberingSetupFee      Float @default(10)
-  numberingCostPerTicket Float @default(0.02)
-
-  // Perforación
-  perforationSetupFee      Float @default(10)
-  perforationCostPerTicket Float @default(0.03)
-
-  // Talonarios
-  bookletCost           Float @default(2)
-  defaultTicketsPerBook Int   @default(50)
-
-  // Diseño
-  printReadyDesignFee Float @default(0)
-  basicDesignFee      Float @default(25)
-  fullDesignFee       Float @default(50)
-
-  // Ganancia
-  profitMargin Float @default(50)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                       String   @id @default(cuid())
+  paperCostPerSheet        Float    @default(0.45)
+  printingCostPerSheet     Float    @default(0.55)
+  cutCostPerSheet          Float    @default(0.20)
+  ticketsPerSheet          Int      @default(8)
+  wastePercent             Float    @default(10)
+  setupFee                 Float    @default(10)
+  numberingSetupFee        Float    @default(10)
+  numberingCostPerTicket   Float    @default(0.02)
+  perforationSetupFee      Float    @default(10)
+  perforationCostPerTicket Float    @default(0.03)
+  bookletCost              Float    @default(2)
+  defaultTicketsPerBook    Int      @default(50)
+  printReadyDesignFee      Float    @default(0)
+  basicDesignFee           Float    @default(25)
+  fullDesignFee            Float    @default(50)
+  profitMargin             Float    @default(50)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
 }
 
 model PrintProduct {
@@ -90,28 +73,31 @@ model PrintProduct {
 }
 
 model Product {
-  id              Int           @id @default(autoincrement())
+  id              Int            @id @default(autoincrement())
   name            String
-  sku             String?       @unique
+  sku             String?        @unique
   description     String?
   category        String?
-  pricingMode     String        @default("manual")
-  basePrice       Float         @default(0)
+  relatedService  String?
+  pricingMode     String         @default("manual")
+  basePrice       Float          @default(0)
   defaultOptions  Json?
   customFields    Json?
   templateType    String?
   templateId      Int?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  profitMargin    Float         @default(1.5)
-  sinaliteEnabled Boolean       @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  profitMargin    Float          @default(1.5)
+  sinaliteEnabled Boolean        @default(false)
   sinaliteId      Int?
   sinaliteOptions Json?
   image           String?
+  showOnWebsite   Boolean        @default(false)
   invoiceItems    InvoiceItem[]
   orders          Order[]
-  template        Template?     @relation(fields: [templateId], references: [id])
+  template        Template?      @relation(fields: [templateId], references: [id])
   quoteItems      QuoteItem[]
+  quoteRequests   QuoteRequest[]
 }
 
 model PrintProductionProfile {
@@ -140,39 +126,46 @@ model PrintProductionProfile {
 }
 
 model Quote {
-  id              Int       @id @default(autoincrement())
-  quoteNumber     Int?      @unique
+  id            Int         @id @default(autoincrement())
+  quoteNumber   Int?        @unique
+  clientId      Int?
+  quoteDate     DateTime    @default(now())
+  validUntil    DateTime?
+  subtotal      Float       @default(0)
+  tax           Float       @default(0)
+  total         Float       @default(0)
+  paymentOption String      @default("full")
+  status        String      @default("Pending")
+  notes         String?
+  reference     String?     @unique
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  customerNotes String?
+  internalNotes String?
+  userId        Int?
+  pdfStatus     String?     @default("pending")
+  pdfUpdatedAt  DateTime?
+  invoices      Invoice[]
+  client        Client?     @relation(fields: [clientId], references: [id])
+  user          User?       @relation(fields: [userId], references: [id])
+  items         QuoteItem[]
+}
 
-  clientId        Int?
-  client          Client?   @relation(fields: [clientId], references: [id])
-
-  quoteDate       DateTime  @default(now())
-  validUntil      DateTime?
-
-  subtotal        Float     @default(0)
-  tax             Float     @default(0)
-  total           Float     @default(0)
-
-  paymentOption   String    @default("full")
-  status          String    @default("Pending")
-
-  notes           String?
-  reference       String?   @unique
-
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  customerNotes   String?
-  internalNotes   String?
-
-  userId          Int?
-
-  pdfStatus       String?   @default("pending")
-  pdfUpdatedAt    DateTime?
-
-  invoices        Invoice[]
-  user            User?     @relation(fields: [userId], references: [id])
-  items           QuoteItem[]
+model QuoteRequest {
+  id           String             @id @default(cuid())
+  name         String
+  email        String
+  phone        String?
+  productId    Int?
+  productName  String
+  options      Json
+  notes        String?
+  status       QuoteRequestStatus @default(NEW)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  qty          Int                @default(1)
+  businessName String?
+  product      Product?           @relation(fields: [productId], references: [id])
 }
 
 model Counter {
@@ -263,7 +256,6 @@ model InvoiceItem {
   qty                      Int
   unitPrice                Float
   total                    Float
-  totalCost                Float?
   pricingMode              String                  @default("manual")
   widthIn                  Float?
   heightIn                 Float?
@@ -273,6 +265,7 @@ model InvoiceItem {
   notes                    String?
   createdAt                DateTime                @default(now())
   updatedAt                DateTime                @updatedAt
+  totalCost                Float?
   invoice                  Invoice                 @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   printProductionProfile   PrintProductionProfile? @relation(fields: [printProductionProfileId], references: [id])
   product                  Product?                @relation(fields: [productId], references: [id])
@@ -322,9 +315,9 @@ model Template {
   category      String?
   configuration Json?
   description   String?
-  measurements  Json?
   icon          String?
   slug          String?   @unique
+  measurements  Json?
   products      Product[]
 }
 
@@ -343,21 +336,16 @@ model Job {
   updatedAt           DateTime  @updatedAt
   invoiceId           Int       @unique
   position            Int       @default(0)
-
-  pickupToken String?   @unique
-  pickedUpAt  DateTime?
-  pickedUpBy  String?
-
-  deliveredAt DateTime?
-
-  // ✅ NUEVO
-  archived   Boolean   @default(false)
-  archivedAt DateTime?
-
-  client  Client    @relation(fields: [clientId], references: [id])
-  invoice Invoice   @relation(fields: [invoiceId], references: [id])
-  files   JobFile[]
-  items   JobItem[]
+  pickupToken         String?   @unique
+  pickedUpAt          DateTime?
+  pickedUpBy          String?
+  archived            Boolean   @default(false)
+  archivedAt          DateTime?
+  deliveredAt         DateTime?
+  client              Client    @relation(fields: [clientId], references: [id])
+  invoice             Invoice   @relation(fields: [invoiceId], references: [id])
+  files               JobFile[]
+  items               JobItem[]
 }
 
 model JobItem {
@@ -599,8 +587,8 @@ model ProductOptionLibrary {
 }
 
 model ApparelProduct {
-  id            Int       @id @default(autoincrement())
-  supplier      String    @default("SanMar")
+  id            Int              @id @default(autoincrement())
+  supplier      String           @default("SanMar")
   supplierStyle String
   name          String
   description   String?
@@ -608,12 +596,11 @@ model ApparelProduct {
   category      String?
   subcategory   String?
   imageUrl      String?
-  active        Boolean   @default(true)
+  active        Boolean          @default(true)
   lastSyncedAt  DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  variants ApparelVariant[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  variants      ApparelVariant[]
 
   @@unique([supplier, supplierStyle])
   @@index([name])
@@ -622,21 +609,20 @@ model ApparelProduct {
 }
 
 model ApparelVariant {
-  id              Int       @id @default(autoincrement())
+  id              Int            @id @default(autoincrement())
   productId       Int
-  supplierSku     String    @unique
+  supplierSku     String         @unique
   color           String
   colorCode       String?
   size            String
-  supplierPrice   Float     @default(0)
-  inventory       Int       @default(0)
+  supplierPrice   Float          @default(0)
+  inventory       Int            @default(0)
   warehouseData   Json?
-  active          Boolean   @default(true)
+  active          Boolean        @default(true)
   lastInventoryAt DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  product ApparelProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  product         ApparelProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([productId])
   @@index([color])
@@ -644,48 +630,41 @@ model ApparelVariant {
 }
 
 model ApparelPricingSettings {
-  id String @id @default(cuid())
-
-  supplier         String @default("SanMar")
-  decorationMethod String @default("DTF")
-
-  // DTF
-  dtfPricingMethod String @default("GANG_SHEET")
-  dtfCostPerSqft   Float  @default(4)
-  dtfRollWidth     Float  @default(22)
-  dtfGap           Float  @default(0.25)
-  gangSheets       Json   @default("[]")
-
-  // Default print locations and sizes
-  defaultPrintLocations Json @default("[{\"key\":\"front\",\"name\":\"Front\",\"width\":3.5,\"height\":3.5,\"enabled\":true},{\"key\":\"back\",\"name\":\"Back\",\"width\":10.5,\"height\":11,\"enabled\":true},{\"key\":\"leftSleeve\",\"name\":\"Left Sleeve\",\"width\":3,\"height\":3,\"enabled\":false},{\"key\":\"rightSleeve\",\"name\":\"Right Sleeve\",\"width\":3,\"height\":3,\"enabled\":false},{\"key\":\"longLeftSleeve\",\"name\":\"Long Left Sleeve\",\"width\":2.5,\"height\":17,\"enabled\":false},{\"key\":\"longRightSleeve\",\"name\":\"Long Right Sleeve\",\"width\":2.5,\"height\":17,\"enabled\":false}]")
-
-  // Labor and setup
-  laborPerLocation    Float @default(2)
-  setupFeePerLocation Float @default(0)
-  minimumSetupFee     Float @default(0)
-
-  // Shipping
-  supplierShippingFlat Float @default(0)
-  dtfShippingFlat      Float @default(0)
-  shippingPercent      Float @default(0)
-
-  // Waste
-  wastePercent Float @default(5)
-
-  // Profit
-  pricingMode         String @default("MARKUP")
-  defaultProfitMargin Float  @default(50)
-  quantityMargins     Json   @default("[]")
-
-  // Minimums
-  minimumUnitPrice  Float @default(0)
-  minimumOrderPrice Float @default(0)
-
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  supplier              String   @default("SanMar")
+  decorationMethod      String   @default("DTF")
+  dtfCostPerSqft        Float    @default(4)
+  laborPerLocation      Float    @default(2)
+  setupFeePerLocation   Float    @default(0)
+  shippingPercent       Float    @default(0)
+  wastePercent          Float    @default(5)
+  defaultProfitMargin   Float    @default(50)
+  minimumUnitPrice      Float    @default(0)
+  quantityMargins       Json     @default("[]")
+  active                Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  dtfGap                Float    @default(0.25)
+  dtfPricingMethod      String   @default("GANG_SHEET")
+  dtfRollWidth          Float    @default(22)
+  dtfShippingFlat       Float    @default(0)
+  gangSheets            Json     @default("[]")
+  minimumOrderPrice     Float    @default(0)
+  minimumSetupFee       Float    @default(0)
+  pricingMode           String   @default("MARKUP")
+  supplierShippingFlat  Float    @default(0)
+  defaultPrintLocations Json     @default("[{\"key\": \"front\", \"name\": \"Front\", \"width\": 3.5, \"height\": 3.5, \"enabled\": true}, {\"key\": \"back\", \"name\": \"Back\", \"width\": 10.5, \"height\": 11, \"enabled\": true}, {\"key\": \"leftSleeve\", \"name\": \"Left Sleeve\", \"width\": 3, \"height\": 3, \"enabled\": false}, {\"key\": \"rightSleeve\", \"name\": \"Right Sleeve\", \"width\": 3, \"height\": 3, \"enabled\": false}, {\"key\": \"longLeftSleeve\", \"name\": \"Long Left Sleeve\", \"width\": 2.5, \"height\": 17, \"enabled\": false}, {\"key\": \"longRightSleeve\", \"name\": \"Long Right Sleeve\", \"width\": 2.5, \"height\": 17, \"enabled\": false}]")
 
   @@unique([supplier, decorationMethod])
+}
+
+enum QuoteRequestStatus {
+  NEW
+  REVIEWING
+  QUOTED
+  APPROVED
+  REJECTED
+  CLOSED
 }
 
 enum InvoiceStatus {
@@ -699,9 +678,9 @@ enum InvoiceStatus {
 enum JobStatus {
   Pending
   Design
-  Proofing
   Production
   Ready
   Delivered
+  Proofing
   Cancelled
 }
