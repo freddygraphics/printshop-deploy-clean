@@ -19,6 +19,7 @@ import {
   Users,
   Package,
   Home,
+  ShoppingBag,
 } from "lucide-react";
 export default function Topbar({
   collapsed,
@@ -130,6 +131,14 @@ export default function Topbar({
                 title="Products"
               >
                 <Package className="w-5 h-5 text-gray-600" />
+              </Link>
+
+              <Link
+                href="/website-orders"
+                className="p-1 rounded hover:bg-gray-100"
+                title="Website Orders"
+              >
+                <ShoppingBag className="w-5 h-5 text-gray-600" />
               </Link>
             </div>
           </div>
