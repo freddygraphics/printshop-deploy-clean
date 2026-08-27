@@ -114,6 +114,29 @@ export async function POST(request: Request) {
             : {}),
         },
       });
+    } else {
+      client = await prisma.client.update({
+        where: {
+          id: client.id,
+        },
+
+        data: {
+          name: body.customer.fullName,
+          company: body.customer.businessName || null,
+          email: body.customer.email,
+          phone: body.customer.phone || null,
+
+          ...(body.fulfillment.method === "shipping"
+            ? {
+                address: body.fulfillment.address || null,
+                city: body.fulfillment.city || null,
+                state: body.fulfillment.state || null,
+                zip: body.fulfillment.zip || null,
+                country: "USA",
+              }
+            : {}),
+        },
+      });
     }
 
     /*
@@ -432,5 +455,3 @@ export async function POST(request: Request) {
     );
   }
 }
-
-
