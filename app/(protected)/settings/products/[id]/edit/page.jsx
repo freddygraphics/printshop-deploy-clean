@@ -70,12 +70,20 @@ export default function EditProductPage() {
         }),
       });
 
-      const data = await res.json();
+      const contentType = res.headers.get("content-type");
+
+      let data;
+
+      if (contentType?.includes("application/json")) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(text || `Server error (${res.status})`);
+      }
 
       if (!res.ok) {
         throw new Error(data.error || "Error updating product");
       }
-
       router.push("/settings/products");
       router.refresh();
     } catch (err) {

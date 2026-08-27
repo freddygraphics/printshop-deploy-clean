@@ -28,6 +28,16 @@ export default function ProductImage({
       const uploaded = [];
 
       for (const file of selectedFiles) {
+        if (!file.type.startsWith("image/")) {
+          throw new Error(`${file.name} is not a valid image.`);
+        }
+
+        if (file.size > 4 * 1024 * 1024) {
+          throw new Error(
+            `${file.name} is too large. Maximum image size is 4 MB.`,
+          );
+        }
+
         const form = new FormData();
         form.append("file", file);
 
@@ -36,7 +46,19 @@ export default function ProductImage({
           body: form,
         });
 
-        const data = await res.json();
+        const contentType = res.headers.get("content-type") || "";
+
+        let data;
+
+        if (contentType.includes("application/json")) {
+          data = await res.json();
+        } else {
+          const text = await res.text();
+
+          throw new Error(
+            text || `Upload failed. Server returned ${res.status}`,
+          );
+        }
 
         if (!res.ok) {
           throw new Error(data.error || "Upload failed");
