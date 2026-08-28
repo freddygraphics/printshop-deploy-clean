@@ -19,6 +19,16 @@ const APPAREL_TEMPLATE = {
   description:
     "Custom apparel with garment, size, color and decoration options.",
 };
+
+const TRUCK_LETTERING_TEMPLATE = {
+  id: "truck-lettering",
+  name: "Truck Lettering & USDOT",
+  slug: "truck-lettering",
+  templateType: "truck-lettering",
+  description:
+    "Custom vinyl lettering for trucks, USDOT numbers, MC numbers and door lettering.",
+};
+
 export default function ProductTemplateSelector({
   open = true,
   onClose,
@@ -51,6 +61,12 @@ export default function ProductTemplateSelector({
           template.slug === "apparel" || template.templateType === "apparel",
       );
 
+      const truckLetteringExists = loadedTemplates.some(
+        (template) =>
+          template.slug === "truck-lettering" ||
+          template.templateType === "truck-lettering",
+      );
+
       const finalTemplates = [...loadedTemplates];
 
       if (!apparelExists) {
@@ -61,12 +77,20 @@ export default function ProductTemplateSelector({
         finalTemplates.push(RAFFLE_TICKET_TEMPLATE);
       }
 
+      if (!truckLetteringExists) {
+        finalTemplates.push(TRUCK_LETTERING_TEMPLATE);
+      }
+
       setTemplates(finalTemplates);
     } catch (err) {
       console.error("Error loading templates:", err);
 
       // Raffle Tickets seguirá visible aunque falle la API
-      setTemplates([APPAREL_TEMPLATE, RAFFLE_TICKET_TEMPLATE]);
+      setTemplates([
+        APPAREL_TEMPLATE,
+        RAFFLE_TICKET_TEMPLATE,
+        TRUCK_LETTERING_TEMPLATE,
+      ]);
     }
   }
 

@@ -1,19 +1,35 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+
 import { normalizeOptionGroups } from "@/lib/product-builder/normalizeOptionGroups";
 
+import TruckLetteringProduct from "./TruckLetteringProduct";
 import SaveBar from "./SaveBar";
 import { defaultSections } from "./sections";
 import SectionRenderer from "./SectionRenderer";
 import BuilderToolbar from "./BuilderToolbar";
 import YardSignProduct from "./YardSignProduct";
-
+const DEFAULT_VINYL_COLORS = [
+  { name: "White", value: "#FFFFFF" },
+  { name: "Black", value: "#231F20" },
+  { name: "Red", value: "#FF0000" },
+  { name: "Blue", value: "#10069F" },
+  { name: "Cool Blue", value: "#009FE3" },
+  { name: "Navy", value: "#080866" },
+  { name: "Green", value: "#008A17" },
+  { name: "Hunter", value: "#00520D" },
+  { name: "Yellow", value: "#FFE500" },
+  { name: "Orange", value: "#FF9200" },
+  { name: "Maroon", value: "#A90000" },
+  { name: "Charcoal", value: "#666666" },
+];
 export default function ProductBuilder({
   template = null,
   existingData = {},
   mode = "new",
   templateType,
+  productType = "standard",
   onSave,
 }) {
   const configuration =
@@ -24,9 +40,56 @@ export default function ProductBuilder({
 
   const resolvedTemplate = template || existingData?.template || null;
 
+  // ============================
+  // PRODUCT TYPES
+  // ============================
+
   const isYardSign =
     resolvedTemplate?.slug?.toLowerCase() === "yard-signs" ||
     resolvedTemplate?.name?.trim().toLowerCase() === "yard signs";
+
+  const isTruckLettering =
+    productType === "truck-lettering" ||
+    existingData?.category === "truck-lettering" ||
+    resolvedTemplate?.slug?.toLowerCase() === "truck-lettering" ||
+    resolvedTemplate?.templateType === "truck-lettering";
+
+  // ============================
+  // DEFAULT TRUCK LETTERING
+  // ============================
+
+  const defaultTruckLettering = {
+    enabled: isTruckLettering,
+
+    lines: 1,
+
+    lineSettings: [
+      {
+        id: "line1",
+        label: "Line 1",
+        placeholder: "USDOT 1234567",
+        required: true,
+      },
+    ],
+
+    font: "Arial Bold",
+
+    availableFonts: ["Arial Bold", "Arial Black", "Impact", "Helvetica Bold"],
+
+    defaultColor: "#000000",
+
+    colors: DEFAULT_VINYL_COLORS,
+
+    preview: {
+      enabled: true,
+      background: "#ffffff",
+    },
+  };
+
+  // ============================
+  // PRODUCT STATE
+  // ============================
+
   const [product, setProduct] = useState({
     image: existingData.image || "",
 
@@ -59,6 +122,10 @@ export default function ProductBuilder({
 
     optionGroups: normalizeOptionGroups(configuration.productOptions || []),
 
+    // ============================
+    // YARD SIGN
+    // ============================
+
     yardSign: isYardSign
       ? configuration.yardSign || {
           sizes: [],
@@ -66,6 +133,20 @@ export default function ProductBuilder({
           printSides: [],
           stakes: [],
           packages: [],
+        }
+      : null,
+
+    // ============================
+    // TRUCK LETTERING
+    // ============================
+
+    truckLettering: isTruckLettering
+      ? {
+          ...defaultTruckLettering,
+          ...(configuration.truckLettering || {}),
+
+          // Siempre usar la lista estándar actual
+          colors: DEFAULT_VINYL_COLORS,
         }
       : null,
 
@@ -81,16 +162,22 @@ export default function ProductBuilder({
       width: {
         enabled: true,
         label: "Width",
+        unit: "in",
         default: "",
       },
 
       height: {
         enabled: true,
         label: "Height",
+        unit: "in",
         default: "",
       },
     },
   });
+
+  // ============================
+  // LOAD TEMPLATE
+  // ============================
 
   useEffect(() => {
     if (!template || mode === "edit") return;
@@ -111,6 +198,14 @@ export default function ProductBuilder({
             printSides: [],
             stakes: [],
             packages: [],
+          }
+        : null,
+
+      truckLettering: isTruckLettering
+        ? {
+            ...defaultTruckLettering,
+            ...(template.configuration?.truckLettering || {}),
+            colors: DEFAULT_VINYL_COLORS,
           }
         : null,
 
@@ -140,11 +235,19 @@ export default function ProductBuilder({
     }));
   }, [template, mode]);
 
+  // ============================
+  // SECTIONS
+  // ============================
+
   const [sections, setSections] = useState(defaultSections);
 
   useEffect(() => {
     setSections(defaultSections);
   }, []);
+
+  // ============================
+  // UPDATE PRODUCT
+  // ============================
 
   function update(values) {
     setProduct((prev) => ({
@@ -160,14 +263,21 @@ export default function ProductBuilder({
     }));
   }
 
+  // ============================
+  // RENDER
+  // ============================
+
   return (
     <div className="space-y-8">
+      {/* BUILDER TOOLBAR */}
+
       {mode === "builder" && (
         <BuilderToolbar sections={sections} onToggleSection={toggleSection} />
       )}
 
       {/* IMAGE + GENERAL INFO */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {sections.image && (
           <div className="lg:col-span-1">
             <SectionRenderer
@@ -189,12 +299,22 @@ export default function ProductBuilder({
         )}
       </div>
 
-      {/* YARD SIGNS */}
+      {/* ============================
+          SPECIAL PRODUCT CONFIGURATORS
+      ============================ */}
+
       {isYardSign ? (
         <YardSignProduct product={product} update={update} />
       ) : (
         <>
-          {/* NORMAL PRODUCTS */}
+          {/* TRUCK LETTERING */}
+
+          {isTruckLettering && (
+            <TruckLetteringProduct product={product} update={update} />
+          )}
+
+          {/* PRICING */}
+
           {sections.pricing && (
             <SectionRenderer
               section="pricing"
@@ -202,6 +322,8 @@ export default function ProductBuilder({
               update={update}
             />
           )}
+
+          {/* OPTIONS */}
 
           {sections.options && (
             <SectionRenderer
@@ -211,6 +333,8 @@ export default function ProductBuilder({
             />
           )}
 
+          {/* MEASUREMENTS */}
+
           {sections.measurements && (
             <SectionRenderer
               section="measurements"
@@ -219,6 +343,8 @@ export default function ProductBuilder({
             />
           )}
 
+          {/* INVENTORY */}
+
           {sections.inventory && (
             <SectionRenderer
               section="inventory"
@@ -226,6 +352,8 @@ export default function ProductBuilder({
               update={update}
             />
           )}
+
+          {/* SUPPLIER */}
 
           {sections.supplier && (
             <SectionRenderer
@@ -236,6 +364,10 @@ export default function ProductBuilder({
           )}
         </>
       )}
+
+      {/* ============================
+          SAVE
+      ============================ */}
 
       <SaveBar
         mode={mode}
@@ -255,6 +387,12 @@ export default function ProductBuilder({
               ...(isYardSign
                 ? {
                     yardSign: product.yardSign,
+                  }
+                : {}),
+
+              ...(isTruckLettering
+                ? {
+                    truckLettering: product.truckLettering,
                   }
                 : {}),
 

@@ -80,12 +80,18 @@ export async function GET(request, { params }) {
       category: product.category,
       image: product.image,
       images: product.images,
+
+      // IMPORTANT
+      defaultOptions: configuration,
+
       pricing: pricing.map((row) => ({
         minQty: Number(row.minQty),
+
         maxQty:
           row.maxQty === null || row.maxQty === undefined
             ? null
             : Number(row.maxQty),
+
         price: Number(row.unitPrice),
       })),
 

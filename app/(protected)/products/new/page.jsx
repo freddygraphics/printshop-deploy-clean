@@ -89,6 +89,8 @@ export default function NewProductPage() {
                   <option value="stickers">Stickers</option>
                   <option value="apparel">Apparel</option>
                   <option value="raffle-tickets">Raffle Tickets</option>
+
+                  <option value="truck-lettering">Truck Lettering</option>
                 </select>
 
                 <p className="mt-2 text-xs text-gray-500">
@@ -121,10 +123,10 @@ export default function NewProductPage() {
               </div>
             </div>
           </section>
-
           <ProductBuilder
             template={selectedTemplate}
             mode="new"
+            productType={category}
             onSave={handleSave}
           />
         </>

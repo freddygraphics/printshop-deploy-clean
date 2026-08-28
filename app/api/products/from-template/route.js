@@ -22,6 +22,7 @@ export async function POST(req) {
       templateSlug,
       customFields,
       defaultOptions,
+      configuration,
       templateId,
       sinaliteEnabled,
       sinaliteId,
@@ -49,13 +50,13 @@ export async function POST(req) {
     )
       .trim()
       .toLowerCase();
-
     const specialProductTypes = [
       "stickers",
       "sticker",
       "apparel",
       "raffle-tickets",
       "raffle-ticket",
+      "truck-lettering",
     ];
 
     const isSpecialProduct =
@@ -95,12 +96,18 @@ export async function POST(req) {
       requestedType || template?.slug || template?.type || null;
 
     const resolvedDefaultOptions =
-      defaultOptions &&
-      typeof defaultOptions === "object" &&
-      !Array.isArray(defaultOptions) &&
-      Object.keys(defaultOptions).length > 0
-        ? defaultOptions
-        : template?.configuration || {};
+      configuration &&
+      typeof configuration === "object" &&
+      !Array.isArray(configuration) &&
+      Object.keys(configuration).length > 0
+        ? configuration
+        : defaultOptions &&
+            typeof defaultOptions === "object" &&
+            !Array.isArray(defaultOptions) &&
+            Object.keys(defaultOptions).length > 0
+          ? defaultOptions
+          : template?.configuration || {};
+
     const normalizedImages = Array.isArray(images)
       ? images
           .filter((item) => item?.url)
