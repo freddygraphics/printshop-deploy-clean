@@ -7,19 +7,26 @@ import { useParams, useRouter } from "next/navigation";
 
 import ProductBuilder from "@/components/products/ProductBuilder";
 
+import { getRelatedServiceFromCategorySlug } from "@/lib/productCategoryServiceMap";
+
 export default function EditProductPage() {
   const { id } = useParams();
   const router = useRouter();
-  const [relatedService, setRelatedService] = useState("");
+
   const [productCategoryId, setProductCategoryId] = useState("");
   const [productCategories, setProductCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [creatingCategory, setCreatingCategory] = useState(false);
+
   const [product, setProduct] = useState(null);
   const [template, setTemplate] = useState(null);
 
+  // ==========================================
+  // LOAD PRODUCT CATEGORIES
+  // ==========================================
   useEffect(() => {
     loadProductCategories();
   }, []);
@@ -49,6 +56,9 @@ export default function EditProductPage() {
     }
   }
 
+  // ==========================================
+  // CREATE PRODUCT CATEGORY
+  // ==========================================
   async function createProductCategory() {
     const name = newCategoryName.trim();
 
@@ -76,7 +86,7 @@ export default function EditProductPage() {
 
       setProductCategories((current) => [...current, data]);
 
-      // Selecciona automáticamente la categoría nueva
+      // Seleccionar automáticamente la categoría nueva
       setProductCategoryId(String(data.id));
 
       setNewCategoryName("");
@@ -89,16 +99,23 @@ export default function EditProductPage() {
     }
   }
 
+  // ==========================================
+  // LOAD PRODUCT
+  // ==========================================
   useEffect(() => {
+    if (!id) return;
+
     loadProduct();
   }, [id]);
 
   async function loadProduct() {
     try {
-      // -----------------------------
-      // PRODUCTO
-      // -----------------------------
-      const res = await fetch(`/api/products/${id}`);
+      // ------------------------------------------
+      // PRODUCT
+      // ------------------------------------------
+      const res = await fetch(`/api/products/${id}`, {
+        cache: "no-store",
+      });
 
       if (!res.ok) {
         throw new Error("Product not found");
@@ -107,36 +124,57 @@ export default function EditProductPage() {
       const productData = await res.json();
 
       setProduct(productData);
-      setRelatedService(productData.relatedService || "");
 
       setProductCategoryId(
         productData.categoryId ? String(productData.categoryId) : "",
       );
 
-      // -----------------------------
+      // ------------------------------------------
       // TEMPLATE
-      // -----------------------------
+      // ------------------------------------------
       if (productData.templateId) {
         const templateRes = await fetch(
           `/api/templates/${productData.templateId}`,
+          {
+            cache: "no-store",
+          },
         );
 
         if (templateRes.ok) {
           const templateData = await templateRes.json();
-
           setTemplate(templateData);
         }
       }
     } catch (err) {
-      console.error(err);
+      console.error("Error loading product:", err);
     }
   }
 
+  // ==========================================
+  // SAVE PRODUCT
+  // ==========================================
   async function handleSave(updatedProduct) {
     console.log("🔥 HANDLE SAVE CALLED");
-    console.log("➡ relatedService:", relatedService);
     console.log("➡ updatedProduct:", updatedProduct);
+
     try {
+      const selectedProductCategory = productCategories.find(
+        (item) => String(item.id) === String(productCategoryId),
+      );
+
+      const categorySlug = selectedProductCategory?.slug || null;
+
+      const resolvedRelatedService = getRelatedServiceFromCategorySlug(
+        selectedCategory?.slug,
+      );
+
+      console.log("➡ Product Category:", {
+        id: productCategoryId,
+        name: selectedProductCategory?.name,
+        slug: categorySlug,
+        relatedService: resolvedRelatedService,
+      });
+
       const res = await fetch(`/api/products/${id}`, {
         method: "PUT",
         headers: {
@@ -145,11 +183,15 @@ export default function EditProductPage() {
         body: JSON.stringify({
           ...updatedProduct,
 
+          // Product Category
           categoryId: productCategoryId ? Number(productCategoryId) : null,
 
-          relatedService: relatedService || null,
+          // Related Service se calcula automáticamente
+          relatedService: resolvedRelatedService,
 
-          showOnWebsite: Boolean(relatedService),
+          // Mantener visible en website cuando
+          // pertenece a una categoría configurada
+          showOnWebsite: Boolean(resolvedRelatedService),
         }),
       });
 
@@ -161,128 +203,122 @@ export default function EditProductPage() {
         data = await res.json();
       } else {
         const text = await res.text();
+
         throw new Error(text || `Server error (${res.status})`);
       }
 
       if (!res.ok) {
         throw new Error(data.error || "Error updating product");
       }
+
       router.push("/settings/products");
       router.refresh();
     } catch (err) {
-      console.error(err);
-      alert(err.message || "Error updating product.");
+      console.error("Error updating product:", err);
+
+      alert(err instanceof Error ? err.message : "Error updating product.");
     }
   }
 
+  // ==========================================
+  // LOADING
+  // ==========================================
   if (!product) {
     return <div className="p-8">Loading...</div>;
   }
+
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
-      {/* RELATED SERVICE */}
+    <div className="mx-auto max-w-7xl px-6 py-8">
+      {/* ====================================== */}
+      {/* PRODUCT CATEGORY */}
+      {/* ====================================== */}
+
       <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* RELATED SERVICE */}
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Related Service
+        <div className="max-w-xl">
+          <div className="mb-2 flex items-center justify-between">
+            <label className="block text-sm font-semibold text-gray-700">
+              Product Category
             </label>
 
-            <select
-              value={relatedService}
-              onChange={(event) => setRelatedService(event.target.value)}
-              className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            >
-              <option value="">No Related Service</option>
-              <option value="print-newark-nj">Printing</option>
-              <option value="signs-newark-nj">Signs</option>
-              <option value="apparel-newark-nj">Apparel</option>
-              <option value="design-newark-nj">Design</option>
-            </select>
+            <button
+              type="button"
+              onClick={() => {
+                setShowNewCategory((current) => !current);
 
-            <p className="mt-2 text-xs text-gray-500">
-              This determines which service page displays this product.
-            </p>
+                setNewCategoryName("");
+              }}
+              className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+            >
+              {showNewCategory ? "Cancel" : "+ New Category"}
+            </button>
           </div>
 
-          {/* PRODUCT CATEGORY */}
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <label className="block text-sm font-semibold text-gray-700">
-                Product Category
-              </label>
+          <select
+            value={productCategoryId}
+            onChange={(event) => setProductCategoryId(event.target.value)}
+            disabled={loadingCategories}
+            className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 disabled:text-gray-400"
+          >
+            <option value="">
+              {loadingCategories
+                ? "Loading categories..."
+                : "No Product Category"}
+            </option>
+
+            {productCategories.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+
+          {/* ================================== */}
+          {/* NEW CATEGORY */}
+          {/* ================================== */}
+
+          {showNewCategory && (
+            <div className="mt-3 flex gap-2">
+              <input
+                type="text"
+                value={newCategoryName}
+                onChange={(event) => setNewCategoryName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    createProductCategory();
+                  }
+                }}
+                placeholder="Example: Print"
+                autoFocus
+                className="h-10 min-w-0 flex-1 rounded-lg border border-gray-200 px-3 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              />
 
               <button
                 type="button"
-                onClick={() => {
-                  setShowNewCategory((current) => !current);
-                  setNewCategoryName("");
-                }}
-                className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+                onClick={createProductCategory}
+                disabled={creatingCategory || !newCategoryName.trim()}
+                className="h-10 rounded-lg bg-gray-900 px-4 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {showNewCategory ? "Cancel" : "+ New Category"}
+                {creatingCategory ? "Creating..." : "Create"}
               </button>
             </div>
+          )}
 
-            <select
-              value={productCategoryId}
-              onChange={(event) => setProductCategoryId(event.target.value)}
-              disabled={loadingCategories}
-              className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 disabled:text-gray-400"
-            >
-              <option value="">
-                {loadingCategories
-                  ? "Loading categories..."
-                  : "No Product Category"}
-              </option>
-
-              {productCategories.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-
-            {showNewCategory && (
-              <div className="mt-3 flex gap-2">
-                <input
-                  type="text"
-                  value={newCategoryName}
-                  onChange={(event) => setNewCategoryName(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      createProductCategory();
-                    }
-                  }}
-                  placeholder="Example: Flyers & Brochures"
-                  autoFocus
-                  className="h-10 min-w-0 flex-1 rounded-lg border border-gray-200 px-3 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                />
-
-                <button
-                  type="button"
-                  onClick={createProductCategory}
-                  disabled={creatingCategory || !newCategoryName.trim()}
-                  className="h-10 rounded-lg bg-gray-900 px-4 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {creatingCategory ? "Creating..." : "Create"}
-                </button>
-              </div>
-            )}
-
-            <p className="mt-2 text-xs text-gray-500">
-              This organizes the product inside the website catalog.
-            </p>
-          </div>
+          <p className="mt-2 text-xs text-gray-500">
+            Organizes the product inside the website catalog.
+          </p>
         </div>
       </section>
+
+      {/* ====================================== */}
+      {/* PRODUCT BUILDER */}
+      {/* ====================================== */}
 
       <ProductBuilder
         mode="edit"
         existingData={product}
         template={template}
+        productType={product.category || "standard"}
         onSave={handleSave}
       />
     </div>

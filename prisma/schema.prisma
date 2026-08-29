@@ -129,6 +129,9 @@ model ProductCategory {
   active   Boolean @default(true)
   position Int     @default(0)
 
+  // Para mantener compatibilidad con la website
+  relatedService String?
+
   products Product[]
 
   createdAt DateTime @default(now())

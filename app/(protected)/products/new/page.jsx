@@ -10,18 +10,29 @@ import { ArrowLeft } from "lucide-react";
 import ProductTemplateSelector from "@/components/ProductTemplateSelector";
 import ProductBuilder from "@/components/products/ProductBuilder/index";
 
+import { getRelatedServiceFromCategorySlug } from "@/lib/productCategoryServiceMap";
+
 export default function NewProductPage() {
   const router = useRouter();
 
   const [selectedTemplate, setSelectedTemplate] = useState(null);
+
+  // Product Type
   const [category, setCategory] = useState("standard");
-  const [relatedService, setRelatedService] = useState("");
+
+  // Product Category
   const [productCategoryId, setProductCategoryId] = useState("");
   const [productCategories, setProductCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+
+  // New Category
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [creatingCategory, setCreatingCategory] = useState(false);
+
+  // ==========================================
+  // LOAD PRODUCT CATEGORIES
+  // ==========================================
   useEffect(() => {
     async function loadProductCategories() {
       try {
@@ -51,6 +62,9 @@ export default function NewProductPage() {
     loadProductCategories();
   }, []);
 
+  // ==========================================
+  // CREATE PRODUCT CATEGORY
+  // ==========================================
   async function createProductCategory() {
     const name = newCategoryName.trim();
 
@@ -81,7 +95,7 @@ export default function NewProductPage() {
       // Seleccionar automáticamente la nueva categoría
       setProductCategoryId(String(data.id));
 
-      // Limpiar y cerrar
+      // Limpiar formulario
       setNewCategoryName("");
       setShowNewCategory(false);
     } catch (error) {
@@ -92,20 +106,77 @@ export default function NewProductPage() {
     }
   }
 
+  // ==========================================
+  // SAVE PRODUCT
+  // ==========================================
   async function handleSave(product) {
     try {
+      if (!selectedTemplate) {
+        alert("Select a product template first.");
+        return;
+      }
+
+      // Buscar la categoría seleccionada
+      const selectedProductCategory = productCategories.find(
+        (item) => String(item.id) === String(productCategoryId),
+      );
+
+      const categorySlug = selectedProductCategory?.slug || null;
+
+      // Convertir Product Category
+      // al Related Service viejo automáticamente
+      const resolvedRelatedService = getRelatedServiceFromCategorySlug(
+        selectedCategory?.slug,
+      );
+
+      const numericTemplateId = Number(selectedTemplate?.id);
+
+      const templateSlug =
+        selectedTemplate?.slug ||
+        selectedTemplate?.templateType ||
+        selectedTemplate?.type ||
+        product?.templateType ||
+        null;
+
       const payload = {
         ...product,
-        category: category === "standard" ? null : category,
-        relatedService: relatedService || null,
 
+        // ======================================
+        // PRODUCT TYPE
+        // Controla qué configurador se utiliza
+        // ======================================
+        category: category === "standard" ? null : category,
+
+        // ======================================
+        // PRODUCT CATEGORY
+        // Print / Sticker / Car Decal
+        // ======================================
         categoryId: productCategoryId ? Number(productCategoryId) : null,
 
-        templateId: selectedTemplate.id,
-        templateSlug: selectedTemplate.slug,
+        // ======================================
+        // RELATED SERVICE
+        // Automático. Ya no aparece en UI.
+        // Se mantiene por compatibilidad.
+        // ======================================
+        relatedService: resolvedRelatedService,
+
+        templateId:
+          Number.isInteger(numericTemplateId) && numericTemplateId > 0
+            ? numericTemplateId
+            : null,
+
+        templateSlug,
+        templateType: templateSlug,
       };
 
-      console.log("PRODUCT PAYLOAD:", payload);
+      console.log("PRODUCT CREATE PAYLOAD:", payload);
+
+      console.log("PRODUCT CATEGORY:", {
+        id: productCategoryId,
+        name: selectedProductCategory?.name,
+        slug: categorySlug,
+        relatedService: resolvedRelatedService,
+      });
 
       const res = await fetch("/api/products/from-template", {
         method: "POST",
@@ -115,22 +186,38 @@ export default function NewProductPage() {
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      const responseText = await res.text();
+
+      let data = null;
+
+      if (responseText) {
+        try {
+          data = JSON.parse(responseText);
+        } catch {
+          console.error("API returned non-JSON response:", responseText);
+        }
+      }
 
       if (!res.ok) {
-        alert(data.error || "Error saving product");
+        alert(data?.error || `Error saving product (${res.status})`);
         return;
       }
 
       router.push("/settings/products");
+      router.refresh();
     } catch (err) {
-      console.error(err);
-      alert("Unexpected error");
+      console.error("Unexpected product creation error:", err);
+
+      alert(err instanceof Error ? err.message : "Unexpected error");
     }
   }
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-8">
+      {/* ====================================== */}
+      {/* BACK */}
+      {/* ====================================== */}
+
       <div className="mb-8">
         <Link
           href="/settings/products"
@@ -142,18 +229,45 @@ export default function NewProductPage() {
       </div>
 
       {!selectedTemplate ? (
+        // ======================================
+        // TEMPLATE SELECTOR
+        // ======================================
         <ProductTemplateSelector
           embedded
           onSelect={(template) => {
-            console.log("SELECTED TEMPLATE", template);
+            console.log("SELECTED TEMPLATE:", template);
+
             setSelectedTemplate(template);
+
+            // Intentar seleccionar Product Type
+            // automáticamente según el template
+            const slug = template?.slug?.toLowerCase() || "";
+
+            if (slug === "stickers" || slug === "sticker") {
+              setCategory("stickers");
+            } else if (slug === "apparel") {
+              setCategory("apparel");
+            } else if (slug === "raffle-tickets" || slug === "raffle-ticket") {
+              setCategory("raffle-tickets");
+            } else if (slug === "truck-lettering") {
+              setCategory("truck-lettering");
+            } else {
+              setCategory("standard");
+            }
           }}
         />
       ) : (
         <>
+          {/* ====================================== */}
+          {/* PRODUCT SETTINGS */}
+          {/* ====================================== */}
+
           <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
             <div className="grid gap-6 md:grid-cols-2">
+              {/* ================================== */}
               {/* PRODUCT TYPE */}
+              {/* ================================== */}
+
               <div>
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Product Type
@@ -165,8 +279,11 @@ export default function NewProductPage() {
                   className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 >
                   <option value="standard">Standard Product</option>
+
                   <option value="stickers">Stickers</option>
+
                   <option value="apparel">Apparel</option>
+
                   <option value="raffle-tickets">Raffle Tickets</option>
 
                   <option value="truck-lettering">Truck Lettering</option>
@@ -178,29 +295,10 @@ export default function NewProductPage() {
                 </p>
               </div>
 
-              {/* RELATED SERVICE */}
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Related Service
-                </label>
-
-                <select
-                  value={relatedService}
-                  onChange={(event) => setRelatedService(event.target.value)}
-                  className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                >
-                  <option value="">No Related Service</option>
-                  <option value="print-newark-nj">Printing</option>
-                  <option value="signs-newark-nj">Signs</option>
-                  <option value="apparel-newark-nj">Apparel</option>
-                  <option value="design-newark-nj">Design</option>
-                </select>
-
-                <p className="mt-2 text-xs text-gray-500">
-                  This determines which service page displays this product.
-                </p>
-              </div>
+              {/* ================================== */}
               {/* PRODUCT CATEGORY */}
+              {/* ================================== */}
+
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <label className="block text-sm font-semibold text-gray-700">
@@ -211,6 +309,7 @@ export default function NewProductPage() {
                     type="button"
                     onClick={() => {
                       setShowNewCategory((current) => !current);
+
                       setNewCategoryName("");
                     }}
                     className="text-sm font-semibold text-blue-600 hover:text-blue-700"
@@ -238,6 +337,8 @@ export default function NewProductPage() {
                   ))}
                 </select>
 
+                {/* NEW CATEGORY */}
+
                 {showNewCategory && (
                   <div className="mt-3 flex gap-2">
                     <input
@@ -252,7 +353,7 @@ export default function NewProductPage() {
                           createProductCategory();
                         }
                       }}
-                      placeholder="Example: Flyers & Brochures"
+                      placeholder="Example: Print"
                       autoFocus
                       className="h-10 min-w-0 flex-1 rounded-lg border border-gray-200 px-3 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                     />
@@ -269,11 +370,16 @@ export default function NewProductPage() {
                 )}
 
                 <p className="mt-2 text-xs text-gray-500">
-                  This organizes the product inside the website catalog.
+                  Organizes the product inside the website catalog.
                 </p>
               </div>
             </div>
           </section>
+
+          {/* ====================================== */}
+          {/* PRODUCT BUILDER */}
+          {/* ====================================== */}
+
           <ProductBuilder
             template={selectedTemplate}
             mode="new"

@@ -33,13 +33,22 @@ export async function POST(req) {
 
     console.log("➡ name:", name);
     console.log("➡ category:", category);
+    console.log("➡ categoryId:", categoryId);
     console.log("➡ templateType:", templateType);
     console.log("➡ templateSlug:", templateSlug);
     console.log("➡ templateId:", templateId);
 
+    // -------------------------------------------------------
+    // VALIDATION
+    // -------------------------------------------------------
+
     if (!name?.trim()) {
       return Response.json({ error: "Name is required" }, { status: 400 });
     }
+
+    // -------------------------------------------------------
+    // CATEGORY
+    // -------------------------------------------------------
 
     const normalizedCategory =
       category && category !== "standard"
@@ -50,6 +59,7 @@ export async function POST(req) {
       categoryId === null || categoryId === undefined || categoryId === ""
         ? null
         : Number(categoryId);
+
     if (
       normalizedCategoryId !== null &&
       (!Number.isInteger(normalizedCategoryId) || normalizedCategoryId <= 0)
@@ -60,14 +70,16 @@ export async function POST(req) {
       );
     }
 
+    let selectedProductCategory = null;
+
     if (normalizedCategoryId !== null) {
-      const productCategory = await prisma.productCategory.findUnique({
+      selectedProductCategory = await prisma.productCategory.findUnique({
         where: {
           id: normalizedCategoryId,
         },
       });
 
-      if (!productCategory) {
+      if (!selectedProductCategory) {
         return Response.json(
           { error: "Product category not found." },
           { status: 400 },
@@ -75,16 +87,20 @@ export async function POST(req) {
       }
     }
 
+    // -------------------------------------------------------
+    // TEMPLATE TYPE
+    // -------------------------------------------------------
+
     const requestedType = String(
       templateSlug || templateType || normalizedCategory || "",
     )
       .trim()
       .toLowerCase();
+
     const specialProductTypes = [
       "stickers",
       "sticker",
       "apparel",
-
       "raffle-tickets",
       "raffle-ticket",
       "truck-lettering",
@@ -93,6 +109,10 @@ export async function POST(req) {
     const isSpecialProduct =
       specialProductTypes.includes(requestedType) ||
       specialProductTypes.includes(normalizedCategory);
+
+    // -------------------------------------------------------
+    // FIND TEMPLATE
+    // -------------------------------------------------------
 
     let template = null;
 
@@ -123,6 +143,10 @@ export async function POST(req) {
       );
     }
 
+    // -------------------------------------------------------
+    // DEFAULT OPTIONS
+    // -------------------------------------------------------
+
     const resolvedTemplateType =
       requestedType || template?.slug || template?.type || null;
 
@@ -139,6 +163,10 @@ export async function POST(req) {
           ? defaultOptions
           : template?.configuration || {};
 
+    // -------------------------------------------------------
+    // IMAGES
+    // -------------------------------------------------------
+
     const normalizedImages = Array.isArray(images)
       ? images
           .filter((item) => item?.url)
@@ -148,6 +176,11 @@ export async function POST(req) {
             isPrimary: item.url === image || Boolean(item.isPrimary),
           }))
       : [];
+
+    // -------------------------------------------------------
+    // CREATE PRODUCT
+    // -------------------------------------------------------
+
     const product = await prisma.product.create({
       data: {
         name: name.trim(),
@@ -156,25 +189,39 @@ export async function POST(req) {
 
         image: image || normalizedImages[0]?.url || null,
 
-        images:
-          normalizedImages.length > 0
-            ? {
+        ...(normalizedImages.length > 0
+          ? {
+              images: {
                 create: normalizedImages,
-              }
-            : undefined,
+              },
+            }
+          : {}),
 
         category:
           normalizedCategory || (isSpecialProduct ? requestedType : null),
-        categoryId: normalizedCategoryId,
+
+        // ✅ NUEVA RELACIÓN DE CATEGORÍA
+        ...(normalizedCategoryId
+          ? {
+              productCategory: {
+                connect: {
+                  id: normalizedCategoryId,
+                },
+              },
+            }
+          : {}),
+
         relatedService:
           relatedService && String(relatedService).trim()
             ? String(relatedService).trim()
             : null,
 
         basePrice: Number(basePrice ?? 0),
+
         templateType: resolvedTemplateType,
 
         customFields: customFields || {},
+
         defaultOptions: resolvedDefaultOptions,
 
         sinaliteEnabled: Boolean(sinaliteEnabled),
@@ -185,6 +232,7 @@ export async function POST(req) {
             : Number(sinaliteId),
 
         sinaliteOptions: sinaliteOptions || null,
+
         profitMargin: Number(profitMargin ?? 1.5),
 
         ...(template
@@ -209,12 +257,15 @@ export async function POST(req) {
       },
     });
 
+    // -------------------------------------------------------
+    // SUCCESS
+    // -------------------------------------------------------
+
     console.log("✅ PRODUCT CREATED:", {
       id: product.id,
       name: product.name,
       category: product.category,
-      categoryId: product.categoryId,
-      productCategory: product.productCategory?.name,
+      productCategory: product.productCategory?.name || null,
       templateType: product.templateType,
       templateId: product.templateId,
     });
