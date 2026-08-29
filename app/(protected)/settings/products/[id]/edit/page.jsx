@@ -164,9 +164,8 @@ export default function EditProductPage() {
 
       const categorySlug = selectedProductCategory?.slug || null;
 
-      const resolvedRelatedService = getRelatedServiceFromCategorySlug(
-        selectedCategory?.slug,
-      );
+      const resolvedRelatedService =
+        getRelatedServiceFromCategorySlug(categorySlug);
 
       console.log("➡ Product Category:", {
         id: productCategoryId,
