@@ -14,8 +14,11 @@ export async function GET(req, { params }) {
       where: {
         id,
       },
+
       include: {
         template: true,
+
+        productCategory: true,
 
         images: {
           orderBy: {
@@ -47,10 +50,55 @@ export async function PUT(req, { params }) {
 
     const body = await req.json();
 
+    // ---------------------------------------------
+    // PRODUCT CATEGORY
+    // ---------------------------------------------
+
+    const normalizedCategoryId =
+      body.categoryId === null ||
+      body.categoryId === undefined ||
+      body.categoryId === ""
+        ? null
+        : Number(body.categoryId);
+
+    if (
+      normalizedCategoryId !== null &&
+      (!Number.isInteger(normalizedCategoryId) || normalizedCategoryId <= 0)
+    ) {
+      return Response.json(
+        { error: "Invalid product category." },
+        { status: 400 },
+      );
+    }
+
+    if (normalizedCategoryId !== null) {
+      const productCategory = await prisma.productCategory.findUnique({
+        where: {
+          id: normalizedCategoryId,
+        },
+      });
+
+      if (!productCategory) {
+        return Response.json(
+          { error: "Product category not found." },
+          { status: 400 },
+        );
+      }
+    }
+
     console.log("===== UPDATE PRODUCT =====");
     console.log(JSON.stringify(body, null, 2));
 
+    // ---------------------------------------------
+    // CONFIGURATION
+    // ---------------------------------------------
+
     const configuration = body.configuration ?? body.defaultOptions ?? {};
+
+    // ---------------------------------------------
+    // IMAGES
+    // ---------------------------------------------
+
     const normalizedImages = Array.isArray(body.images)
       ? body.images
           .filter((item) => item?.url)
@@ -60,6 +108,11 @@ export async function PUT(req, { params }) {
             isPrimary: item.url === body.image || Boolean(item.isPrimary),
           }))
       : [];
+
+    // ---------------------------------------------
+    // UPDATE PRODUCT
+    // ---------------------------------------------
+
     const updated = await prisma.product.update({
       where: {
         id,
@@ -72,16 +125,38 @@ export async function PUT(req, { params }) {
 
         description: body.description ?? "",
 
+        // -----------------------------------------
+        // RELATED SERVICE
+        // -----------------------------------------
+
         relatedService: body.relatedService ?? null,
+
+        // -----------------------------------------
+        // PRODUCT CATEGORY
+        // -----------------------------------------
+
+        categoryId: normalizedCategoryId,
+
+        // -----------------------------------------
+        // WEBSITE
+        // -----------------------------------------
 
         showOnWebsite:
           typeof body.showOnWebsite === "boolean" ? body.showOnWebsite : false,
+
+        // -----------------------------------------
+        // PRICING
+        // -----------------------------------------
 
         basePrice: Number(body.basePrice ?? 0),
 
         customFields: body.customFields || {},
 
         defaultOptions: configuration,
+
+        // -----------------------------------------
+        // IMAGES
+        // -----------------------------------------
 
         images: {
           deleteMany: {},
@@ -93,6 +168,8 @@ export async function PUT(req, { params }) {
       include: {
         template: true,
 
+        productCategory: true,
+
         images: {
           orderBy: {
             position: "asc",
@@ -101,13 +178,22 @@ export async function PUT(req, { params }) {
       },
     });
 
+    console.log("✅ PRODUCT UPDATED:", {
+      id: updated.id,
+      name: updated.name,
+      relatedService: updated.relatedService,
+      categoryId: updated.categoryId,
+      productCategory: updated.productCategory?.name,
+    });
+
     return Response.json(updated);
   } catch (error) {
     console.error("❌ Error PUT product:", error);
 
     return Response.json(
       {
-        error: error.message,
+        error:
+          error instanceof Error ? error.message : "Unexpected server error",
       },
       {
         status: 500,

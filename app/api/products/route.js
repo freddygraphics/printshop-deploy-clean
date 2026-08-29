@@ -10,22 +10,36 @@ export async function GET() {
 
       select: {
         id: true,
-
         name: true,
 
-        // 🔥 IMAGE
+        // IMAGE
         image: true,
 
         description: true,
         basePrice: true,
-
         templateType: true,
         pricingMode: true,
-
         customFields: true,
         defaultOptions: true,
 
-        // 🔥 SINALITE
+        // EXISTENTE
+        category: true,
+        relatedService: true,
+
+        // NUEVO
+        categoryId: true,
+
+        productCategory: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            active: true,
+            position: true,
+          },
+        },
+
+        // SINALITE
         sinaliteEnabled: true,
         sinaliteId: true,
         sinaliteOptions: true,

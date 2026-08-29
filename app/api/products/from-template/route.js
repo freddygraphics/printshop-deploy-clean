@@ -16,6 +16,7 @@ export async function POST(req) {
       image,
       images,
       category,
+      categoryId,
       relatedService,
       basePrice,
       templateType,
@@ -45,6 +46,35 @@ export async function POST(req) {
         ? String(category).trim().toLowerCase()
         : null;
 
+    const normalizedCategoryId =
+      categoryId === null || categoryId === undefined || categoryId === ""
+        ? null
+        : Number(categoryId);
+    if (
+      normalizedCategoryId !== null &&
+      (!Number.isInteger(normalizedCategoryId) || normalizedCategoryId <= 0)
+    ) {
+      return Response.json(
+        { error: "Invalid product category." },
+        { status: 400 },
+      );
+    }
+
+    if (normalizedCategoryId !== null) {
+      const productCategory = await prisma.productCategory.findUnique({
+        where: {
+          id: normalizedCategoryId,
+        },
+      });
+
+      if (!productCategory) {
+        return Response.json(
+          { error: "Product category not found." },
+          { status: 400 },
+        );
+      }
+    }
+
     const requestedType = String(
       templateSlug || templateType || normalizedCategory || "",
     )
@@ -54,6 +84,7 @@ export async function POST(req) {
       "stickers",
       "sticker",
       "apparel",
+
       "raffle-tickets",
       "raffle-ticket",
       "truck-lettering",
@@ -134,7 +165,7 @@ export async function POST(req) {
 
         category:
           normalizedCategory || (isSpecialProduct ? requestedType : null),
-
+        categoryId: normalizedCategoryId,
         relatedService:
           relatedService && String(relatedService).trim()
             ? String(relatedService).trim()
@@ -168,6 +199,8 @@ export async function POST(req) {
       },
 
       include: {
+        productCategory: true,
+
         images: {
           orderBy: {
             position: "asc",
@@ -180,6 +213,8 @@ export async function POST(req) {
       id: product.id,
       name: product.name,
       category: product.category,
+      categoryId: product.categoryId,
+      productCategory: product.productCategory?.name,
       templateType: product.templateType,
       templateId: product.templateId,
     });

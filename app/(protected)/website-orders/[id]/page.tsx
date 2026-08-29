@@ -21,6 +21,7 @@ type OrderItem = {
   image?: string;
   qty?: number;
   price?: number;
+
   options?: Array<{
     optionKey?: string;
     optionName?: string;
@@ -29,6 +30,26 @@ type OrderItem = {
     price?: number;
     priceType?: string;
   }>;
+
+  customization?: {
+    type?: string;
+
+    lines?: Array<{
+      id?: string;
+      label?: string;
+      text?: string;
+      targetWidth?: number;
+      scale?: number;
+      calculatedHeight?: number;
+    }>;
+
+    font?: string;
+
+    color?: {
+      name?: string;
+      value?: string;
+    };
+  };
 };
 
 type WebsiteOrder = {
@@ -503,6 +524,103 @@ export default function WebsiteOrderDetailPage() {
                             ))}
                           </div>
                         )}
+
+                        {/* CUSTOM PRODUCT CONFIGURATION */}
+                        {item.customization && (
+                          <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/50 p-4">
+                            <p className="mb-3 text-xs font-bold uppercase tracking-wide text-[#1D2959]">
+                              Customization
+                            </p>
+
+                            {/* TEXT / LINES */}
+                            {item.customization.lines &&
+                              item.customization.lines.length > 0 && (
+                                <div className="space-y-3">
+                                  {item.customization.lines.map(
+                                    (line, lineIndex) => (
+                                      <div
+                                        key={line.id || lineIndex}
+                                        className="rounded-md border border-gray-200 bg-white p-3"
+                                      >
+                                        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                                          <div>
+                                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                              {line.label ||
+                                                `Line ${lineIndex + 1}`}
+                                            </p>
+
+                                            <p className="mt-1 text-base font-semibold text-gray-900">
+                                              {line.text || "-"}
+                                            </p>
+                                          </div>
+
+                                          {line.targetWidth != null && (
+                                            <div className="mt-2 text-sm text-gray-600 sm:mt-0 sm:text-right">
+                                              <p className="text-xs font-medium text-gray-500">
+                                                Finished Size
+                                              </p>
+
+                                              <p className="font-semibold text-[#1D2959]">
+                                                {Number(
+                                                  line.targetWidth,
+                                                ).toFixed(2)}
+                                                &quot; W
+                                                {line.calculatedHeight !=
+                                                  null &&
+                                                  ` × ${Number(line.calculatedHeight).toFixed(2)}" H`}
+                                              </p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ),
+                                  )}
+                                </div>
+                              )}
+
+                            {/* FONT + COLOR */}
+                            {(item.customization.font ||
+                              item.customization.color?.name) && (
+                              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                {item.customization.font && (
+                                  <div className="rounded-md border border-gray-200 bg-white px-3 py-2">
+                                    <p className="text-xs font-medium text-gray-500">
+                                      Font
+                                    </p>
+
+                                    <p className="mt-1 text-sm font-semibold text-gray-900">
+                                      {item.customization.font}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {item.customization.color?.name && (
+                                  <div className="rounded-md border border-gray-200 bg-white px-3 py-2">
+                                    <p className="text-xs font-medium text-gray-500">
+                                      Vinyl Color
+                                    </p>
+
+                                    <div className="mt-1 flex items-center gap-2">
+                                      {item.customization.color.value && (
+                                        <span
+                                          className="h-4 w-4 shrink-0 rounded-full border border-gray-300"
+                                          style={{
+                                            backgroundColor:
+                                              item.customization.color.value,
+                                          }}
+                                        />
+                                      )}
+
+                                      <span className="text-sm font-semibold text-gray-900">
+                                        {item.customization.color.name}
+                                      </span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -688,8 +806,3 @@ export default function WebsiteOrderDetailPage() {
     </main>
   );
 }
-
-
-
-
-

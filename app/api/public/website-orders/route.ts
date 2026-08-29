@@ -11,6 +11,7 @@ type WebsiteOrderItem = {
   qty: number;
   price: number;
   image?: string;
+
   options?: Array<{
     optionKey: string;
     optionName: string;
@@ -19,6 +20,26 @@ type WebsiteOrderItem = {
     price: number;
     priceType: string;
   }>;
+
+  customization?: {
+    type?: string;
+
+    lines?: Array<{
+      id?: string;
+      label?: string;
+      text?: string;
+      targetWidth?: number;
+      scale?: number;
+      calculatedHeight?: number;
+    }>;
+
+    font?: string;
+
+    color?: {
+      name?: string;
+      value?: string;
+    };
+  };
 };
 
 type WebsiteOrderPayload = {
@@ -209,6 +230,82 @@ export async function POST(request: Request) {
         `
             : "";
 
+        const customizationHtml = item.customization
+          ? `
+    <div
+      style="
+        margin-top:12px;
+        padding:12px;
+        background:#f8fafc;
+        border:1px solid #e5e7eb;
+      "
+    >
+      <div
+        style="
+          margin-bottom:8px;
+          font-size:13px;
+          font-weight:700;
+          color:#1D2959;
+        "
+      >
+        CUSTOMIZATION
+      </div>
+
+      ${
+        item.customization.lines?.length
+          ? item.customization.lines
+              .map(
+                (line) => `
+                  <div style="margin-top:8px;color:#555;">
+                    <strong>${line.label || "Text"}:</strong>
+                    ${line.text || "-"}
+
+                    ${
+                      line.targetWidth
+                        ? `
+                          <br />
+                          <span style="font-size:12px;color:#777;">
+                            Width: ${line.targetWidth}"
+                            ${
+                              line.calculatedHeight
+                                ? ` × ${line.calculatedHeight.toFixed(2)}"`
+                                : ""
+                            }
+                          </span>
+                        `
+                        : ""
+                    }
+                  </div>
+                `,
+              )
+              .join("")
+          : ""
+      }
+
+      ${
+        item.customization.font
+          ? `
+            <div style="margin-top:8px;color:#555;">
+              <strong>Font:</strong>
+              ${item.customization.font}
+            </div>
+          `
+          : ""
+      }
+
+      ${
+        item.customization.color?.name
+          ? `
+            <div style="margin-top:8px;color:#555;">
+              <strong>Color:</strong>
+              ${item.customization.color.name}
+            </div>
+          `
+          : ""
+      }
+    </div>
+  `
+          : "";
         return `
       <div style="padding:16px 0;border-bottom:1px solid #e5e7eb;">
         <div style="font-size:16px;font-weight:700;color:#1D2959;">
@@ -219,9 +316,13 @@ export async function POST(request: Request) {
           Quantity: ${item.qty}
         </div>
 
-        ${optionsHtml}
+        
 
-        <div style="margin-top:8px;font-weight:700;">
+${optionsHtml}
+
+${customizationHtml}
+
+<div style="margin-top:8px;font-weight:700;">
           $${Number(item.price || 0).toFixed(2)}
         </div>
       </div>

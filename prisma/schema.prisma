@@ -73,32 +73,40 @@ model PrintProduct {
 }
 
 model Product {
-  id              Int            @id @default(autoincrement())
-  name            String
-  sku             String?        @unique
-  description     String?
-  category        String?
-  relatedService  String?
-  pricingMode     String         @default("manual")
-  basePrice       Float          @default(0)
+  id          Int     @id @default(autoincrement())
+  name        String
+  sku         String? @unique
+  description String?
+
+  // EXISTENTE — NO TOCAR
+  category       String?
+  relatedService String?
+
+  // NUEVO SISTEMA DE CATEGORÍAS
+  categoryId      Int?
+  productCategory ProductCategory? @relation(fields: [categoryId], references: [id])
+
+  pricingMode     String   @default("manual")
+  basePrice       Float    @default(0)
   defaultOptions  Json?
   customFields    Json?
   templateType    String?
   templateId      Int?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  profitMargin    Float          @default(1.5)
-  sinaliteEnabled Boolean        @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  profitMargin    Float    @default(1.5)
+  sinaliteEnabled Boolean  @default(false)
   sinaliteId      Int?
   sinaliteOptions Json?
   image           String?
-  showOnWebsite   Boolean        @default(false)
-  images          ProductImage[]
-  invoiceItems    InvoiceItem[]
-  orders          Order[]
-  template        Template?      @relation(fields: [templateId], references: [id])
-  quoteItems      QuoteItem[]
-  quoteRequests   QuoteRequest[]
+  showOnWebsite   Boolean  @default(false)
+
+  images        ProductImage[]
+  invoiceItems  InvoiceItem[]
+  orders        Order[]
+  template      Template?      @relation(fields: [templateId], references: [id])
+  quoteItems    QuoteItem[]
+  quoteRequests QuoteRequest[]
 }
 
 model ProductImage {
@@ -113,6 +121,20 @@ model ProductImage {
 
   @@index([productId])
 }
+
+model ProductCategory {
+  id       Int     @id @default(autoincrement())
+  name     String
+  slug     String  @unique
+  active   Boolean @default(true)
+  position Int     @default(0)
+
+  products Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model PrintProductionProfile {
   id           String        @id @default(cuid())
   name         String
