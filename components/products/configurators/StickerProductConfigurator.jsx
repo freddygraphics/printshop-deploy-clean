@@ -64,7 +64,7 @@ export default function StickerProductConfigurator({
       subtotal: Number(result.total ?? nextValue.total ?? 0),
       total: Number(result.total ?? nextValue.total ?? 0),
 
-      customFields: product.customFields || product.template?.fields || null,
+      customFields: product.customFields || null,
 
       options: {
         ...(product.defaultOptions || {}),

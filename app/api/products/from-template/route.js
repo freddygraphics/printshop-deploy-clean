@@ -12,48 +12,71 @@ export async function POST(req) {
 
     const {
       name,
+      sku,
       description,
       image,
       images,
+
       category,
       categoryId,
       relatedService,
+
       basePrice,
+      pricingMode,
+
+      // TEMPORAL:
+      // Más adelante se llamará configuratorType.
       templateType,
-      templateSlug,
+
       customFields,
       defaultOptions,
       configuration,
-      templateId,
+
       sinaliteEnabled,
       sinaliteId,
       sinaliteOptions,
       profitMargin,
+
+      showOnWebsite,
     } = body;
 
     console.log("➡ name:", name);
     console.log("➡ category:", category);
     console.log("➡ categoryId:", categoryId);
-    console.log("➡ templateType:", templateType);
-    console.log("➡ templateSlug:", templateSlug);
-    console.log("➡ templateId:", templateId);
+    console.log("➡ configurator/templateType:", templateType);
 
     // -------------------------------------------------------
     // VALIDATION
     // -------------------------------------------------------
 
     if (!name?.trim()) {
-      return Response.json({ error: "Name is required" }, { status: 400 });
+      return Response.json(
+        {
+          error: "Name is required",
+        },
+        {
+          status: 400,
+        },
+      );
     }
 
     // -------------------------------------------------------
-    // CATEGORY
+    // PRODUCT TYPE / CONFIGURATOR
     // -------------------------------------------------------
 
     const normalizedCategory =
       category && category !== "standard"
         ? String(category).trim().toLowerCase()
         : null;
+
+    const normalizedTemplateType =
+      templateType && templateType !== "standard"
+        ? String(templateType).trim().toLowerCase()
+        : normalizedCategory;
+
+    // -------------------------------------------------------
+    // PRODUCT CATEGORY
+    // -------------------------------------------------------
 
     const normalizedCategoryId =
       categoryId === null || categoryId === undefined || categoryId === ""
@@ -65,8 +88,12 @@ export async function POST(req) {
       (!Number.isInteger(normalizedCategoryId) || normalizedCategoryId <= 0)
     ) {
       return Response.json(
-        { error: "Invalid product category." },
-        { status: 400 },
+        {
+          error: "Invalid product category.",
+        },
+        {
+          status: 400,
+        },
       );
     }
 
@@ -81,87 +108,47 @@ export async function POST(req) {
 
       if (!selectedProductCategory) {
         return Response.json(
-          { error: "Product category not found." },
-          { status: 400 },
+          {
+            error: "Product category not found.",
+          },
+          {
+            status: 400,
+          },
         );
       }
     }
 
     // -------------------------------------------------------
-    // TEMPLATE TYPE
-    // -------------------------------------------------------
-
-    const requestedType = String(
-      templateSlug || templateType || normalizedCategory || "",
-    )
-      .trim()
-      .toLowerCase();
-
-    const specialProductTypes = [
-      "stickers",
-      "sticker",
-      "apparel",
-      "raffle-tickets",
-      "raffle-ticket",
-      "truck-lettering",
-    ];
-
-    const isSpecialProduct =
-      specialProductTypes.includes(requestedType) ||
-      specialProductTypes.includes(normalizedCategory);
-
-    // -------------------------------------------------------
-    // FIND TEMPLATE
-    // -------------------------------------------------------
-
-    let template = null;
-
-    const numericTemplateId = Number(templateId);
-
-    if (Number.isInteger(numericTemplateId) && numericTemplateId > 0) {
-      template = await prisma.template.findUnique({
-        where: {
-          id: numericTemplateId,
-        },
-      });
-    }
-
-    if (!template && requestedType) {
-      template = await prisma.template.findFirst({
-        where: {
-          OR: [{ slug: requestedType }, { type: requestedType }],
-        },
-      });
-    }
-
-    if (!template && !isSpecialProduct) {
-      return Response.json(
-        {
-          error: `Template not found: ${requestedType || "unknown"}`,
-        },
-        { status: 400 },
-      );
-    }
-
-    // -------------------------------------------------------
     // DEFAULT OPTIONS
     // -------------------------------------------------------
-
-    const resolvedTemplateType =
-      requestedType || template?.slug || template?.type || null;
+    //
+    // Product is now the source of truth.
+    //
+    // configuration is kept temporarily for compatibility
+    // with older callers.
+    // -------------------------------------------------------
 
     const resolvedDefaultOptions =
-      configuration &&
-      typeof configuration === "object" &&
-      !Array.isArray(configuration) &&
-      Object.keys(configuration).length > 0
-        ? configuration
-        : defaultOptions &&
-            typeof defaultOptions === "object" &&
-            !Array.isArray(defaultOptions) &&
-            Object.keys(defaultOptions).length > 0
-          ? defaultOptions
-          : template?.configuration || {};
+      defaultOptions &&
+      typeof defaultOptions === "object" &&
+      !Array.isArray(defaultOptions)
+        ? defaultOptions
+        : configuration &&
+            typeof configuration === "object" &&
+            !Array.isArray(configuration)
+          ? configuration
+          : {};
+
+    // -------------------------------------------------------
+    // CUSTOM FIELDS
+    // -------------------------------------------------------
+
+    const resolvedCustomFields =
+      customFields &&
+      typeof customFields === "object" &&
+      !Array.isArray(customFields)
+        ? customFields
+        : {};
 
     // -------------------------------------------------------
     // IMAGES
@@ -177,6 +164,14 @@ export async function POST(req) {
           }))
       : [];
 
+    // Ensure exactly one primary image if images exist.
+    if (
+      normalizedImages.length > 0 &&
+      !normalizedImages.some((item) => item.isPrimary)
+    ) {
+      normalizedImages[0].isPrimary = true;
+    }
+
     // -------------------------------------------------------
     // CREATE PRODUCT
     // -------------------------------------------------------
@@ -185,9 +180,18 @@ export async function POST(req) {
       data: {
         name: name.trim(),
 
-        description: description?.trim() || "",
+        sku: sku && String(sku).trim() ? String(sku).trim() : null,
 
-        image: image || normalizedImages[0]?.url || null,
+        description:
+          description && String(description).trim()
+            ? String(description).trim()
+            : "",
+
+        image:
+          image ||
+          normalizedImages.find((item) => item.isPrimary)?.url ||
+          normalizedImages[0]?.url ||
+          null,
 
         ...(normalizedImages.length > 0
           ? {
@@ -197,11 +201,22 @@ export async function POST(req) {
             }
           : {}),
 
-        category:
-          normalizedCategory || (isSpecialProduct ? requestedType : null),
+        // ---------------------------------------------------
+        // CONFIGURATOR TYPE
+        //
+        // category/templateType todavía son campos legacy.
+        // Después los reemplazaremos por configuratorType.
+        // ---------------------------------------------------
 
-        // ✅ NUEVA RELACIÓN DE CATEGORÍA
-        ...(normalizedCategoryId
+        category: normalizedCategory,
+
+        templateType: normalizedTemplateType,
+
+        // ---------------------------------------------------
+        // PRODUCT CATEGORY
+        // ---------------------------------------------------
+
+        ...(normalizedCategoryId !== null
           ? {
               productCategory: {
                 connect: {
@@ -211,18 +226,39 @@ export async function POST(req) {
             }
           : {}),
 
+        // ---------------------------------------------------
+        // RELATED SERVICE
+        // ---------------------------------------------------
+
         relatedService:
           relatedService && String(relatedService).trim()
             ? String(relatedService).trim()
             : null,
 
+        // ---------------------------------------------------
+        // PRICING
+        // ---------------------------------------------------
+
+        pricingMode:
+          pricingMode && String(pricingMode).trim()
+            ? String(pricingMode).trim()
+            : "manual",
+
         basePrice: Number(basePrice ?? 0),
 
-        templateType: resolvedTemplateType,
+        profitMargin: Number(profitMargin ?? 1.5),
 
-        customFields: customFields || {},
+        // ---------------------------------------------------
+        // PRODUCT CONFIGURATION
+        // ---------------------------------------------------
+
+        customFields: resolvedCustomFields,
 
         defaultOptions: resolvedDefaultOptions,
+
+        // ---------------------------------------------------
+        // SINALITE
+        // ---------------------------------------------------
 
         sinaliteEnabled: Boolean(sinaliteEnabled),
 
@@ -233,17 +269,11 @@ export async function POST(req) {
 
         sinaliteOptions: sinaliteOptions || null,
 
-        profitMargin: Number(profitMargin ?? 1.5),
+        // ---------------------------------------------------
+        // WEBSITE
+        // ---------------------------------------------------
 
-        ...(template
-          ? {
-              template: {
-                connect: {
-                  id: template.id,
-                },
-              },
-            }
-          : {}),
+        showOnWebsite: Boolean(showOnWebsite),
       },
 
       include: {
@@ -267,7 +297,6 @@ export async function POST(req) {
       category: product.category,
       productCategory: product.productCategory?.name || null,
       templateType: product.templateType,
-      templateId: product.templateId,
     });
 
     return Response.json(product, {

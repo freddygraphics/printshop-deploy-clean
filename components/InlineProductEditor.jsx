@@ -43,16 +43,11 @@ function InlineProductEditor({
 
   const isManual = !effectiveProduct && savedProductType !== "apparel";
   const configuration =
-    effectiveProduct?.configuration ||
-    effectiveProduct?.defaultOptions ||
-    effectiveProduct?.template?.configuration ||
-    {};
+    effectiveProduct?.configuration || effectiveProduct?.defaultOptions || {};
 
   console.log("DEFAULT OPTIONS");
   console.log(configuration);
 
-  console.log("TEMPLATE CONFIG");
-  console.log(product?.template?.configuration);
   console.log("configuration", configuration);
   console.log("configuration.pricing", configuration.pricing);
   console.log("isArray", Array.isArray(configuration.pricing));
@@ -302,75 +297,7 @@ function InlineProductEditor({
 
     return Number(total.toFixed(2));
   };
-  const category = String(effectiveProduct?.category || "")
-    .trim()
-    .toLowerCase();
-
-  const templateType = String(effectiveProduct?.templateType || "")
-    .trim()
-    .toLowerCase();
-
-  const templateSlug = String(effectiveProduct?.template?.slug || "")
-    .trim()
-    .toLowerCase();
-  const templateName = String(effectiveProduct?.template?.name || "")
-    .trim()
-    .toLowerCase();
-  const itemProductType = String(data?.options?.productType || "")
-    .trim()
-    .toLowerCase();
-
-  const isSticker =
-    category === "stickers" ||
-    category === "sticker" ||
-    templateType === "stickers" ||
-    templateType === "sticker" ||
-    templateSlug === "stickers" ||
-    templateSlug === "sticker";
-
-  const productType = String(
-    effectiveProduct?.productType || data?.options?.productType || "",
-  )
-    .trim()
-    .toLowerCase();
-
-  const productTemplateSlug = String(effectiveProduct?.templateSlug || "")
-    .trim()
-    .toLowerCase();
-
-  const isYardSign =
-    productType === "yard-sign" ||
-    productType === "yard-signs" ||
-    category === "yard-sign" ||
-    category === "yard-signs" ||
-    templateType === "yard-sign" ||
-    templateType === "yard-signs" ||
-    templateSlug === "yard-sign" ||
-    templateSlug === "yard-signs" ||
-    templateName === "yard sign" ||
-    templateName === "yard signs" ||
-    productTemplateSlug === "yard-sign" ||
-    productTemplateSlug === "yard-signs" ||
-    itemProductType === "yard-sign" ||
-    itemProductType === "yard-signs";
-
-  const isApparel =
-    productType === "apparel" ||
-    category === "apparel" ||
-    templateType === "apparel" ||
-    templateSlug === "apparel" ||
-    itemProductType === "apparel";
-
-  const isRaffleTicket =
-    category === "raffle-tickets" ||
-    category === "raffle-ticket" ||
-    templateType === "raffle-tickets" ||
-    templateType === "raffle-ticket" ||
-    templateSlug === "raffle-tickets" ||
-    templateSlug === "raffle-ticket";
-
-  const isSpecialProduct =
-    isSticker || isApparel || isRaffleTicket || isYardSign;
+  const category = String(effectiveProduct?.category || "");
 
   const isSinalite = effectiveProduct?.sinaliteEnabled === true;
   const productCalculationRef = useRef(false);

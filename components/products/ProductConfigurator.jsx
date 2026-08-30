@@ -5,6 +5,7 @@ import StickerProductConfigurator from "@/components/products/configurators/Stic
 import ApparelProductConfigurator from "@/components/products/configurators/ApparelProductConfigurator";
 import RaffleTicketProductConfigurator from "@/components/products/configurators/RaffleTicketProductConfigurator";
 import YardSignProductConfigurator from "@/components/products/configurators/YardSignProductConfigurator";
+
 export default function ProductConfigurator({
   product,
   onChange,
@@ -18,21 +19,6 @@ export default function ProductConfigurator({
     .trim()
     .toLowerCase();
 
-  const templateSlug = String(product?.template?.slug || "")
-    .trim()
-    .toLowerCase();
-
-  const templateName = String(product?.template?.name || "")
-    .trim()
-    .toLowerCase();
-  console.log("PRODUCT CONFIGURATOR:", {
-    id: product?.id,
-    name: product?.name,
-    category,
-    templateType,
-    templateSlug,
-  });
-
   const productType = String(
     product?.productType ||
       initialData?.product?.productType ||
@@ -42,27 +28,39 @@ export default function ProductConfigurator({
     .trim()
     .toLowerCase();
 
+  console.log("PRODUCT CONFIGURATOR:", {
+    id: product?.id,
+    name: product?.name,
+    category,
+    templateType,
+    productType,
+  });
+
   const isSticker =
     category === "stickers" ||
     category === "sticker" ||
     templateType === "stickers" ||
-    templateType === "sticker" ||
-    templateSlug === "stickers" ||
-    templateSlug === "sticker";
+    templateType === "sticker";
 
   const isApparel =
     productType === "apparel" ||
     category === "apparel" ||
-    templateType === "apparel" ||
-    templateSlug === "apparel";
+    templateType === "apparel";
 
   const isRaffleTicket =
     category === "raffle-tickets" ||
     category === "raffle-ticket" ||
     templateType === "raffle-tickets" ||
-    templateType === "raffle-ticket" ||
-    templateSlug === "raffle-tickets" ||
-    templateSlug === "raffle-ticket";
+    templateType === "raffle-ticket";
+
+  const isYardSign =
+    productType === "yard-sign" ||
+    productType === "yard-signs" ||
+    category === "yard-sign" ||
+    category === "yard-signs" ||
+    templateType === "yard-sign" ||
+    templateType === "yard-signs" ||
+    templateType === "large-format";
 
   if (isSticker) {
     return (
@@ -73,23 +71,6 @@ export default function ProductConfigurator({
       />
     );
   }
-  const productTemplateSlug = String(product?.templateSlug || "")
-    .trim()
-    .toLowerCase();
-
-  const isYardSign =
-    productType === "yard-sign" ||
-    productType === "yard-signs" ||
-    category === "yard-sign" ||
-    category === "yard-signs" ||
-    templateType === "yard-sign" ||
-    templateType === "yard-signs" ||
-    templateSlug === "yard-sign" ||
-    templateSlug === "yard-signs" ||
-    templateName === "yard sign" ||
-    templateName === "yard signs" ||
-    productTemplateSlug === "yard-sign" ||
-    productTemplateSlug === "yard-signs";
 
   if (isApparel) {
     return (
@@ -110,6 +91,7 @@ export default function ProductConfigurator({
       />
     );
   }
+
   if (isYardSign) {
     return (
       <YardSignProductConfigurator
@@ -119,6 +101,7 @@ export default function ProductConfigurator({
       />
     );
   }
+
   return (
     <StandardProductConfigurator
       product={product}

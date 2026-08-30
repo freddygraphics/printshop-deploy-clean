@@ -22,7 +22,6 @@ export default function EditProductPage() {
   const [creatingCategory, setCreatingCategory] = useState(false);
 
   const [product, setProduct] = useState(null);
-  const [template, setTemplate] = useState(null);
 
   // ==========================================
   // LOAD PRODUCT CATEGORIES
@@ -113,6 +112,7 @@ export default function EditProductPage() {
       // ------------------------------------------
       // PRODUCT
       // ------------------------------------------
+
       const res = await fetch(`/api/products/${id}`, {
         cache: "no-store",
       });
@@ -128,23 +128,6 @@ export default function EditProductPage() {
       setProductCategoryId(
         productData.categoryId ? String(productData.categoryId) : "",
       );
-
-      // ------------------------------------------
-      // TEMPLATE
-      // ------------------------------------------
-      if (productData.templateId) {
-        const templateRes = await fetch(
-          `/api/templates/${productData.templateId}`,
-          {
-            cache: "no-store",
-          },
-        );
-
-        if (templateRes.ok) {
-          const templateData = await templateRes.json();
-          setTemplate(templateData);
-        }
-      }
     } catch (err) {
       console.error("Error loading product:", err);
     }
@@ -316,8 +299,8 @@ export default function EditProductPage() {
       <ProductBuilder
         mode="edit"
         existingData={product}
-        template={template}
-        productType={product.category || "standard"}
+        productType={product.category || product.templateType || "standard"}
+        templateType={product.templateType}
         onSave={handleSave}
       />
     </div>

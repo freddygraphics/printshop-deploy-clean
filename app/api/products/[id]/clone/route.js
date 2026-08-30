@@ -1,12 +1,15 @@
 export const dynamic = "force-dynamic";
+
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
+
 import prisma from "@/lib/db";
 
 export async function POST(req, { params }) {
   try {
     const { id } = await params;
+
     const productId = Number(id);
 
     if (!Number.isInteger(productId)) {
@@ -32,27 +35,35 @@ export async function POST(req, { params }) {
         sku: null,
 
         description: original.description,
+
         category: original.category,
+
         pricingMode: original.pricingMode,
+
         basePrice: original.basePrice,
 
         defaultOptions: original.defaultOptions,
+
         customFields: original.customFields,
 
+        // Temporalmente sigue identificando el configurador
         templateType: original.templateType,
-        templateId: original.templateId,
 
         profitMargin: original.profitMargin,
 
         sinaliteEnabled: original.sinaliteEnabled,
+
         sinaliteId: original.sinaliteId,
+
         sinaliteOptions: original.sinaliteOptions,
 
         image: original.image,
       },
     });
 
-    return NextResponse.json(clonedProduct, { status: 201 });
+    return NextResponse.json(clonedProduct, {
+      status: 201,
+    });
   } catch (error) {
     console.error("ERROR POST /api/products/[id]/clone:", error);
 

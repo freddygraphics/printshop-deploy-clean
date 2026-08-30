@@ -6,10 +6,6 @@ import RaffleTicketCalculator from "@/components/RaffleTicketCalculator";
 // Modal wrapper
 import ModalPortal from "./ModalPortal";
 import ProductBuilder from "@/components/products/ProductBuilder";
-// Templates
-import CommercialPrintingTemplate from "@/app/templates/CommercialPrintingTemplate";
-import LargeFormatTemplate from "@/app/templates/LargeFormatTemplate";
-import SignsTemplate from "@/app/templates/SignsTemplate";
 
 export default function ProductModal({
   open,
@@ -93,31 +89,18 @@ export default function ProductModal({
   };
 
   // ---------------------------------------------
-  // Render del template
+  // Render del configurador
   // ---------------------------------------------
-  const renderTemplate = () => {
-    const props = {
-      existingData: data,
-      mode,
-      onSave: handleSave,
-    };
-
-    switch (data.templateType) {
-      case "commercial-printing":
-        return <CommercialPrintingTemplate {...props} />;
-
-      case "large-format":
-        return <LargeFormatTemplate {...props} />;
-
-      case "signs":
-        return <ProductBuilder {...props} />;
-      case "raffle-tickets":
-        return <RaffleTicketCalculator {...props} />;
-      default:
-        return (
-          <p className="text-gray-500 text-center">Select a product template</p>
-        );
-    }
+  const renderConfigurator = () => {
+    return (
+      <ProductBuilder
+        existingData={data}
+        mode={mode}
+        productType={data.category || data.templateType || "standard"}
+        templateType={data.templateType}
+        onSave={handleSave}
+      />
+    );
   };
 
   return (
@@ -143,7 +126,7 @@ export default function ProductModal({
           </div>
 
           {/* BODY */}
-          <div className="p-6">{renderTemplate()}</div>
+          <div className="p-6">{renderConfigurator()}</div>
         </div>
 
         {/* Animation */}

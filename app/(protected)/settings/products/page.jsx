@@ -5,18 +5,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, Search, Pencil, Trash2, Copy } from "lucide-react";
-import ProductTemplateSelector from "@/components/ProductTemplateSelector";
-import ProductModal from "@/components/ProductModal";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [search, setSearch] = useState("");
-  const [editingProduct, setEditingProduct] = useState(null);
+
   const [cloningId, setCloningId] = useState(null);
-  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
-  const [showProductModal, setShowProductModal] = useState(false);
-  const [selectedTemplateType, setSelectedTemplateType] = useState(null);
 
   const [success, setSuccess] = useState(""); // ⭐ mensaje éxito
   const router = useRouter();
@@ -52,27 +47,6 @@ export default function ProductsPage() {
     const s = search.toLowerCase();
     setFiltered(products.filter((p) => p.name.toLowerCase().includes(s)));
   }, [search, products]);
-
-  // ==========================================================
-  // Abrir creación producto con template
-  // ==========================================================
-  function handleSelectTemplate(templateType) {
-    setSelectedTemplateType(templateType);
-    setShowTemplateSelector(false);
-    setShowProductModal(true);
-  }
-
-  // ==========================================================
-  // 🔥 Recibir producto guardado
-  // ==========================================================
-  const handleSaveProduct = async () => {
-    setShowProductModal(false);
-
-    setSuccess("✅ Producto guardado con éxito");
-    setTimeout(() => setSuccess(""), 2500);
-
-    await loadProducts();
-  };
 
   async function handleCloneProduct(product) {
     const confirmed = confirm(
@@ -131,18 +105,17 @@ export default function ProductsPage() {
           </button>
         </Link>
       </div>
-
-      {/* TARJETAS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <SummaryCard title="Total Products" value={products.length} />
+
         <SummaryCard
-          title="Templates"
-          value={products.filter((p) => p.templateType).length}
+          title="Website Products"
+          value={products.filter((p) => p.showOnWebsite).length}
         />
 
         <SummaryCard
-          title="Without Template"
-          value={products.filter((p) => !p.templateType).length}
+          title="Internal Products"
+          value={products.filter((p) => !p.showOnWebsite).length}
         />
       </div>
 
@@ -173,7 +146,7 @@ export default function ProductsPage() {
                 {/* OCULTO ⛔ */}
                 {/* <th>SKU</th> */}
                 {/* <th>Price</th> */}
-                {/* <th>Template</th> */}
+
                 <th className="p-3 text-right">Actions</th>
               </tr>
             </thead>
@@ -240,33 +213,6 @@ export default function ProductsPage() {
           </table>
         )}
       </div>
-
-      {/* SELECTOR DE TEMPLATE */}
-      {showTemplateSelector && (
-        <ProductTemplateSelector
-          open={showTemplateSelector}
-          onClose={() => setShowTemplateSelector(false)}
-          onSelect={handleSelectTemplate}
-        />
-      )}
-
-      {/* MODAL PRODUCTO */}
-      {showProductModal && (
-        <ProductModal
-          open={showProductModal}
-          onClose={() => {
-            setShowProductModal(false);
-            setEditingProduct(null);
-          }}
-          product={
-            editingProduct
-              ? editingProduct // ✏️ EDIT
-              : { templateType: selectedTemplateType } // ➕ NEW
-          }
-          mode={editingProduct ? "edit" : "new"}
-          onSave={handleSaveProduct}
-        />
-      )}
     </main>
   );
 }

@@ -28,17 +28,6 @@ async function main() {
 
   console.log("🌱 Running seed...");
 
-  // =========================
-  // TEMPLATES
-  // =========================
-  await prisma.template.createMany({
-    data: [
-      { name: "Commercial Printing", type: "commercial-printing" },
-      { name: "Large Format", type: "large-format" },
-    ],
-    skipDuplicates: true,
-  });
-
   console.log("🧩 Templates seeded");
 
   // =========================

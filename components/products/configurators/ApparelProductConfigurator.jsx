@@ -176,11 +176,7 @@ export default function ApparelProductConfigurator({
       subtotal: Number(item.subtotal ?? item.total ?? 0),
       total: Number(item.total ?? 0),
 
-      customFields:
-        item.customFields ||
-        selectedGarment.customFields ||
-        selectedGarment.template?.fields ||
-        null,
+      customFields: item.customFields || selectedGarment.customFields || null,
 
       options: {
         ...(item.options || {}),

@@ -2,7 +2,6 @@ import Link from "next/link";
 import {
   Boxes,
   CreditCard,
-  Layers3,
   Package,
   Shirt,
   ShoppingBag,
@@ -13,12 +12,6 @@ import {
 } from "lucide-react";
 
 const cards = [
-  {
-    title: "Templates",
-    href: "/settings/templates",
-    description: "Create and manage product templates.",
-    icon: Layers3,
-  },
   {
     title: "Products",
     href: "/settings/products",

@@ -7,7 +7,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
-import ProductTemplateSelector from "@/components/ProductTemplateSelector";
 import ProductBuilder from "@/components/products/ProductBuilder/index";
 
 import { getRelatedServiceFromCategorySlug } from "@/lib/productCategoryServiceMap";
@@ -15,17 +14,24 @@ import { getRelatedServiceFromCategorySlug } from "@/lib/productCategoryServiceM
 export default function NewProductPage() {
   const router = useRouter();
 
-  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  // ==========================================
+  // PRODUCT TYPE / CONFIGURATOR
+  // ==========================================
 
-  // Product Type
   const [category, setCategory] = useState("standard");
 
-  // Product Category
+  // ==========================================
+  // PRODUCT CATEGORY
+  // ==========================================
+
   const [productCategoryId, setProductCategoryId] = useState("");
   const [productCategories, setProductCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
 
-  // New Category
+  // ==========================================
+  // NEW CATEGORY
+  // ==========================================
+
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [creatingCategory, setCreatingCategory] = useState(false);
@@ -33,6 +39,7 @@ export default function NewProductPage() {
   // ==========================================
   // LOAD PRODUCT CATEGORIES
   // ==========================================
+
   useEffect(() => {
     async function loadProductCategories() {
       try {
@@ -53,6 +60,7 @@ export default function NewProductPage() {
         );
       } catch (error) {
         console.error("Error loading product categories:", error);
+
         setProductCategories([]);
       } finally {
         setLoadingCategories(false);
@@ -65,6 +73,7 @@ export default function NewProductPage() {
   // ==========================================
   // CREATE PRODUCT CATEGORY
   // ==========================================
+
   async function createProductCategory() {
     const name = newCategoryName.trim();
 
@@ -75,9 +84,11 @@ export default function NewProductPage() {
 
       const res = await fetch("/api/product-categories", {
         method: "POST",
+
         headers: {
           "Content-Type": "application/json",
         },
+
         body: JSON.stringify({
           name,
         }),
@@ -92,14 +103,13 @@ export default function NewProductPage() {
 
       setProductCategories((current) => [...current, data]);
 
-      // Seleccionar automáticamente la nueva categoría
       setProductCategoryId(String(data.id));
 
-      // Limpiar formulario
       setNewCategoryName("");
       setShowNewCategory(false);
     } catch (error) {
       console.error("Error creating product category:", error);
+
       alert("Could not create category.");
     } finally {
       setCreatingCategory(false);
@@ -109,65 +119,59 @@ export default function NewProductPage() {
   // ==========================================
   // SAVE PRODUCT
   // ==========================================
+
   async function handleSave(product) {
     try {
-      if (!selectedTemplate) {
-        alert("Select a product template first.");
-        return;
-      }
-
-      // Buscar la categoría seleccionada
       const selectedProductCategory = productCategories.find(
         (item) => String(item.id) === String(productCategoryId),
       );
 
       const categorySlug = selectedProductCategory?.slug || null;
 
-      // Convertir Product Category
-      // al Related Service viejo automáticamente
-      const resolvedRelatedService = getRelatedServiceFromCategorySlug(
-        selectedCategory?.slug,
-      );
+      // ======================================
+      // RELATED SERVICE
+      // ======================================
 
-      const numericTemplateId = Number(selectedTemplate?.id);
+      const resolvedRelatedService =
+        getRelatedServiceFromCategorySlug(categorySlug);
 
-      const templateSlug =
-        selectedTemplate?.slug ||
-        selectedTemplate?.templateType ||
-        selectedTemplate?.type ||
-        product?.templateType ||
-        null;
+      // ======================================
+      // PRODUCT CONFIGURATOR TYPE
+      //
+      // Todavía usamos templateType en DB
+      // temporalmente.
+      // Más adelante será configuratorType.
+      // ======================================
+
+      const configuratorType = category === "standard" ? null : category;
+
+      // ======================================
+      // PAYLOAD
+      // ======================================
 
       const payload = {
         ...product,
 
-        // ======================================
-        // PRODUCT TYPE
-        // Controla qué configurador se utiliza
-        // ======================================
-        category: category === "standard" ? null : category,
+        // Legacy category field.
+        // Por ahora también identifica el configurador.
+        category: configuratorType,
 
-        // ======================================
-        // PRODUCT CATEGORY
-        // Print / Sticker / Car Decal
-        // ======================================
+        // Nueva categoría del catálogo
         categoryId: productCategoryId ? Number(productCategoryId) : null,
 
-        // ======================================
-        // RELATED SERVICE
-        // Automático. Ya no aparece en UI.
-        // Se mantiene por compatibilidad.
-        // ======================================
+        // Compatibilidad con sistema viejo
         relatedService: resolvedRelatedService,
 
-        templateId:
-          Number.isInteger(numericTemplateId) && numericTemplateId > 0
-            ? numericTemplateId
-            : null,
+        // Temporal:
+        // después lo renombraremos configuratorType
+        templateType: configuratorType,
 
-        templateSlug,
-        templateType: templateSlug,
+        // ProductBuilder guarda su configuración aquí
+        defaultOptions: product.configuration || {},
       };
+
+      // Ya no necesitamos esta propiedad temporal
+      delete payload.configuration;
 
       console.log("PRODUCT CREATE PAYLOAD:", payload);
 
@@ -178,11 +182,17 @@ export default function NewProductPage() {
         relatedService: resolvedRelatedService,
       });
 
+      // ======================================
+      // CREATE PRODUCT
+      // ======================================
+
       const res = await fetch("/api/products/from-template", {
         method: "POST",
+
         headers: {
           "Content-Type": "application/json",
         },
+
         body: JSON.stringify(payload),
       });
 
@@ -200,6 +210,7 @@ export default function NewProductPage() {
 
       if (!res.ok) {
         alert(data?.error || `Error saving product (${res.status})`);
+
         return;
       }
 
@@ -228,166 +239,133 @@ export default function NewProductPage() {
         </Link>
       </div>
 
-      {!selectedTemplate ? (
-        // ======================================
-        // TEMPLATE SELECTOR
-        // ======================================
-        <ProductTemplateSelector
-          embedded
-          onSelect={(template) => {
-            console.log("SELECTED TEMPLATE:", template);
+      {/* ====================================== */}
+      {/* PRODUCT SETTINGS */}
+      {/* ====================================== */}
 
-            setSelectedTemplate(template);
+      <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* ================================== */}
+          {/* PRODUCT TYPE */}
+          {/* ================================== */}
 
-            // Intentar seleccionar Product Type
-            // automáticamente según el template
-            const slug = template?.slug?.toLowerCase() || "";
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-gray-700">
+              Product Type
+            </label>
 
-            if (slug === "stickers" || slug === "sticker") {
-              setCategory("stickers");
-            } else if (slug === "apparel") {
-              setCategory("apparel");
-            } else if (slug === "raffle-tickets" || slug === "raffle-ticket") {
-              setCategory("raffle-tickets");
-            } else if (slug === "truck-lettering") {
-              setCategory("truck-lettering");
-            } else {
-              setCategory("standard");
-            }
-          }}
-        />
-      ) : (
-        <>
-          {/* ====================================== */}
-          {/* PRODUCT SETTINGS */}
-          {/* ====================================== */}
+            <select
+              value={category}
+              onChange={(event) => setCategory(event.target.value)}
+              className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            >
+              <option value="standard">Standard Product</option>
 
-          <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="grid gap-6 md:grid-cols-2">
-              {/* ================================== */}
-              {/* PRODUCT TYPE */}
-              {/* ================================== */}
+              <option value="stickers">Stickers</option>
 
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Product Type
-                </label>
+              <option value="apparel">Apparel</option>
 
-                <select
-                  value={category}
-                  onChange={(event) => setCategory(event.target.value)}
-                  className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                >
-                  <option value="standard">Standard Product</option>
+              <option value="raffle-tickets">Raffle Tickets</option>
 
-                  <option value="stickers">Stickers</option>
+              <option value="yard-signs">Yard Signs</option>
 
-                  <option value="apparel">Apparel</option>
+              <option value="truck-lettering">Truck Lettering</option>
+            </select>
 
-                  <option value="raffle-tickets">Raffle Tickets</option>
+            <p className="mt-2 text-xs text-gray-500">
+              This determines which configurator opens when the product is
+              selected.
+            </p>
+          </div>
 
-                  <option value="truck-lettering">Truck Lettering</option>
-                </select>
+          {/* ================================== */}
+          {/* PRODUCT CATEGORY */}
+          {/* ================================== */}
 
-                <p className="mt-2 text-xs text-gray-500">
-                  This determines which configurator opens when the product is
-                  selected.
-                </p>
-              </div>
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <label className="block text-sm font-semibold text-gray-700">
+                Product Category
+              </label>
 
-              {/* ================================== */}
-              {/* PRODUCT CATEGORY */}
-              {/* ================================== */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNewCategory((current) => !current);
 
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Product Category
-                  </label>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowNewCategory((current) => !current);
-
-                      setNewCategoryName("");
-                    }}
-                    className="text-sm font-semibold text-blue-600 hover:text-blue-700"
-                  >
-                    {showNewCategory ? "Cancel" : "+ New Category"}
-                  </button>
-                </div>
-
-                <select
-                  value={productCategoryId}
-                  onChange={(event) => setProductCategoryId(event.target.value)}
-                  disabled={loadingCategories}
-                  className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 disabled:text-gray-400"
-                >
-                  <option value="">
-                    {loadingCategories
-                      ? "Loading categories..."
-                      : "No Product Category"}
-                  </option>
-
-                  {productCategories.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-
-                {/* NEW CATEGORY */}
-
-                {showNewCategory && (
-                  <div className="mt-3 flex gap-2">
-                    <input
-                      type="text"
-                      value={newCategoryName}
-                      onChange={(event) =>
-                        setNewCategoryName(event.target.value)
-                      }
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          event.preventDefault();
-                          createProductCategory();
-                        }
-                      }}
-                      placeholder="Example: Print"
-                      autoFocus
-                      className="h-10 min-w-0 flex-1 rounded-lg border border-gray-200 px-3 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                    />
-
-                    <button
-                      type="button"
-                      onClick={createProductCategory}
-                      disabled={creatingCategory || !newCategoryName.trim()}
-                      className="h-10 rounded-lg bg-gray-900 px-4 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {creatingCategory ? "Creating..." : "Create"}
-                    </button>
-                  </div>
-                )}
-
-                <p className="mt-2 text-xs text-gray-500">
-                  Organizes the product inside the website catalog.
-                </p>
-              </div>
+                  setNewCategoryName("");
+                }}
+                className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+              >
+                {showNewCategory ? "Cancel" : "+ New Category"}
+              </button>
             </div>
-          </section>
 
-          {/* ====================================== */}
-          {/* PRODUCT BUILDER */}
-          {/* ====================================== */}
+            <select
+              value={productCategoryId}
+              onChange={(event) => setProductCategoryId(event.target.value)}
+              disabled={loadingCategories}
+              className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 disabled:text-gray-400"
+            >
+              <option value="">
+                {loadingCategories
+                  ? "Loading categories..."
+                  : "No Product Category"}
+              </option>
 
-          <ProductBuilder
-            template={selectedTemplate}
-            mode="new"
-            productType={category}
-            onSave={handleSave}
-          />
-        </>
-      )}
+              {productCategories.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+
+            {showNewCategory && (
+              <div className="mt-3 flex gap-2">
+                <input
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(event) => setNewCategoryName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+
+                      createProductCategory();
+                    }
+                  }}
+                  placeholder="Example: Print"
+                  autoFocus
+                  className="h-10 min-w-0 flex-1 rounded-lg border border-gray-200 px-3 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                />
+
+                <button
+                  type="button"
+                  onClick={createProductCategory}
+                  disabled={creatingCategory || !newCategoryName.trim()}
+                  className="h-10 rounded-lg bg-gray-900 px-4 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {creatingCategory ? "Creating..." : "Create"}
+                </button>
+              </div>
+            )}
+
+            <p className="mt-2 text-xs text-gray-500">
+              Organizes the product inside the website catalog.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ====================================== */}
+      {/* PRODUCT BUILDER */}
+      {/* ====================================== */}
+
+      <ProductBuilder
+        mode="new"
+        productType={category}
+        templateType={category === "standard" ? null : category}
+        onSave={handleSave}
+      />
     </main>
   );
 }

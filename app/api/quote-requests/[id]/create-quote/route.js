@@ -25,11 +25,7 @@ export async function POST(request, { params }) {
       },
 
       include: {
-        product: {
-          include: {
-            template: true,
-          },
-        },
+        product: true,
       },
     });
 
@@ -88,19 +84,15 @@ export async function POST(request, { params }) {
     // PRODUCT OPTIONS
     // =====================================================
 
-    // Options defined by the Product's Template
-    const templateOptions = normalizeOptions(product.template?.options);
-
-    // Default options defined directly on Product
+    // Configuración definida directamente en el producto
     const defaultOptions = normalizeOptions(product.defaultOptions);
 
-    // Options selected by customer on website
+    // Opciones seleccionadas por el cliente en la website
     const requestedOptions = normalizeOptions(quoteRequest.options);
 
     // Priority:
-    // Template → Product defaults → Customer selections
+    // Product defaults → Customer selections
     const initialOptions = {
-      ...templateOptions,
       ...defaultOptions,
       ...requestedOptions,
     };
@@ -168,7 +160,7 @@ export async function POST(request, { params }) {
           total: 0,
 
           // Selecciones hechas por el cliente
-          options: quoteRequest.options || {},
+          options: initialOptions,
 
           notes: quoteRequest.notes || null,
         },
