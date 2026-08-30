@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+
 import prisma from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,6 @@ export async function GET(request, { params }) {
       where: {
         id: productId,
       },
-
       select: {
         id: true,
         name: true,
@@ -38,14 +38,6 @@ export async function GET(request, { params }) {
             url: true,
             position: true,
             isPrimary: true,
-          },
-        },
-
-        template: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
           },
         },
       },
@@ -81,17 +73,15 @@ export async function GET(request, { params }) {
       image: product.image,
       images: product.images,
 
-      // IMPORTANT
+      // Product configuration
       defaultOptions: configuration,
 
       pricing: pricing.map((row) => ({
         minQty: Number(row.minQty),
-
         maxQty:
           row.maxQty === null || row.maxQty === undefined
             ? null
             : Number(row.maxQty),
-
         price: Number(row.unitPrice),
       })),
 
@@ -110,8 +100,6 @@ export async function GET(request, { params }) {
             }))
           : [],
       })),
-
-      template: product.template,
     });
   } catch (error) {
     console.error("PUBLIC PRODUCT ERROR:", error);

@@ -10,14 +10,16 @@ export async function GET(req, { params }) {
   try {
     const id = Number(params.id);
 
+    if (!Number.isInteger(id) || id <= 0) {
+      return Response.json({ error: "Invalid product id" }, { status: 400 });
+    }
+
     const product = await prisma.product.findUnique({
       where: {
         id,
       },
 
       include: {
-        template: true,
-
         productCategory: true,
 
         images: {
@@ -47,6 +49,10 @@ export async function GET(req, { params }) {
 export async function PUT(req, { params }) {
   try {
     const id = Number(params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return Response.json({ error: "Invalid product id" }, { status: 400 });
+    }
 
     const body = await req.json();
 
@@ -160,14 +166,11 @@ export async function PUT(req, { params }) {
 
         images: {
           deleteMany: {},
-
           create: normalizedImages,
         },
       },
 
       include: {
-        template: true,
-
         productCategory: true,
 
         images: {
@@ -208,11 +211,17 @@ export async function PUT(req, { params }) {
 
 export async function PATCH(req, { params }) {
   try {
+    const id = Number(params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return Response.json({ error: "Invalid product id" }, { status: 400 });
+    }
+
     const body = await req.json();
 
     const product = await prisma.product.update({
       where: {
-        id: Number(params.id),
+        id,
       },
 
       data: body,
@@ -232,9 +241,15 @@ export async function PATCH(req, { params }) {
 
 export async function DELETE(req, { params }) {
   try {
+    const id = Number(params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return Response.json({ error: "Invalid product id" }, { status: 400 });
+    }
+
     await prisma.product.delete({
       where: {
-        id: Number(params.id),
+        id,
       },
     });
 
