@@ -37,6 +37,31 @@ function InlineProductEditor({
   const effectiveProduct =
     product || data?.product || data?.options?.apparelProduct || null;
 
+  const category = String(effectiveProduct?.category || "")
+    .trim()
+    .toLowerCase();
+
+  const productName = String(effectiveProduct?.name || "")
+    .trim()
+    .toLowerCase();
+
+  const isSinalite = effectiveProduct?.sinaliteEnabled === true;
+
+  const isSticker =
+    category.includes("sticker") || productName.includes("sticker");
+
+  const isApparel =
+    category.includes("apparel") || productName.includes("apparel");
+
+  const isRaffleTicket =
+    category.includes("raffle") || productName.includes("raffle ticket");
+
+  const isYardSign =
+    category.includes("yard sign") || productName.includes("yard sign");
+
+  const isSpecialProduct =
+    isSticker || isApparel || isRaffleTicket || isYardSign;
+  const productCalculationRef = useRef(false);
   const savedProductType = String(data?.options?.productType || "")
     .trim()
     .toLowerCase();
@@ -297,10 +322,6 @@ function InlineProductEditor({
 
     return Number(total.toFixed(2));
   };
-  const category = String(effectiveProduct?.category || "");
-
-  const isSinalite = effectiveProduct?.sinaliteEnabled === true;
-  const productCalculationRef = useRef(false);
 
   useEffect(() => {
     if (
