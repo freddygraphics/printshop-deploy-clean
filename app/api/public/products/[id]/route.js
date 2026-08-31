@@ -3,11 +3,13 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
+
 export const runtime = "nodejs";
 
 export async function GET(request, { params }) {
   try {
     const { id } = params;
+
     const productId = Number(id);
 
     if (!Number.isInteger(productId) || productId <= 0) {
@@ -28,7 +30,6 @@ export async function GET(request, { params }) {
         category: true,
         image: true,
         defaultOptions: true,
-
         images: {
           orderBy: {
             position: "asc",
@@ -62,8 +63,24 @@ export async function GET(request, { params }) {
       : [];
 
     const productOptions = Array.isArray(configuration.productOptions)
-      ? configuration.productOptions
+      ? configuration.productOptions.filter((option) => {
+          if (!option || typeof option !== "object") return false;
+
+          const name =
+            typeof option.name === "string" ? option.name.trim() : "";
+
+          const key = typeof option.key === "string" ? option.key.trim() : "";
+
+          return name !== "" || key !== "";
+        })
       : [];
+
+    const yardSign =
+      configuration.yardSign &&
+      typeof configuration.yardSign === "object" &&
+      !Array.isArray(configuration.yardSign)
+        ? configuration.yardSign
+        : null;
 
     return NextResponse.json({
       id: product.id,
@@ -75,6 +92,8 @@ export async function GET(request, { params }) {
 
       // Product configuration
       defaultOptions: configuration,
+
+      yardSign,
 
       pricing: pricing.map((row) => ({
         minQty: Number(row.minQty),
@@ -89,7 +108,6 @@ export async function GET(request, { params }) {
         key: option.key,
         name: option.name,
         type: option.type,
-
         values: Array.isArray(option.values)
           ? option.values.map((value) => ({
               key: value.key,
