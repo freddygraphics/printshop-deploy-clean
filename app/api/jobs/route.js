@@ -65,8 +65,14 @@ export async function GET() {
         position: true,
         description: true,
         createdAt: true,
+
         pickupToken: true,
         pickedUpAt: true,
+
+        fulfillmentMethod: true,
+        trackingNumber: true,
+        readyNotifiedAt: true,
+        shippingNotifiedAt: true,
 
         client: {
           select: {

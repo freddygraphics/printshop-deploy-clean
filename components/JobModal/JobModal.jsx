@@ -8,7 +8,7 @@ import Link from "next/link";
 import JobDescriptionEditor from "./JobDescriptionEditor";
 import JobFileUpload from "@/components/JobFileUpload";
 import JobAttachments from "./JobAttachments";
-import Barcode from "react-barcode";
+
 import ConfirmPickupDialog from "@/components/dialogs/ConfirmPickupDialog";
 import PaymentRequiredDialog from "@/components/dialogs/PaymentRequiredDialog";
 const STATUS_STYLE = {
@@ -22,6 +22,16 @@ const STATUS_STYLE = {
 export default function JobModal({ job, onClose }) {
   const [files, setFiles] = useState([]);
   const [showConfirmPickup, setShowConfirmPickup] = useState(false);
+  const [fulfillmentMethod, setFulfillmentMethod] = useState(
+    job?.fulfillmentMethod || "",
+  );
+
+  const [trackingNumber, setTrackingNumber] = useState(
+    job?.trackingNumber || "",
+  );
+
+  const [sendingNotification, setSendingNotification] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState("");
 
   const [paymentDialog, setPaymentDialog] = useState({
     open: false,
@@ -60,6 +70,12 @@ export default function JobModal({ job, onClose }) {
   }, [job]);
   useEffect(() => {
     setFiles(job?.files || []);
+  }, [job]);
+
+  useEffect(() => {
+    setFulfillmentMethod(job?.fulfillmentMethod || "");
+    setTrackingNumber(job?.trackingNumber || "");
+    setNotificationMessage("");
   }, [job]);
 
   useEffect(() => {
@@ -117,6 +133,102 @@ export default function JobModal({ job, onClose }) {
 
     onClose();
   }
+
+  async function selectFulfillmentMethod(method) {
+    setFulfillmentMethod(method);
+    setNotificationMessage("");
+
+    // SHIPPING:
+    // solo mostramos el campo de tracking.
+    // Todavía NO enviamos nada.
+    if (method === "shipping") {
+      return;
+    }
+
+    // PICKUP:
+    // al seleccionarlo enviamos el email inmediatamente.
+    if (method === "pickup") {
+      try {
+        setSendingNotification(true);
+
+        const res = await fetch(`/api/jobs/${job.id}/notification`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            method: "pickup",
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || "Unable to send pickup notification.");
+        }
+
+        if (data.alreadySent) {
+          setNotificationMessage("Pickup notification was already sent.");
+        } else {
+          setNotificationMessage("Pickup notification sent.");
+        }
+      } catch (error) {
+        console.error("❌ PICKUP NOTIFICATION ERROR:", error);
+
+        setNotificationMessage(
+          error.message || "Unable to send pickup notification.",
+        );
+
+        // Si falló, volvemos el selector a su valor anterior.
+        setFulfillmentMethod(job?.fulfillmentMethod || "");
+      } finally {
+        setSendingNotification(false);
+      }
+    }
+  }
+
+  async function sendShippingNotification() {
+    if (!trackingNumber.trim()) {
+      setNotificationMessage("Enter a tracking number.");
+      return;
+    }
+
+    try {
+      setSendingNotification(true);
+      setNotificationMessage("");
+
+      const res = await fetch(`/api/jobs/${job.id}/notification`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          method: "shipping",
+          trackingNumber: trackingNumber.trim(),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Unable to send shipping notification.");
+      }
+
+      if (data.alreadySent) {
+        setNotificationMessage("Shipping notification was already sent.");
+      } else {
+        setNotificationMessage("Shipping notification sent.");
+      }
+    } catch (error) {
+      console.error("❌ SHIPPING NOTIFICATION ERROR:", error);
+
+      setNotificationMessage(
+        error.message || "Unable to send shipping notification.",
+      );
+    } finally {
+      setSendingNotification(false);
+    }
+  }
   return (
     <>
       {/* Overlay */}
@@ -141,7 +253,7 @@ export default function JobModal({ job, onClose }) {
                   <span>Invoice —</span>
                 )}
                 <span className="text-gray-400">•</span>
-                <span>JOB #{job.jobNumber}</span>
+                <span>ORDER/JOB #{job.jobNumber}</span>
               </div>
 
               <div className="flex items-center gap-3"></div>
@@ -263,32 +375,115 @@ export default function JobModal({ job, onClose }) {
                     </button>
                   )}
 
-                  {job.status === "Ready" && job.invoice?.invoiceNumber && (
-                    <div className="mt-6 flex flex-col items-center gap-3">
-                      <div className="text-sm font-medium text-gray-600">
-                        Pickup Barcode
-                      </div>
+                  {job.status === "Ready" && (
+                    <div className="mt-6 border-t pt-6">
+                      <div className="mb-4"></div>
 
-                      <Barcode
-                        value={`INV-${job.invoice.invoiceNumber}`}
-                        format="CODE128"
-                        width={2}
-                        height={70}
-                        displayValue={true}
-                      />
+                      {/* FULFILLMENT METHOD */}
 
-                      <button
-                        onClick={() => window.print()}
-                        className="mt-2 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm"
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Fulfillment Method
+                      </label>
+
+                      <select
+                        value={fulfillmentMethod}
+                        disabled={sendingNotification}
+                        onChange={(e) =>
+                          selectFulfillmentMethod(e.target.value)
+                        }
+                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500 disabled:bg-gray-100"
                       >
-                        Print Barcode
-                      </button>
-                      <button
-                        onClick={() => setShowConfirmPickup(true)}
-                        className="mt-3 w-full rounded-lg bg-green-600 py-2 text-sm font-medium text-white hover:bg-green-700 transition"
-                      >
-                        Complete Pickup
-                      </button>
+                        <option value="">Select method...</option>
+                        <option value="pickup">Ready for Pickup</option>
+                        <option value="shipping">Shipping</option>
+                      </select>
+
+                      {/* LOADING */}
+
+                      {sendingNotification &&
+                        fulfillmentMethod === "pickup" && (
+                          <div className="mt-3 text-sm text-blue-600">
+                            Sending pickup notification...
+                          </div>
+                        )}
+
+                      {/* MESSAGE */}
+
+                      {notificationMessage && (
+                        <div className="mt-3 rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-700">
+                          {notificationMessage}
+                        </div>
+                      )}
+
+                      {/* ========================================= */}
+                      {/* PICKUP */}
+                      {/* ========================================= */}
+
+                      {fulfillmentMethod === "pickup" && (
+                        <div className="mt-6">
+                          <div className="mb-4 rounded-lg bg-green-50 border border-green-200 px-3 py-2">
+                            <div className="text-sm font-medium text-green-700">
+                              Ready for Pickup
+                            </div>
+                            <div className="text-xs text-green-600 mt-1">
+                              {job.readyNotifiedAt
+                                ? "✓ Pickup notification sent"
+                                : "Ready for pickup selected"}
+                            </div>
+                          </div>
+
+                          <div className="mt-4">
+                            <button
+                              onClick={() => setShowConfirmPickup(true)}
+                              className="w-full rounded-lg bg-green-600 py-2.5 text-sm font-medium text-white hover:bg-green-700 transition"
+                            >
+                              Complete Pickup
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ========================================= */}
+                      {/* SHIPPING */}
+                      {/* ========================================= */}
+
+                      {fulfillmentMethod === "shipping" && (
+                        <div className="mt-6">
+                          {job.shippingNotifiedAt && (
+                            <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2">
+                              <div className="text-sm font-medium text-green-700">
+                                ✓ Shipping notification sent
+                              </div>
+                            </div>
+                          )}
+
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Tracking Number
+                          </label>
+
+                          <input
+                            type="text"
+                            value={trackingNumber}
+                            onChange={(e) => setTrackingNumber(e.target.value)}
+                            placeholder="Enter tracking number"
+                            disabled={sendingNotification}
+                            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500 disabled:bg-gray-100"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={sendShippingNotification}
+                            disabled={
+                              sendingNotification || !trackingNumber.trim()
+                            }
+                            className="mt-3 w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300 transition"
+                          >
+                            {sendingNotification
+                              ? "Sending..."
+                              : "Send Shipping Notification"}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

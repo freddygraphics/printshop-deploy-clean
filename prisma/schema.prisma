@@ -358,12 +358,22 @@ model Job {
   updatedAt           DateTime  @updatedAt
   invoiceId           Int       @unique
   position            Int       @default(0)
+
   pickupToken         String?   @unique
   pickedUpAt          DateTime?
   pickedUpBy          String?
-  archived            Boolean   @default(false)
-  archivedAt          DateTime?
-  deliveredAt         DateTime?
+
+  readyNotifiedAt     DateTime?
+
+  // NUEVO
+  fulfillmentMethod   String?
+  trackingNumber      String?
+  shippingNotifiedAt  DateTime?
+
+  archived             Boolean   @default(false)
+  archivedAt           DateTime?
+  deliveredAt          DateTime?
+
   client              Client    @relation(fields: [clientId], references: [id])
   invoice             Invoice   @relation(fields: [invoiceId], references: [id])
   files               JobFile[]

@@ -1,12 +1,15 @@
 ﻿export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
+import crypto from "crypto";
+
 import prisma from "@/lib/db";
 
 export async function PUT(req, context) {
   try {
-    const { id } = context.params;
-    const jobId = Number(id);
+    const { id } = await context.params;
 
+    const jobId = Number(id);
     const { status } = await req.json();
 
     if (!status) {
@@ -15,33 +18,85 @@ export async function PUT(req, context) {
         { status: 400 },
       );
     }
-    let data = {
+
+    // --------------------------------------------
+    // BUSCAR JOB ACTUAL
+    // --------------------------------------------
+
+    const currentJob = await prisma.job.findUnique({
+      where: {
+        id: jobId,
+      },
+    });
+
+    if (!currentJob) {
+      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    }
+
+    // --------------------------------------------
+    // DETECTAR CUANDO ENTRA A READY
+    // --------------------------------------------
+
+    const becomingReady = currentJob.status !== "Ready" && status === "Ready";
+
+    const data = {
       status,
     };
 
-    // Cuando pasa a Delivered
+    // --------------------------------------------
+    // GENERAR PICKUP TOKEN
+    // Lo dejamos preparado para el QR futuro.
+    // NO envía ninguna notificación.
+    // --------------------------------------------
+
+    if (becomingReady && !currentJob.pickupToken) {
+      data.pickupToken = crypto.randomBytes(32).toString("hex");
+    }
+
+    // --------------------------------------------
+    // DELIVERED
+    // --------------------------------------------
+
     if (status === "Delivered") {
       data.deliveredAt = new Date();
     }
 
-    // Si sale de Delivered
     if (status !== "Delivered") {
       data.deliveredAt = null;
       data.archived = false;
       data.archivedAt = null;
     }
 
+    // --------------------------------------------
+    // ACTUALIZAR JOB
+    // --------------------------------------------
+
     const job = await prisma.job.update({
-      where: { id: jobId },
+      where: {
+        id: jobId,
+      },
       data,
     });
 
-    return NextResponse.json(job);
+    // IMPORTANTE:
+    // Mover un Job a Ready ya NO envía email.
+    // La notificación se enviará desde JobModal
+    // cuando se seleccione Pickup o Shipping.
+
+    return NextResponse.json({
+      ...job,
+      becomingReady,
+    });
   } catch (error) {
     console.error("❌ UPDATE JOB STATUS ERROR:", error);
+
     return NextResponse.json(
-      { error: "Failed to update job status" },
-      { status: 500 },
+      {
+        error: "Failed to update job status",
+      },
+      {
+        status: 500,
+      },
     );
   }
 }

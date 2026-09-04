@@ -1,104 +1,258 @@
 ﻿import { NextResponse } from "next/server";
-export const dynamic = "force-dynamic";
+
 import prisma from "@/lib/db";
+import { auth } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
+
+// ============================================
+// GET — VALIDATE PICKUP QR
+// ============================================
 
 export async function GET(req, { params }) {
-  const { token } = params;
+  try {
+    const { token } = await params;
 
-  const job = await prisma.job.findUnique({
-    where: { pickupToken: token },
-    include: {
-      client: true,
-      invoice: {
-        include: {
-          invoiceItems: true,
-          payments: true,
+    const session = await auth();
+
+    // ----------------------------------------
+    // PUBLIC / CUSTOMER
+    // ----------------------------------------
+
+    if (!session?.user?.id) {
+      const job = await prisma.job.findUnique({
+        where: {
+          pickupToken: token,
+        },
+        select: {
+          pickedUpAt: true,
+        },
+      });
+
+      if (!job) {
+        return NextResponse.json(
+          {
+            valid: false,
+            error: "INVALID_PICKUP_CODE",
+          },
+          { status: 404 },
+        );
+      }
+
+      if (job.pickedUpAt) {
+        return NextResponse.json({
+          valid: true,
+          staff: false,
+          pickedUp: true,
+          message: "This pickup code has already been used.",
+        });
+      }
+
+      return NextResponse.json({
+        valid: true,
+        staff: false,
+        pickedUp: false,
+        message:
+          "Your order is ready for pickup. Please show this QR code to Freddy Graphics staff.",
+      });
+    }
+
+    // ----------------------------------------
+    // AUTHENTICATED STAFF
+    // ----------------------------------------
+
+    const job = await prisma.job.findUnique({
+      where: {
+        pickupToken: token,
+      },
+
+      select: {
+        id: true,
+        jobNumber: true,
+        status: true,
+        pickedUpAt: true,
+        pickedUpBy: true,
+        deliveredAt: true,
+
+        client: {
+          select: {
+            id: true,
+            name: true,
+            company: true,
+          },
+        },
+
+        invoice: {
+          select: {
+            id: true,
+            invoiceNumber: true,
+            balance: true,
+            paymentStatus: true,
+            total: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  if (!job) {
+    if (!job) {
+      return NextResponse.json(
+        {
+          valid: false,
+          error: "INVALID_PICKUP_CODE",
+        },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json({
+      valid: true,
+      staff: true,
+      pickedUp: Boolean(job.pickedUpAt),
+      job: {
+        ...job,
+        invoice: job.invoice
+          ? {
+              ...job.invoice,
+              balance: Number(job.invoice.balance || 0),
+              total: Number(job.invoice.total || 0),
+            }
+          : null,
+      },
+    });
+  } catch (error) {
+    console.error("❌ PICKUP GET ERROR:", error);
+
     return NextResponse.json(
-      { error: "Invalid pickup token" },
-      { status: 404 },
+      {
+        error: "Failed to validate pickup code",
+      },
+      { status: 500 },
     );
   }
-
-  // ðŸ§® Calcular balance real
-  const subtotal = job.invoice.invoiceItems.reduce(
-    (sum, i) => sum + Number(i.total ?? i.unitPrice * i.qty),
-    0,
-  );
-
-  const paymentsTotal = job.invoice.payments.reduce(
-    (sum, p) => sum + Number(p.amount),
-    0,
-  );
-
-  const balance = subtotal - paymentsTotal;
-
-  return NextResponse.json({
-    job,
-    balance,
-  });
 }
 
-// ------------------------------------------------
-// POST â€” MARK JOB AS DELIVERED
-// ------------------------------------------------
+// ============================================
+// POST — CONFIRM PICKUP
+// ============================================
+
 export async function POST(req, { params }) {
-  const { token } = params;
+  try {
+    const session = await auth();
 
-  const job = await prisma.job.findUnique({
-    where: { pickupToken: token },
-    include: {
-      invoice: {
-        include: {
-          invoiceItems: true,
-          payments: true,
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        {
+          error: "UNAUTHORIZED",
+          message: "Staff login required.",
+        },
+        { status: 401 },
+      );
+    }
+
+    const { token } = await params;
+
+    const job = await prisma.job.findUnique({
+      where: {
+        pickupToken: token,
+      },
+
+      select: {
+        id: true,
+        jobNumber: true,
+        pickedUpAt: true,
+
+        invoice: {
+          select: {
+            id: true,
+            invoiceNumber: true,
+            balance: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  if (!job) {
+    if (!job) {
+      return NextResponse.json(
+        {
+          error: "INVALID_PICKUP_CODE",
+          message: "Invalid pickup code.",
+        },
+        { status: 404 },
+      );
+    }
+
+    if (job.pickedUpAt) {
+      return NextResponse.json(
+        {
+          error: "ALREADY_PICKED_UP",
+          message: "This order has already been picked up.",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (!job.invoice) {
+      return NextResponse.json(
+        {
+          error: "INVOICE_NOT_FOUND",
+          message: "Invoice not found.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const balance = Number(job.invoice.balance || 0);
+
+    // ----------------------------------------
+    // PAYMENT REQUIRED
+    // ----------------------------------------
+
+    if (balance > 0.01) {
+      return NextResponse.json(
+        {
+          error: "PAYMENT_REQUIRED",
+          message: "Invoice has an outstanding balance.",
+          invoiceId: job.invoice.id,
+          invoiceNumber: job.invoice.invoiceNumber,
+          balance,
+        },
+        { status: 400 },
+      );
+    }
+
+    const now = new Date();
+
+    const updatedJob = await prisma.job.update({
+      where: {
+        id: job.id,
+      },
+
+      data: {
+        status: "Delivered",
+        pickedUpAt: now,
+        deliveredAt: now,
+
+        pickedUpBy:
+          session.user.name || session.user.email || `User ${session.user.id}`,
+      },
+    });
+
+    console.log(
+      `✅ PICKUP completed for Job #${job.jobNumber} by ${updatedJob.pickedUpBy}`,
+    );
+
+    return NextResponse.json({
+      success: true,
+      job: updatedJob,
+    });
+  } catch (error) {
+    console.error("❌ PICKUP POST ERROR:", error);
+
     return NextResponse.json(
-      { error: "Invalid pickup token" },
-      { status: 404 },
+      {
+        error: "Failed to complete pickup",
+      },
+      { status: 500 },
     );
   }
-
-  // ðŸ§® RECALCULAR BALANCE (IGUAL QUE EN GET)
-  const subtotal = job.invoice.invoiceItems.reduce(
-    (sum, i) => sum + Number(i.total ?? i.unitPrice * i.qty),
-    0,
-  );
-
-  const paymentsTotal = job.invoice.payments.reduce(
-    (sum, p) => sum + Number(p.amount),
-    0,
-  );
-
-  const balance = subtotal - paymentsTotal;
-
-  // âŒ BLOQUEAR SI HAY BALANCE
-  if (balance > 0) {
-    return NextResponse.json(
-      { error: "Invoice has pending balance" },
-      { status: 400 },
-    );
-  }
-
-  // âœ… MARCAR COMO DELIVERED
-  const updated = await prisma.job.update({
-    where: { id: job.id },
-    data: {
-      status: "Delivered",
-      pickedUpAt: new Date(),
-    },
-  });
-
-  return NextResponse.json(updated);
 }
-
