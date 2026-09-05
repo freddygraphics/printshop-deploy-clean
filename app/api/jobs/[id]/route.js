@@ -40,14 +40,19 @@ export async function PATCH(req, { params }) {
 
   const data = {};
 
-  // âœ… actualizar status si viene
+  // ✅ actualizar status si viene
   if (typeof body.status === "string") {
     data.status = body.status;
   }
 
-  // âœ… actualizar description si viene
+  // ✅ actualizar description si viene
   if (typeof body.description === "string") {
     data.description = body.description;
+  }
+
+  // ✅ actualizar fulfillment method si viene
+  if (typeof body.fulfillmentMethod === "string") {
+    data.fulfillmentMethod = body.fulfillmentMethod;
   }
 
   if (Object.keys(data).length === 0) {
@@ -64,5 +69,3 @@ export async function PATCH(req, { params }) {
 
   return NextResponse.json(job);
 }
-
-

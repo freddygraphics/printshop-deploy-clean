@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { X } from "lucide-react";
+import { X, Pencil } from "lucide-react";
 
 import JobTabs from "./JobTabs";
 import Link from "next/link";
@@ -9,6 +9,7 @@ import JobDescriptionEditor from "./JobDescriptionEditor";
 import JobFileUpload from "@/components/JobFileUpload";
 import JobAttachments from "./JobAttachments";
 
+import CreateCustomerModal from "@/components/customers/CreateCustomerModal";
 import ConfirmPickupDialog from "@/components/dialogs/ConfirmPickupDialog";
 import PaymentRequiredDialog from "@/components/dialogs/PaymentRequiredDialog";
 const STATUS_STYLE = {
@@ -20,6 +21,9 @@ const STATUS_STYLE = {
 };
 
 export default function JobModal({ job, onClose }) {
+  const [editCustomerOpen, setEditCustomerOpen] = useState(false);
+  const [currentCustomer, setCurrentCustomer] = useState(job?.client || null);
+  const [showCustomerInfo, setShowCustomerInfo] = useState(false);
   const [files, setFiles] = useState([]);
   const [showConfirmPickup, setShowConfirmPickup] = useState(false);
   const [fulfillmentMethod, setFulfillmentMethod] = useState(
@@ -67,6 +71,9 @@ export default function JobModal({ job, onClose }) {
     const initial = job?.description || "";
     setDescription(initial);
     lastSaved.current = initial;
+  }, [job]);
+  useEffect(() => {
+    setCurrentCustomer(job?.client || null);
   }, [job]);
   useEffect(() => {
     setFiles(job?.files || []);
@@ -138,15 +145,47 @@ export default function JobModal({ job, onClose }) {
     setFulfillmentMethod(method);
     setNotificationMessage("");
 
-    // SHIPPING:
-    // solo mostramos el campo de tracking.
-    // Todavía NO enviamos nada.
+    // ============================
+    // SAVE FULFILLMENT METHOD
+    // ============================
+    try {
+      const saveRes = await fetch(`/api/jobs/${job.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fulfillmentMethod: method,
+        }),
+      });
+
+      const saveData = await saveRes.json();
+
+      if (!saveRes.ok) {
+        throw new Error(saveData.error || "Unable to save fulfillment method.");
+      }
+    } catch (error) {
+      console.error("❌ SAVE FULFILLMENT METHOD ERROR:", error);
+
+      setNotificationMessage(
+        error.message || "Unable to save fulfillment method.",
+      );
+
+      return;
+    }
+
+    // ============================
+    // SHIPPING
+    // ============================
+    // Solo guardamos el método.
+    // La notificación se envía después con tracking.
     if (method === "shipping") {
       return;
     }
 
-    // PICKUP:
-    // al seleccionarlo enviamos el email inmediatamente.
+    // ============================
+    // PICKUP
+    // ============================
     if (method === "pickup") {
       try {
         setSendingNotification(true);
@@ -175,12 +214,14 @@ export default function JobModal({ job, onClose }) {
       } catch (error) {
         console.error("❌ PICKUP NOTIFICATION ERROR:", error);
 
-        setNotificationMessage(
-          error.message || "Unable to send pickup notification.",
-        );
+        // IMPORTANTE:
+        // Pickup queda seleccionado y guardado aunque falle el email.
+        setFulfillmentMethod("pickup");
 
-        // Si falló, volvemos el selector a su valor anterior.
-        setFulfillmentMethod(job?.fulfillmentMethod || "");
+        setNotificationMessage(
+          error.message ||
+            "Customer could not be notified by email. You can still complete the pickup.",
+        );
       } finally {
         setSendingNotification(false);
       }
@@ -253,7 +294,7 @@ export default function JobModal({ job, onClose }) {
                   <span>Invoice —</span>
                 )}
                 <span className="text-gray-400">•</span>
-                <span>ORDER/JOB #{job.jobNumber}</span>
+                <span>ORDER #{job.jobNumber}</span>
               </div>
 
               <div className="flex items-center gap-3"></div>
@@ -268,30 +309,94 @@ export default function JobModal({ job, onClose }) {
           <div className="grid grid-cols-12 min-h-[520px]">
             {/* LEFT */}
             <div className="col-span-8 border-r">
-              <div className="px-6 py-5 grid grid-cols-2 gap-6">
-                <div>
-                  <div className="text-m text-gray-400">Customer</div>
-                  <div className="font-medium">{job.client?.name || "—"}</div>
-                </div>
+              <div className="px-6 py-5">
+                {/* CUSTOMER + COMPANY ALWAYS VISIBLE */}
+                <button
+                  type="button"
+                  onClick={() => setShowCustomerInfo((prev) => !prev)}
+                  className="w-full text-left"
+                >
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <div className="text-sm text-gray-400">Customer</div>
+                      <div className="font-medium text-gray-900">
+                        {job.client?.name || "—"}
+                      </div>
+                    </div>
 
-                <div>
-                  <div className="text-m text-gray-400">Company name</div>
-                  <div className="font-medium">
-                    {job.client?.company || "—"}
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="text-sm text-gray-400">
+                          Company name
+                        </div>
+                        <div className="font-medium text-gray-900">
+                          {job.client?.company || "—"}
+                        </div>
+                      </div>
+
+                      <span
+                        className={`mt-2 text-gray-400 transition-transform ${
+                          showCustomerInfo ? "rotate-180" : ""
+                        }`}
+                      >
+                        ▼
+                      </span>
+                    </div>
                   </div>
-                </div>
+                </button>
 
-                <div>
-                  <div className="text-m text-gray-400">Team</div>
-                  <div className="font-medium">
-                    {" "}
-                    {job.assignedTo || "Unassigned"}
+                {/* EXTRA CUSTOMER INFO */}
+                {showCustomerInfo && (
+                  <div className="mt-4 rounded-lg border bg-gray-50 p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <div className="text-sm font-medium text-gray-700">
+                        Customer Information
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditCustomerOpen(true);
+                        }}
+                        className="rounded-md p-1.5 text-gray-400 hover:bg-white hover:text-blue-600"
+                        title="Edit customer"
+                      >
+                        <Pencil size={16} />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                      <div>
+                        <div className="text-xs text-gray-400">Email</div>
+                        <div className="text-sm font-medium text-gray-800">
+                          {currentCustomer?.email || "—"}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="text-xs text-gray-400">Phone</div>
+                        <div className="text-sm font-medium text-gray-800">
+                          {currentCustomer?.phone || "—"}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
 
-                <div>
-                  <div className="text-m text-gray-400">Status</div>
-                  <div className="font-medium">{job.status}</div>
+                {/* TEAM + STATUS */}
+                <div className="mt-5 grid grid-cols-2 gap-6">
+                  <div>
+                    <div className="text-sm text-gray-400">Team</div>
+                    <div className="font-medium">
+                      {job.assignedTo || "Unassigned"}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-sm text-gray-400">Status</div>
+                    <div className="font-medium">{job.status}</div>
+                  </div>
                 </div>
               </div>
 
@@ -410,7 +515,13 @@ export default function JobModal({ job, onClose }) {
                       {/* MESSAGE */}
 
                       {notificationMessage && (
-                        <div className="mt-3 rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-700">
+                        <div
+                          className={`mt-3 rounded-lg border px-3 py-2 text-sm ${
+                            notificationMessage.toLowerCase().includes("sent")
+                              ? "border-green-200 bg-green-50 text-green-700"
+                              : "border-amber-200 bg-amber-50 text-amber-700"
+                          }`}
+                        >
                           {notificationMessage}
                         </div>
                       )}
@@ -498,7 +609,27 @@ export default function JobModal({ job, onClose }) {
         onConfirm={completePickup}
         invoiceNumber={job.invoice?.invoiceNumber}
       />
+      <CreateCustomerModal
+        open={editCustomerOpen}
+        onClose={() => setEditCustomerOpen(false)}
+        customer={currentCustomer}
+        isEdit={true}
+        onCreated={async () => {
+          const res = await fetch(`/api/clients/${job.client.id}`, {
+            cache: "no-store",
+          });
 
+          const data = await res.json();
+
+          if (data?.client) {
+            setCurrentCustomer(data.client);
+          } else {
+            setCurrentCustomer(data);
+          }
+
+          setEditCustomerOpen(false);
+        }}
+      />
       <PaymentRequiredDialog
         open={paymentDialog.open}
         onClose={() =>

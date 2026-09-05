@@ -69,20 +69,23 @@ export default function JobCard({ job, onOpen, isOverlay = false }) {
       <div className="p-4">
         <div className="flex items-start justify-between gap-2">
           <div>
-            {job.invoice ? (
-              <Link
-                href={`/invoices/${job.invoice.id}`}
-                onClick={(e) => e.stopPropagation()}
-                className=" bg-blue-600 text-white px-3 py-1.5 rounded-md text-m hover:bg-blue-700 transition"
-              >
-                Invoice #{job.invoice.invoiceNumber}
-              </Link>
-            ) : (
-              <div className="text-sm text-gray-400 italic">No invoice</div>
-            )}
+            {/* ORDER NUMBER */}
+            <div className="text-xl font-semibold text-blue-600">
+              Order #{job.jobNumber}
+            </div>
 
             <div className="text-sm text-gray-900 mt-2">
-              JOB #{job.jobNumber}
+              {job.invoice ? (
+                <Link
+                  href={`/invoices/${job.invoice.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-sm text-gray-900"
+                >
+                  Invoice #{job.invoice.invoiceNumber}
+                </Link>
+              ) : (
+                <div className="text-sm text-gray-400 italic">No invoice</div>
+              )}
             </div>
           </div>
         </div>
@@ -93,12 +96,6 @@ export default function JobCard({ job, onOpen, isOverlay = false }) {
 
         <div className=" text-sm text-gray-900">
           {job.client?.name || "No client"}
-        </div>
-
-        <div className="text-sm text-gray-800">
-          {job.invoice?.invoiceItems?.length
-            ? job.invoice.invoiceItems.map((i) => i.name).join(", ")
-            : "No items"}
         </div>
 
         <div className="mt-3 flex items-center gap-4 text-xs text-gray-600">
