@@ -34,6 +34,7 @@
     "cloudinary": "^2.9.0",
     "clsx": "^2.1.1",
     "csv-parse": "^7.0.1",
+    "fast-xml-parser": "^5.11.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.366.0",

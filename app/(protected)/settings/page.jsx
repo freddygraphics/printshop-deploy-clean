@@ -8,6 +8,7 @@ import {
   Sparkles,
   Sticker,
   Ticket,
+  Truck,
   Users,
 } from "lucide-react";
 
@@ -55,6 +56,14 @@ const cards = [
     description: "Manage available product finishes.",
     icon: Sparkles,
   },
+
+  {
+    title: "Supplier Pricing",
+    href: "/settings/supplier-pricing",
+    description: "Configure supplier costs and default markup.",
+    icon: Truck,
+  },
+
   {
     title: "Billing",
     href: "/settings/billing",

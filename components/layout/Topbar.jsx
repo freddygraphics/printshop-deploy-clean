@@ -20,6 +20,7 @@ import {
   Package,
   Home,
   ShoppingBag,
+  PenTool,
 } from "lucide-react";
 export default function Topbar({
   collapsed,
@@ -132,7 +133,13 @@ export default function Topbar({
               >
                 <Package className="w-5 h-5 text-gray-600" />
               </Link>
-
+              <Link
+                href="/products/hub"
+                className="p-1 rounded hover:bg-gray-100"
+                title="Hub Pen"
+              >
+                <PenTool className="w-5 h-5 text-gray-600" />
+              </Link>
               <Link
                 href="/website-orders"
                 className="p-1 rounded hover:bg-gray-100"

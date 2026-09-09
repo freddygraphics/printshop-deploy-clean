@@ -716,3 +716,41 @@ enum JobStatus {
   Proofing
   Cancelled
 }
+model SupplierPricingSettings {
+  id        Int      @id @default(autoincrement())
+  supplier  String   @unique
+  markup    Float    @default(50)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SupplierProduct {
+  id            Int      @id @default(autoincrement())
+
+  supplier      String
+  supplierCode  String
+  productId     String
+
+  name          String?
+  description   String?
+  category      String?
+  subCategory   String?
+  image         String?
+
+  material      String?
+  leadTime      Int?
+
+  variantCount  Int      @default(0)
+
+  active        Boolean  @default(true)
+
+  lastSyncedAt  DateTime?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([supplierCode, productId])
+  @@index([supplierCode])
+  @@index([name])
+  @@index([category])
+}
