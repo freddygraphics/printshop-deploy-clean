@@ -3,10 +3,9 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
-
 export const runtime = "nodejs";
 
-export async function GET(request: Request) {
+export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
 
@@ -63,6 +62,10 @@ export async function GET(request: Request) {
       select: {
         id: true,
         name: true,
+
+        // ✅ PRODUCT SLUG
+        slug: true,
+
         description: true,
         image: true,
 
