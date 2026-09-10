@@ -1,6 +1,7 @@
 ﻿export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
+
 import prisma from "@/lib/db";
 
 export async function GET() {
@@ -11,6 +12,7 @@ export async function GET() {
       select: {
         id: true,
         name: true,
+        slug: true,
 
         // IMAGE
         image: true,

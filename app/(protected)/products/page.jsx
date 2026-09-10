@@ -110,7 +110,7 @@ export default function ProductsCatalogPage() {
           {filteredProducts.map((product) => (
             <Link
               key={product.id}
-              href={`/products/${product.id}`}
+              href={`/products/${product.slug}`}
               className="group block overflow-hidden rounded-xl border border-gray-200 bg-white text-left shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-lg"
             >
               <div className="aspect-[4/3] overflow-hidden bg-gray-100">

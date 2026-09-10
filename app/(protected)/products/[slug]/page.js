@@ -4,14 +4,14 @@ export const dynamic = "force-dynamic";
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, FileText } from "lucide-react";
 
 import ProductConfigurator from "@/components/products/ProductConfigurator";
 
 export default function ProductOptionsPage() {
-  const { id } = useParams();
-
+  const { slug } = useParams();
+  const router = useRouter();
   const [product, setProduct] = useState(null);
   const [configuredItem, setConfiguredItem] = useState(null);
 
@@ -20,17 +20,17 @@ export default function ProductOptionsPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!id) return;
+    if (!slug) return;
 
     loadProduct();
-  }, [id]);
+  }, [slug]);
 
   async function loadProduct() {
     try {
       setLoading(true);
       setError("");
 
-      const res = await fetch(`/api/products/${id}`, {
+      const res = await fetch(`/api/products/${slug}`, {
         cache: "no-store",
       });
 
@@ -41,6 +41,10 @@ export default function ProductOptionsPage() {
       }
 
       setProduct(data);
+      // Si entró usando un ID antiguo, cambiar la URL al slug
+      if (/^\d+$/.test(String(slug)) && data.slug) {
+        router.replace(`/products/${data.slug}`);
+      }
     } catch (err) {
       console.error("Error loading product:", err);
 
