@@ -9,6 +9,7 @@ import {
   Sticker,
   Ticket,
   Truck,
+  Type,
   Users,
 } from "lucide-react";
 
@@ -50,6 +51,14 @@ const cards = [
     description: "Manage materials and production costs.",
     icon: Boxes,
   },
+
+  {
+    title: "Vinyl Lettering Pricing",
+    href: "/settings/vinyl-lettering",
+    description: "Configure cutting, weeding, transfer tape and pricing.",
+    icon: Type,
+  },
+
   {
     title: "Finishes",
     href: "/settings/finishes",

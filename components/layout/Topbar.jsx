@@ -29,6 +29,8 @@ export default function Topbar({
 }) {
   const [openNew, setOpenNew] = useState(false);
   const menuRef = useRef(null);
+  const [openProducts, setOpenProducts] = useState(false);
+  const productsRef = useRef(null);
   const { data: session, status } = useSession();
   const [openUser, setOpenUser] = useState(false);
   const userRef = useRef(null);
@@ -59,6 +61,17 @@ export default function Topbar({
     };
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
+    useEffect(() => {
+      const handler = (e) => {
+        if (productsRef.current && !productsRef.current.contains(e.target)) {
+          setOpenProducts(false);
+        }
+      };
+
+      document.addEventListener("mousedown", handler);
+
+      return () => document.removeEventListener("mousedown", handler);
+    }, []);
   }, []);
 
   return (
@@ -126,20 +139,53 @@ export default function Topbar({
                 <Users className="w-5 h-5 text-gray-600" />
               </Link>
 
-              <Link
-                href="/products"
-                className="p-1 rounded hover:bg-gray-100"
-                title="Products"
-              >
-                <Package className="w-5 h-5 text-gray-600" />
-              </Link>
-              <Link
-                href="/products/hub"
-                className="p-1 rounded hover:bg-gray-100"
-                title="Hub Pen"
-              >
-                <PenTool className="w-5 h-5 text-gray-600" />
-              </Link>
+              {/* PRODUCTS MENU */}
+              <div className="relative" ref={productsRef}>
+                <button
+                  type="button"
+                  onClick={() => setOpenProducts((prev) => !prev)}
+                  className={clsx(
+                    "p-1 rounded transition",
+                    openProducts ? "bg-gray-100" : "hover:bg-gray-100",
+                  )}
+                  title="Products"
+                >
+                  <Package className="w-5 h-5 text-gray-600" />
+                </button>
+
+                {openProducts && (
+                  <div className="absolute top-9 left-0 w-52 bg-white border border-gray-200 rounded-xl shadow-xl py-2 z-50">
+                    <Link
+                      href="/products"
+                      onClick={() => setOpenProducts(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <Package size={17} className="text-gray-500" />
+                      Products
+                    </Link>
+
+                    <Link
+                      href="/products/hub"
+                      onClick={() => setOpenProducts(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <PenTool size={17} className="text-gray-500" />
+                      Hub Pen
+                    </Link>
+
+                    <div className="border-t border-gray-100 my-1" />
+
+                    <Link
+                      href="/calculators/vinyl-lettering"
+                      onClick={() => setOpenProducts(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <FileText size={17} className="text-gray-500" />
+                      Vinyl Lettering
+                    </Link>
+                  </div>
+                )}
+              </div>
               <Link
                 href="/website-orders"
                 className="p-1 rounded hover:bg-gray-100"

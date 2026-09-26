@@ -75,7 +75,7 @@ model PrintProduct {
 model Product {
   id          Int     @id @default(autoincrement())
   name        String
-  slug String? @unique
+  slug        String? @unique
   sku         String? @unique
   description String?
 
@@ -360,25 +360,25 @@ model Job {
   invoiceId           Int       @unique
   position            Int       @default(0)
 
-  pickupToken         String?   @unique
-  pickedUpAt          DateTime?
-  pickedUpBy          String?
+  pickupToken String?   @unique
+  pickedUpAt  DateTime?
+  pickedUpBy  String?
 
-  readyNotifiedAt     DateTime?
+  readyNotifiedAt DateTime?
 
   // NUEVO
-  fulfillmentMethod   String?
-  trackingNumber      String?
-  shippingNotifiedAt  DateTime?
+  fulfillmentMethod  String?
+  trackingNumber     String?
+  shippingNotifiedAt DateTime?
 
-  archived             Boolean   @default(false)
-  archivedAt           DateTime?
-  deliveredAt          DateTime?
+  archived    Boolean   @default(false)
+  archivedAt  DateTime?
+  deliveredAt DateTime?
 
-  client              Client    @relation(fields: [clientId], references: [id])
-  invoice             Invoice   @relation(fields: [invoiceId], references: [id])
-  files               JobFile[]
-  items               JobItem[]
+  client  Client    @relation(fields: [clientId], references: [id])
+  invoice Invoice   @relation(fields: [invoiceId], references: [id])
+  files   JobFile[]
+  items   JobItem[]
 }
 
 model JobItem {
@@ -471,22 +471,55 @@ model JobFile {
 }
 
 model Material {
-  id                      String                   @id @default(cuid())
-  name                    String
-  category                String
-  unitType                String
-  rollWidthIn             Float?
-  rollLengthFt            Float?
-  sheetWidthIn            Float?
-  sheetHeightIn           Float?
-  rollCost                Float?
-  wastePercent            Float?
-  costPerSqft             Float
-  sellPerSqft             Float
-  active                  Boolean                  @default(true)
-  createdAt               DateTime                 @default(now())
-  updatedAt               DateTime                 @updatedAt
+  id       String @id @default(cuid())
+  name     String
+  category String
+  unitType String
+
+  // Información del material
+  brand    String?
+  type     String?
+  finish   String?
+  color    String?
+  sku      String?
+  supplier String?
+
+  // Materiales comprados por rollo
+  rollWidthIn  Float?
+  rollLengthFt Float?
+  rollCost     Float?
+
+  // Materiales comprados por hoja
+  sheetWidthIn  Float?
+  sheetHeightIn Float?
+  sheetsPerPack Int?
+  packCost      Float?
+
+  // Materiales comprados individualmente
+  unitCost Float?
+
+  // Costos calculados
+  costPerSqft     Float  @default(0)
+  costPerLinearFt Float?
+  costPerSheet    Float?
+  costPerUnit     Float?
+
+  // Pricing
+  sellPerSqft  Float @default(0)
+  wastePercent Float @default(0)
+
+  // Control
+  active    Boolean  @default(true)
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones existentes
   printProductionProfiles PrintProductionProfile[]
+
+  @@index([category])
+  @@index([name])
+  @@index([active])
 }
 
 model Process {
@@ -717,6 +750,7 @@ enum JobStatus {
   Proofing
   Cancelled
 }
+
 model SupplierPricingSettings {
   id        Int      @id @default(autoincrement())
   supplier  String   @unique
@@ -726,32 +760,97 @@ model SupplierPricingSettings {
 }
 
 model SupplierProduct {
-  id            Int      @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  supplier      String
-  supplierCode  String
-  productId     String
+  supplier     String
+  supplierCode String
+  productId    String
 
-  name          String?
-  description   String?
-  category      String?
-  subCategory   String?
-  image         String?
+  name        String?
+  description String?
+  category    String?
+  subCategory String?
+  image       String?
 
-  material      String?
-  leadTime      Int?
+  material String?
+  leadTime Int?
 
-  variantCount  Int      @default(0)
+  variantCount Int @default(0)
 
-  active        Boolean  @default(true)
+  active Boolean @default(true)
 
-  lastSyncedAt  DateTime?
+  lastSyncedAt DateTime?
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([supplierCode, productId])
   @@index([supplierCode])
   @@index([name])
   @@index([category])
+}
+
+model VinylLetteringPricing {
+  id String @id @default(cuid())
+
+  // General pricing
+  minimumOrderPrice Float @default(20)
+  setupFee          Float @default(0)
+  profitMargin      Float @default(50)
+
+  // Cutting
+  cuttingBaseFee Float @default(0)
+  cuttingPerSqft Float @default(0)
+
+  // Weeding / labor
+  easyWeedingPerSqft    Float @default(0)
+  mediumWeedingPerSqft  Float @default(0)
+  complexWeedingPerSqft Float @default(0)
+
+  // Transfer tape
+  transferTapeCostPerSqft Float @default(0)
+  transferTapeMarkup      Float @default(0)
+
+  // Installation
+  installationMinimum Float @default(0)
+  installationPerSqft Float @default(0)
+
+  // Production
+  defaultWastePercent Float @default(10)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StickerPricingSettings {
+  id String @id @default(cuid())
+
+  // Printing
+  inkCostPerSqft     Float @default(0)
+  machineCostPerHour Float @default(0)
+  laborPerHour       Float @default(25)
+
+  // Cutting
+  cuttingBaseFee   Float @default(0)
+  cuttingPerMinute Float @default(0)
+
+  // Production layout
+  gapIn              Float @default(0.125)
+  sideMarginIn       Float @default(0.25)
+  mediaWidthIn Float @default(20)
+  usablePrintWidthIn Float @default(18.9)
+
+  // Production time
+printSpeedSqftPerHour Float @default(20)
+laborMinutesPerOrder  Float @default(10)
+cutSpeedInPerMinute   Float @default(20)
+
+  // General pricing
+  setupFee          Float @default(10)
+  wastePercent      Float @default(10)
+  profitMargin      Float @default(50)
+  minimumOrderPrice Float @default(25)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
