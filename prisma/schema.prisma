@@ -104,6 +104,7 @@ model Product {
   sinaliteOptions Json?
   image           String?
   showOnWebsite   Boolean  @default(false)
+  showToResellers Boolean  @default(false)
 
   images        ProductImage[]
   invoiceItems  InvoiceItem[]
@@ -837,13 +838,13 @@ model StickerPricingSettings {
   // Production layout
   gapIn              Float @default(0.125)
   sideMarginIn       Float @default(0.25)
-  mediaWidthIn Float @default(20)
+  mediaWidthIn       Float @default(20)
   usablePrintWidthIn Float @default(18.9)
 
   // Production time
-printSpeedSqftPerHour Float @default(20)
-laborMinutesPerOrder  Float @default(10)
-cutSpeedInPerMinute   Float @default(20)
+  printSpeedSqftPerHour Float @default(20)
+  laborMinutesPerOrder  Float @default(10)
+  cutSpeedInPerMinute   Float @default(20)
 
   // General pricing
   setupFee          Float @default(10)

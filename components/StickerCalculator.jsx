@@ -1,6 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
+const PRESET_QUANTITIES = [
+  50, 100, 200, 300, 500, 1000, 2000, 3000, 5000, 10000,
+];
+
+const SIZE_OPTIONS = [
+  ["1x1", '1" × 1"'],
+  ["2x2", '2" × 2"'],
+  ["3x3", '3" × 3"'],
+  ["4x4", '4" × 4"'],
+  ["custom", "Custom Size"],
+];
 
 export default function StickerCalculator({ value = null, onChange }) {
   const savedOptions = value?.options || {};
@@ -21,11 +33,11 @@ export default function StickerCalculator({ value = null, onChange }) {
   const [height, setHeight] = useState(
     Number(savedOptions.height ?? savedOptions.stickerHeight ?? 2),
   );
+
   const getInitialSizeOption = () => {
     const initialWidth = Number(
       savedOptions.width ?? savedOptions.stickerWidth ?? 2,
     );
-
     const initialHeight = Number(
       savedOptions.height ?? savedOptions.stickerHeight ?? 2,
     );
@@ -39,6 +51,7 @@ export default function StickerCalculator({ value = null, onChange }) {
   };
 
   const [sizeOption, setSizeOption] = useState(getInitialSizeOption);
+
   const [qty, setQty] = useState(
     Number(savedOptions.quantity ?? savedOptions.qty ?? 50),
   );
@@ -48,12 +61,18 @@ export default function StickerCalculator({ value = null, onChange }) {
   const [cutType, setCutType] = useState(savedOptions.cutType || "die-cut");
 
   const [result, setResult] = useState(null);
+  const onChangeRef = useRef(onChange);
 
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
   // ======================================================
   // LOAD MATERIALS
   // ======================================================
 
   useEffect(() => {
+    const controller = new AbortController();
+
     async function loadMaterials() {
       try {
         setLoading(true);
@@ -61,6 +80,7 @@ export default function StickerCalculator({ value = null, onChange }) {
 
         const res = await fetch("/api/materials", {
           cache: "no-store",
+          signal: controller.signal,
         });
 
         const data = await res.json();
@@ -77,6 +97,8 @@ export default function StickerCalculator({ value = null, onChange }) {
 
         setMaterials(list);
       } catch (err) {
+        if (err?.name === "AbortError") return;
+
         console.error("Error loading sticker materials:", err);
 
         setError(
@@ -85,11 +107,15 @@ export default function StickerCalculator({ value = null, onChange }) {
             : "Unable to load sticker materials.",
         );
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     }
 
     loadMaterials();
+
+    return () => controller.abort();
   }, []);
 
   // ======================================================
@@ -133,7 +159,7 @@ export default function StickerCalculator({ value = null, onChange }) {
   }, [materials]);
 
   // ======================================================
-  // DEFAULT MATERIAL
+  // DEFAULT MATERIALS
   // ======================================================
 
   useEffect(() => {
@@ -148,10 +174,6 @@ export default function StickerCalculator({ value = null, onChange }) {
     }
   }, [laminated, laminateId, laminateMaterials]);
 
-  // ======================================================
-  // SELECTED MATERIALS
-  // ======================================================
-
   const selectedMaterial = useMemo(() => {
     return vinylMaterials.find((material) => material.id === materialId);
   }, [vinylMaterials, materialId]);
@@ -161,7 +183,7 @@ export default function StickerCalculator({ value = null, onChange }) {
   }, [laminateMaterials, laminateId]);
 
   // ======================================================
-  // CALCULATE
+  // CALCULATE - EXISTING API
   // ======================================================
 
   useEffect(() => {
@@ -170,12 +192,21 @@ export default function StickerCalculator({ value = null, onChange }) {
       return;
     }
 
-    if (width <= 0 || height <= 0 || qty <= 0) {
+    if (
+      !Number.isFinite(width) ||
+      !Number.isFinite(height) ||
+      !Number.isFinite(qty) ||
+      width <= 0 ||
+      height <= 0 ||
+      !Number.isInteger(qty) ||
+      qty <= 0
+    ) {
       setResult(null);
       return;
     }
 
     if (laminated && laminateMaterials.length > 0 && !laminateId) {
+      setResult(null);
       return;
     }
 
@@ -188,22 +219,16 @@ export default function StickerCalculator({ value = null, onChange }) {
 
         const res = await fetch("/api/sticker-calc", {
           method: "POST",
-
           headers: {
             "Content-Type": "application/json",
           },
-
           signal: controller.signal,
-
           body: JSON.stringify({
             stickerWidth: width,
             stickerHeight: height,
             quantity: qty,
-
             materialId,
-
             laminateId: laminated && laminateId ? laminateId : null,
-
             laminated,
             cutType,
           }),
@@ -214,6 +239,8 @@ export default function StickerCalculator({ value = null, onChange }) {
         if (!res.ok) {
           throw new Error(data.error || "Unable to calculate sticker price.");
         }
+
+        if (controller.signal.aborted) return;
 
         setResult(data);
 
@@ -235,69 +262,42 @@ export default function StickerCalculator({ value = null, onChange }) {
           description += ` + ${laminateName}`;
         }
 
-        onChange?.({
+        onChangeRef.current?.({
           description,
-
           qty,
-
           unitPrice,
-
           total: finalPrice,
-
           options: {
             productType: "stickers",
-
             width,
             stickerWidth: width,
-
             height,
             stickerHeight: height,
-
             quantity: qty,
-
             materialId,
             materialName,
-
             laminated,
-
             laminateId: laminated && laminateId ? laminateId : null,
-
             laminateName: laminated ? laminateName : null,
-
             cutType,
-
             orientation: data.layout?.rotated ? "rotated" : "normal",
-
             rotated: Boolean(data.layout?.rotated),
-
             stickersAcross: data.layout?.across || 0,
-
             rows: data.layout?.rows || 0,
-
             linearFeetUsed: data.layout?.linearFeetUsed || 0,
-
             productionAreaSqft: data.layout?.productionAreaSqft || 0,
-
             finishedStickerAreaSqft: data.layout?.finishedStickerAreaSqft || 0,
-
             wastePercent: data.layout?.wastePercent || 0,
-
             productionCost: data.totalCost || 0,
-
             profitMargin: data.pricing?.profitMargin || 0,
-
             finalPrice,
-
             pricingSnapshot: data,
           },
         });
       } catch (err) {
-        if (err?.name === "AbortError") {
-          return;
-        }
+        if (err?.name === "AbortError") return;
 
         console.error("Sticker calculation error:", err);
-
         setResult(null);
 
         setError(
@@ -325,34 +325,39 @@ export default function StickerCalculator({ value = null, onChange }) {
     laminated,
     cutType,
     laminateMaterials.length,
+    selectedMaterial,
+    selectedLaminate,
   ]);
 
   // ======================================================
-  // UI
+  // SIZE SELECTION
   // ======================================================
+
   function handleSizeChange(option) {
     setSizeOption(option);
 
-    if (option === "1x1") {
-      setWidth(1);
-      setHeight(1);
-    }
+    const sizes = {
+      "1x1": [1, 1],
+      "2x2": [2, 2],
+      "3x3": [3, 3],
+      "4x4": [4, 4],
+    };
 
-    if (option === "2x2") {
-      setWidth(2);
-      setHeight(2);
-    }
-
-    if (option === "3x3") {
-      setWidth(3);
-      setHeight(3);
-    }
-
-    if (option === "4x4") {
-      setWidth(4);
-      setHeight(4);
+    if (sizes[option]) {
+      setWidth(sizes[option][0]);
+      setHeight(sizes[option][1]);
     }
   }
+
+  const inputClass =
+    "h-11 w-full rounded-lg border border-gray-200 " +
+    "bg-white px-3 text-sm outline-none transition " +
+    "focus:border-blue-400 focus:ring-4 focus:ring-blue-50";
+
+  // ======================================================
+  // UI - TWO COLUMN LAYOUT
+  // ======================================================
+
   return (
     <div className="space-y-6">
       {error && (
@@ -361,183 +366,230 @@ export default function StickerCalculator({ value = null, onChange }) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-        {/* MATERIAL */}
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        {/* LEFT COLUMN */}
+        <div className="space-y-5">
+          {/* MATERIAL */}
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">
+              Material
+            </label>
 
-        <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
-            Material
-          </label>
+            <select
+              value={materialId}
+              onChange={(e) => setMaterialId(e.target.value)}
+              disabled={loading}
+              className={inputClass}
+            >
+              {vinylMaterials.length === 0 ? (
+                <option value="">No roll vinyl materials available</option>
+              ) : (
+                vinylMaterials.map((material) => (
+                  <option key={material.id} value={material.id}>
+                    {material.name}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
 
-          <select
-            value={materialId}
-            onChange={(e) => setMaterialId(e.target.value)}
-            disabled={loading}
-            className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
-          >
-            {vinylMaterials.length === 0 ? (
-              <option value="">No roll vinyl materials available</option>
-            ) : (
-              vinylMaterials.map((material) => (
+          {/* LAMINATION */}
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">
+              Lamination
+            </label>
+
+            <select
+              value={laminated ? laminateId || "yes" : "none"}
+              onChange={(e) => {
+                if (e.target.value === "none") {
+                  setLaminated(false);
+                  return;
+                }
+
+                setLaminated(true);
+                setLaminateId(e.target.value === "yes" ? "" : e.target.value);
+              }}
+              className={inputClass}
+            >
+              <option value="none">No Lamination</option>
+
+              {laminated && !laminateId && (
+                <option value="yes">Select Lamination</option>
+              )}
+
+              {laminateMaterials.map((material) => (
                 <option key={material.id} value={material.id}>
                   {material.name}
                 </option>
-              ))
-            )}
-          </select>
-        </div>
+              ))}
+            </select>
+          </div>
 
-        {/* CUT TYPE */}
+          {/* CUT TYPE */}
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">
+              Cut Type
+            </label>
 
-        <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
-            Cut Type
-          </label>
+            <select
+              value={cutType}
+              onChange={(e) => setCutType(e.target.value)}
+              className={inputClass}
+            >
+              <option value="die-cut">Die Cut</option>
+              <option value="kiss-cut">Kiss Cut</option>
+            </select>
+          </div>
 
-          <select
-            value={cutType}
-            onChange={(e) => setCutType(e.target.value)}
-            className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
-          >
-            <option value="die-cut">Die Cut</option>
-            <option value="kiss-cut">Kiss Cut</option>
-          </select>
-        </div>
+          {/* CUSTOM QUANTITY */}
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">
+              Quantity (Custom)
+            </label>
 
-        {/* SIZE */}
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={qty}
+              onChange={(e) => setQty(Number(e.target.value))}
+              className={inputClass}
+            />
 
-        <div className="md:col-span-2">
-          <label className="mb-3 block text-sm font-medium text-gray-700">
-            Size
-          </label>
-
-          <div className="flex flex-wrap gap-3">
-            {[
-              ["1x1", '1" × 1"'],
-              ["2x2", '2" × 2"'],
-              ["3x3", '3" × 3"'],
-              ["4x4", '4" × 4"'],
-              ["custom", "Custom Size"],
-            ].map(([value, label]) => (
-              <label
-                key={value}
-                className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 px-4 py-3"
-              >
-                <input
-                  type="radio"
-                  name="sticker-size"
-                  value={value}
-                  checked={sizeOption === value}
-                  onChange={() => handleSizeChange(value)}
-                />
-
-                <span className="text-sm font-medium text-gray-700">
-                  {label}
-                </span>
-              </label>
-            ))}
+            <p className="mt-2 text-xs text-gray-500">
+              Select a preset quantity or enter a custom quantity.
+            </p>
           </div>
         </div>
 
-        {/* CUSTOM SIZE */}
+        {/* RIGHT COLUMN */}
+        <div className="space-y-6">
+          {/* SIZE - TWO COLUMNS */}
+          <div>
+            <label className="mb-3 block text-sm font-medium text-gray-700">
+              Size
+            </label>
 
-        {sizeOption === "custom" && (
-          <>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                Width (in)
-              </label>
+            <div className="grid grid-cols-2 gap-3">
+              {SIZE_OPTIONS.map(([option, label]) => (
+                <label
+                  key={option}
+                  className={
+                    "flex w-full cursor-pointer items-center " +
+                    "gap-2 rounded-lg border px-3 py-3 transition " +
+                    (sizeOption === option
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 bg-white hover:border-blue-300")
+                  }
+                >
+                  <input
+                    type="radio"
+                    name="sticker-size"
+                    value={option}
+                    checked={sizeOption === option}
+                    onChange={() => handleSizeChange(option)}
+                    className="accent-blue-600"
+                  />
 
-              <input
-                type="number"
-                min="0.1"
-                step="0.1"
-                value={width}
-                onChange={(e) => setWidth(Number(e.target.value))}
-                className="h-11 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
-              />
+                  <span className="text-sm font-medium text-gray-700">
+                    {label}
+                  </span>
+                </label>
+              ))}
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                Height (in)
-              </label>
+            {sizeOption === "custom" && (
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                    Width (in)
+                  </label>
 
-              <input
-                type="number"
-                min="0.1"
-                step="0.1"
-                value={height}
-                onChange={(e) => setHeight(Number(e.target.value))}
-                className="h-11 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
-              />
+                  <input
+                    type="number"
+                    min="0.1"
+                    step="0.1"
+                    value={width}
+                    onChange={(e) => setWidth(Number(e.target.value))}
+                    className={inputClass}
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                    Height (in)
+                  </label>
+
+                  <input
+                    type="number"
+                    min="0.1"
+                    step="0.1"
+                    value={height}
+                    onChange={(e) => setHeight(Number(e.target.value))}
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* PRESET QUANTITIES */}
+          <div>
+            <label className="mb-3 block text-sm font-medium text-gray-700">
+              Quantity
+            </label>
+
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+              {PRESET_QUANTITIES.map((quantity) => (
+                <label
+                  key={quantity}
+                  className={
+                    "flex cursor-pointer items-center gap-2 " +
+                    "rounded-lg border px-3 py-3 transition " +
+                    (qty === quantity
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 bg-white hover:border-blue-300")
+                  }
+                >
+                  <input
+                    type="radio"
+                    name="sticker-quantity"
+                    value={quantity}
+                    checked={qty === quantity}
+                    onChange={() => setQty(quantity)}
+                    className="accent-blue-600"
+                  />
+
+                  <span className="text-sm font-medium text-gray-700">
+                    {quantity.toLocaleString("en-US")}
+                  </span>
+                </label>
+              ))}
             </div>
-          </>
-        )}
-
-        {/* QUANTITY */}
-
-        <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
-            Quantity
-          </label>
-
-          <input
-            type="number"
-            min="1"
-            step="1"
-            value={qty}
-            onChange={(e) => setQty(Number(e.target.value))}
-            className="h-11 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
-          />
-        </div>
-
-        {/* LAMINATION */}
-
-        <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
-            Lamination
-          </label>
-
-          <select
-            value={laminated ? laminateId || "yes" : "none"}
-            onChange={(e) => {
-              if (e.target.value === "none") {
-                setLaminated(false);
-                return;
-              }
-
-              setLaminated(true);
-              setLaminateId(e.target.value);
-            }}
-            className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
-          >
-            <option value="none">No Lamination</option>
-
-            {laminateMaterials.map((material) => (
-              <option key={material.id} value={material.id}>
-                {material.name}
-              </option>
-            ))}
-          </select>
+          </div>
         </div>
       </div>
 
       {/* RESULT */}
-
       <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
-        {calculating ? (
-          <div className="py-6 text-center text-sm text-gray-500">
-            Calculating price...
-          </div>
-        ) : result ? (
+        {result ? (
           <div className="space-y-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-sm text-gray-500">Estimated Price</p>
+                <div className="flex items-center gap-3">
+                  <p className="text-sm text-gray-500">Estimated Price</p>
+
+                  {calculating && (
+                    <span className="text-xs text-blue-600">
+                      Updating price...
+                    </span>
+                  )}
+                </div>
 
                 <p className="mt-1 text-sm font-medium text-gray-900">
-                  {qty} stickers · {width}" × {height}"
+                  {result.quantity} stickers · {result.stickerWidth}" ×{" "}
+                  {result.stickerHeight}"
                 </p>
 
                 <p className="mt-1 text-xs text-gray-500">
@@ -559,42 +611,6 @@ export default function StickerCalculator({ value = null, onChange }) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 border-t border-gray-200 pt-4 text-sm md:grid-cols-4">
-              <div>
-                <p className="text-gray-500">Across</p>
-
-                <p className="font-semibold text-gray-900">
-                  {result.layout?.across || 0}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-gray-500">Rows</p>
-
-                <p className="font-semibold text-gray-900">
-                  {result.layout?.rows || 0}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-gray-500">Material Used</p>
-
-                <p className="font-semibold text-gray-900">
-                  {Number(result.layout?.linearFeetUsed || 0).toFixed(2)} ft
-                </p>
-              </div>
-
-              <div>
-                <p className="text-gray-500">Orientation</p>
-
-                <p className="font-semibold text-gray-900">
-                  {result.layout?.rotated ? "Rotated" : "Normal"}
-                </p>
-              </div>
-            </div>
-
-            {/* INTERNAL COST BREAKDOWN */}
-
             <details className="border-t border-gray-200 pt-4">
               <summary className="cursor-pointer text-sm font-medium text-gray-600">
                 Production details
@@ -602,19 +618,12 @@ export default function StickerCalculator({ value = null, onChange }) {
 
               <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 text-sm md:grid-cols-4">
                 <Cost label="Vinyl" value={result.costs?.material} />
-
                 <Cost label="Laminate" value={result.costs?.laminate} />
-
                 <Cost label="Ink" value={result.costs?.ink} />
-
                 <Cost label="Cutting" value={result.costs?.cutting} />
-
                 <Cost label="Machine" value={result.costs?.machine} />
-
                 <Cost label="Labor" value={result.costs?.labor} />
-
                 <Cost label="Setup" value={result.costs?.setup} />
-
                 <Cost label="Production Cost" value={result.totalCost} strong />
               </div>
             </details>
