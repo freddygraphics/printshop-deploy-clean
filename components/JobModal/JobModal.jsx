@@ -15,9 +15,12 @@ import PaymentRequiredDialog from "@/components/dialogs/PaymentRequiredDialog";
 const STATUS_STYLE = {
   Pending: "bg-gray-100 text-gray-700",
   Design: "bg-blue-100 text-blue-700",
+  Proofing: "bg-purple-100 text-purple-700",
+  Approved: "bg-teal-100 text-teal-700",
   Production: "bg-amber-100 text-amber-700",
   Ready: "bg-emerald-100 text-emerald-700",
   Delivered: "bg-slate-200 text-slate-700",
+  Cancelled: "bg-red-100 text-red-700",
 };
 
 export default function JobModal({ job, onClose }) {
@@ -48,7 +51,7 @@ export default function JobModal({ job, onClose }) {
       const res = await fetch(`/api/jobs/${job.id}/status`, {
         method: "PUT", // 👈 IMPORTANTE
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "Production" }),
+        body: JSON.stringify({ status: "Approved" }),
       });
 
       if (!res.ok) throw new Error("Failed to update status");

@@ -745,10 +745,11 @@ enum InvoiceStatus {
 enum JobStatus {
   Pending
   Design
+  Proofing
+  Approved
   Production
   Ready
   Delivered
-  Proofing
   Cancelled
 }
 

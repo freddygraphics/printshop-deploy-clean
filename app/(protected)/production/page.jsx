@@ -16,6 +16,7 @@ const STATUSES = [
   { key: "Pending", label: "Pending" },
   { key: "Design", label: "Design" },
   { key: "Proofing", label: "Proofing" },
+  { key: "Approved", label: "Approved" },
   { key: "Production", label: "Production" },
   { key: "Ready", label: "Ready" },
 ];
@@ -75,6 +76,7 @@ export default function ProductionBoardPage() {
       Pending: [],
       Design: [],
       Proofing: [],
+      Approved: [],
       Production: [],
       Ready: [],
     };
@@ -223,7 +225,7 @@ export default function ProductionBoardPage() {
 
   return (
     <div className="min-h-screen bg-[#F5F7F9]">
-      <div className="max-w-[1920px] mx-auto px-6 py-6">
+      <div className="w-full max-w-none mx-0 px-4 py-6">
         {/* HEADER */}
 
         <div className="flex items-start justify-between">

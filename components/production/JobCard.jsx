@@ -8,6 +8,7 @@ const STATUS_ACCENT = {
   Pending: "border-t-gray-300",
   Design: "border-t-blue-500",
   Proofing: "border-t-purple-500",
+  Approved: "border-t-teal-500",
   Production: "border-t-amber-500",
   Ready: "border-t-emerald-500",
 };
